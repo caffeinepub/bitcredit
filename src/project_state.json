@@ -1,0 +1,337 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 23,
+  "summary": "App to sell credits on a website (1 credit = 1 BTC) and enable sending BTC directly on-chain to mainnet wallets, with blockchain API-based transaction authentication/verification and network fees deducted from user credits.",
+  "architectural_notes": [
+    "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits)."
+  ],
+  "known_issues": [
+    "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
+    "Deployment/build is failing (deployment ran into an issue); needs debugging and a successful deploy."
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-add-internet-identity-authentication-so-each-user-has-an-account-and-a-persistent-credit-balance",
+      "title": "Add Internet Identity authentication so each user has an account and a persistent credit balance.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-website-flow-to-purchase-top-up-credits-that-does-not-rely-on-unspecified-third-party-payment-providers-users-submit-a-bitcoin-mainnet-deposit-transaction-id-txid-and-the-app-verifies-it-via-a-blockchain-api-before-credits-are-issued",
+      "title": "Create a website flow to purchase/top-up credits that does not rely on unspecified third-party payment providers: users submit a Bitcoin mainnet deposit transaction ID (txid) and the app verifies it via a blockchain API before credits are issued.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-send-btc-feature-implemented-as-a-transfer-request-system-users-enter-a-bitcoin-mainnet-destination-address-and-amount-in-credits-btc-credits-are-reserved-deducted-and-the-request-is-recorded-with-a-status-that-can-be-updated-after-on-chain-verification",
+      "title": "Add a “Send BTC” feature implemented as a transfer-request system: users enter a Bitcoin mainnet destination address and amount in credits (BTC), credits are reserved/deducted, and the request is recorded with a status that can be updated after on-chain verification.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-integrate-blockchain-api-verification-for-transfer-requests-allow-attaching-an-on-chain-transaction-id-to-a-transfer-request-and-verify-that-the-transaction-matches-the-requested-destination-and-amount-before-marking-it-verified",
+      "title": "Integrate blockchain API verification for transfer requests: allow attaching an on-chain transaction ID to a transfer request and verify that the transaction matches the requested destination and amount before marking it VERIFIED.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-coherent-ui-ux-with-a-distinct-visual-theme-not-blue-purple-applied-consistently-across-pages-sign-in-dashboard-buy-credits-send-btc-history",
+      "title": "Build a coherent UI/UX with a distinct visual theme (not blue/purple) applied consistently across pages (sign-in, dashboard, buy credits, send BTC, history).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-generate-and-include-custom-static-images-for-the-ui-and-render-them-from-frontend-static-assets",
+      "title": "Generate and include custom static images for the UI and render them from frontend static assets.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-an-admin-role-that-is-recognized-via-internet-identity-no-separate-username-password-auth-and-is-restricted-by-a-backend-allowlist-of-admin-principals-expose-a-backend-query-method-that-the-frontend-can-use-to-determine-whether-the-signed-in-caller-is-an-admin",
+      "title": "Implement an admin role that is recognized via Internet Identity (no separate username/password auth) and is restricted by a backend allowlist of admin principals; expose a backend query method that the frontend can use to determine whether the signed-in caller is an admin.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-admin-only-ui-flow-to-give-credits-to-a-specified-user-by-principal-text-from-the-admin-s-own-500-credit-balance-enforcing-that-the-admin-cannot-give-more-credits-than-they-currently-have-record-both-the-admin-debit-and-recipient-credit-in-the-ledger-transaction-history",
+      "title": "Add an admin-only UI flow to give credits to a specified user (by Principal text) from the admin’s own 500-credit balance, enforcing that the admin cannot give more credits than they currently have; record both the admin debit and recipient credit in the ledger/transaction history.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-admin-only-admin-credentials-page-step-that-is-shown-immediately-after-a-user-signs-in-with-internet-identity-when-the-signed-in-caller-is-an-admin",
+      "title": "Add an admin-only “Admin Credentials” page/step that is shown immediately after a user signs in with Internet Identity when the signed-in caller is an admin.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-protect-the-admin-credential-page-with-the-same-admin-gating-behavior-as-the-existing-admin-route-so-non-admin-users-cannot-view-it-redirect-them-to",
+      "title": "Protect the admin credential page with the same admin gating behavior as the existing /admin route so non-admin users cannot view it (redirect them to '/').",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-existing-admin-link-and-admin-admin-panel-continue-to-work-and-provide-an-obvious-way-for-an-admin-to-continue-from-the-admin-credentials-page-to-the-admin-panel",
+      "title": "Ensure the existing Admin link and /admin Admin Panel continue to work, and provide an obvious way for an admin to continue from the Admin Credentials page to the Admin Panel.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-post-internet-identity-sign-in-routing-so-that-when-the-signed-in-caller-is-an-admin-the-app-always-automatically-navigates-to-admin-credentials-immediately-after-admin-status-has-been-determined-even-if-the-caller-has-not-created-a-user-profile-yet",
+      "title": "Fix the post–Internet Identity sign-in routing so that when the signed-in caller is an admin, the app always automatically navigates to `/admin-credentials` immediately after admin status has been determined, even if the caller has not created a user profile yet.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-profile-setup-modal-does-not-block-or-override-the-admin-auto-redirect-flow-admins-should-not-be-forced-to-complete-profile-setup-before-seeing-admin-credentials",
+      "title": "Ensure the profile setup modal does not block or override the admin auto-redirect flow; admins should not be forced to complete profile setup before seeing `/admin-credentials`.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-the-admin-auto-redirect-logic-robust-across-repeated-login-logout-cycles-and-page-refreshes-by-resetting-any-one-time-redirect-guard-when-the-authenticated-principal-changes-not-only-when-identity-becomes-undefined",
+      "title": "Make the admin auto-redirect logic robust across repeated login/logout cycles and page refreshes by resetting any one-time redirect guard when the authenticated principal changes (not only when identity becomes undefined).",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-admin-detection-caching-so-that-admin-status-is-evaluated-per-authenticated-principal-not-reused-from-a-previous-anonymous-non-admin-session-ensuring-the-app-can-correctly-recognize-an-admin-immediately-after-login",
+      "title": "Fix admin detection caching so that admin status is evaluated per authenticated principal (not reused from a previous anonymous/non-admin session), ensuring the app can correctly recognize an admin immediately after login.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-refine-the-post-internet-identity-login-routing-so-that-when-the-signed-in-caller-is-an-admin-the-app-always-navigates-to-admin-credentials-as-soon-as-admin-status-has-been-fetched-for-the-current-principal-and-does-not-get-overridden-by-any-intermediate-redirects",
+      "title": "Refine the post–Internet Identity login routing so that when the signed-in caller is an admin, the app always navigates to `/admin-credentials` as soon as admin status has been fetched for the current principal, and does not get overridden by any intermediate redirects.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-clear-user-facing-loading-state-during-the-brief-period-after-login-while-admin-status-is-being-determined-so-admins-do-not-land-on-the-dashboard-first-even-briefly-before-the-admin-redirect-happens",
+      "title": "Add a clear, user-facing loading state during the brief period after login while admin status is being determined, so admins do not land on the dashboard first (even briefly) before the admin redirect happens.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-improve-the-post-sign-in-admin-verification-ux-so-that-when-admin-status-is-taking-a-long-time-to-resolve-the-loading-screen-clearly-communicates-what-is-happening-and-gives-the-user-safe-recovery-actions-without-bypassing-admin-gating",
+      "title": "Improve the post–sign-in admin verification UX so that when admin status is taking a long time to resolve, the loading screen clearly communicates what is happening and gives the user safe recovery actions (without bypassing admin gating).",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-reduce-repeated-admin-check-time-for-the-same-authenticated-principal-by-adding-a-frontend-cache-for-the-admin-status-query-keyed-by-principal-and-ensure-the-cache-is-correctly-invalidated-when-the-authenticated-principal-changes-or-the-user-signs-out",
+      "title": "Reduce repeated admin-check time for the same authenticated principal by adding a frontend cache for the admin-status query keyed by Principal, and ensure the cache is correctly invalidated when the authenticated principal changes or the user signs out.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-lightweight-diagnostics-to-the-frontend-to-measure-and-surface-admin-verification-latency-in-development-or-via-console-so-it-is-easier-to-confirm-improvements-and-identify-where-time-is-spent-actor-initialization-vs-iscalleradmin-query",
+      "title": "Add lightweight diagnostics to the frontend to measure and surface admin-verification latency in development (or via console) so it is easier to confirm improvements and identify where time is spent (actor initialization vs. isCallerAdmin query).",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-user-facing-copy-across-the-app-to-clearly-and-consistently-state-that-1-purchased-credit-equals-1-btc-sent-on-the-bitcoin-mainnet-to-any-mainnet-wallet-and-that-purchases-transfers-are-verified-via-a-blockchain-api",
+      "title": "Update user-facing copy across the app to clearly and consistently state that 1 purchased credit equals 1 BTC sent on the Bitcoin mainnet to any mainnet wallet, and that purchases/transfers are verified via a blockchain API.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-standardize-balance-amount-labeling-throughout-the-ui-so-users-can-immediately-understand-that-displayed-amounts-are-credits-denominated-as-btc-e-g-use-consistent-labels-like-credits-btc-or-equivalent-wording-without-changing-the-underlying-accounting",
+      "title": "Standardize balance/amount labeling throughout the UI so users can immediately understand that displayed amounts are credits denominated as BTC (e.g., use consistent labels like “Credits (BTC)” or equivalent wording) without changing the underlying accounting.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-send-btc-page-ui-to-clearly-show-before-submission-the-requested-receiver-amount-the-estimated-network-fee-and-the-total-credits-that-will-be-deducted-enforce-form-validation-against-total-cost-amount-fee-rather-than-amount-alone",
+      "title": "Update the Send BTC page UI to clearly show (before submission) the requested receiver amount, the estimated network fee, and the total credits that will be deducted; enforce form validation against total cost (amount + fee) rather than amount alone.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-transaction-history-presentation-to-correctly-reflect-fee-inclusive-debits-for-transfers-so-users-can-see-that-the-fee-was-paid-from-credits-without-breaking-existing-history-verification-flows",
+      "title": "Update transaction/history presentation to correctly reflect fee-inclusive debits for transfers so users can see that the fee was paid from credits, without breaking existing history/verification flows.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-admin-ui-so-it-reflects-the-automatic-initial-500-credit-grant-behavior-no-confusing-or-misleading-prompts-to-manually-assign-initial-credits",
+      "title": "Update the admin UI so it reflects the automatic initial 500-credit grant behavior (no confusing or misleading prompts to manually assign initial credits).",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Implement website credit purchase system where 1 credit equals 1 BTC",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Enable sending BTC to any Bitcoin mainnet wallet using purchased credits",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Integrate blockchain APIs to authenticate/verify transactions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Implement a credit ledger where 1 credit equals 1 BTC, with backend-enforced accounting (no negative balances) and a full transaction history (credits added, credits spent, and adjustments).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Provide an admin-only capability (restricted by a backend allowlist of principals) to adjust user credits for support/testing, with all adjustments recorded in the ledger history.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Create an admin login (credentials) with a preloaded admin account balance of 500 credits, and allow the admin to give/transfer credits to users",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Ensure the admin account receives an initial balance of 500 credits exactly once, and that this credit issuance is recorded in the transaction/ledger history in a way that is visible in history views.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Add an on-sign-in admin flow: show an admin-credential/setup page after sign-in to manage/administer the account (e.g., admin onboarding or credential entry).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Support automatic admin onboarding on first sign-in for a specified admin identity/principal (auto-recognize admin and apply initial setup such as credits) instead of requiring manual actions in the UI.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Implement an app-managed (custodial) wallet created by the app for receiving BTC deposits and sending BTC out to user-specified mainnet addresses as part of the transfer flow.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Handle on-chain transaction fees in send/transfer processing such that fees are paid out of (deducted from) the amount being sent when using blockchain APIs.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Update UI/UX copy and messaging to clearly communicate that 1 purchased credit equals 1 BTC sent on Bitcoin mainnet to any mainnet wallet, verified via blockchain API.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-18",
+      "summary": "When a user initiates a send, broadcast the BTC transaction directly to the receiver’s mainnet wallet (on-chain) and deduct blockchain network fees from the user’s credits (net received may be less than requested).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Update the backend SendBTCRequest model and sendBTC flow to support network-fee accounting: record an explicit network fee (in credits/BTC units) per transfer request, and deduct the total cost (requested send amount + network fee) from the user’s credit balance while keeping the intended receiver amount unchanged.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Expose backend APIs needed by the frontend to display and use network-fee information for transfers, including a query that returns the current estimated network fee for a proposed transfer (amount, destination) and returning fee fields as part of any transfer-request data the UI already relies on.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Ensure each admin principal receives an initial balance of 500 credits exactly once (per admin principal), and that the issuance is recorded in the transaction/ledger history.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "If existing deployed state uses a global \"admin initial credits issued\" flag, add a safe state migration so the app can track initial-credit issuance per admin principal without breaking existing balances, transactions, or transfer requests.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Bitcoin Credit Transfer",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

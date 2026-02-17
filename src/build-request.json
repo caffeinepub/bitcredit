@@ -1,0 +1,21 @@
+{
+  "kind": "build_request",
+  "title": "Admin page for distributing credits",
+  "projectName": "Bitcoin Credit Transfer",
+  "priority": "normal",
+  "requirements": [],
+  "constraints": [
+    "Do not add new features beyond an admin-only credit distribution page for the signed-in admin principal.",
+    "Backend must remain a single Motoko actor in backend/main.mo; only add backend/migration.mo changes if a state upgrade is required.",
+    "Do not edit files under frontend/src/components/ui or any frontend immutable paths (frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui)."
+  ],
+  "nonGoals": [
+    "Add new authentication methods beyond Internet Identity.",
+    "Add non-admin credit distribution capabilities.",
+    "Introduce external databases or third-party auth providers."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

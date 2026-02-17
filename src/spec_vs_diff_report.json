@@ -1,0 +1,61 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-17T14:07:54.130Z",
+  "summary": "BuildRequest specified only an admin-only credit distribution page and explicitly constrained the change scope to avoid adding other features. The diff shows modifications that appear to add/expand multiple unrelated backend and frontend capabilities (credit purchase via blockchain verification, send BTC transfer system, transaction history UI, profile/onboarding, theme work, admin loading/credentials flows), which goes beyond the requested admin credit distribution page.",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "Blockchain deposit verification and credit purchase flow (e.g., purchaseCredits with verifyBlockchainDeposit and related blockchain API types).",
+      "reason": "BuildRequest scope is limited to an admin-only credit distribution page; no request to add/modify credit purchase or blockchain verification features.",
+      "evidence": [
+        "backend/main.mo (shows purchaseCredits and verifyBlockchainDeposit usage; blockchain request/response types)",
+        "frontend-file-summaries.txt (mentions BuyCreditsPage and blockchain verification flow)"
+      ]
+    },
+    {
+      "description": "Send BTC transfer-request system (transfer requests, network fee estimation, verification dialogs, status lifecycle).",
+      "reason": "Not requested; BuildRequest explicitly says not to add new features beyond the admin credit distribution page.",
+      "evidence": [
+        "backend/main.mo (defines SendBTCRequest, TransferStatus, transferRequests map, network fee variable)",
+        "frontend-file-summaries.txt (mentions SendBtcPage, TransferHistoryTable, VerifyTransferDialog, network fee estimation)"
+      ]
+    },
+    {
+      "description": "User profile management/onboarding modal (get/save user profile, profile setup modal).",
+      "reason": "Not requested and outside the admin credit distribution page scope.",
+      "evidence": [
+        "backend/main.mo (getCallerUserProfile/getUserProfile/saveCallerUserProfile)",
+        "frontend-file-summaries.txt (mentions ProfileSetupModal)"
+      ]
+    },
+    {
+      "description": "Broad UI/UX/theme and routing/navigation changes (global styles, tailwind config, router setup, dashboard/history pages, header/nav changes).",
+      "reason": "Not requested; BuildRequest scope is only admin credit distribution page and explicitly disallows adding extra features beyond that page.",
+      "evidence": [
+        "frontend-file-summaries.txt (index.css, tailwind.config.js, App.tsx routing/auth gate, AppHeader nav, DashboardPage, HistoryPage, etc.)"
+      ]
+    },
+    {
+      "description": "Admin credentials page and enhanced admin loading/verification UX (AdminCredentialsPage, AdminAccessLoadingScreen, auto-redirect/refresh behaviors).",
+      "reason": "BuildRequest requested only an admin-only credit distribution page; these additional admin-only pages/flows were not requested.",
+      "evidence": [
+        "frontend-file-summaries.txt (AdminCredentialsPage, AdminAccessLoadingScreen, App.tsx admin auto-redirect/refresh)"
+      ]
+    },
+    {
+      "description": "Attribution footer addition with UTM tracking.",
+      "reason": "Not requested and unrelated to admin credit distribution page.",
+      "evidence": [
+        "frontend-file-summaries.txt (AppLayout.tsx mentions caffeine.ai attribution with UTM tracking)"
+      ]
+    }
+  ],
+  "confidence": 0.62,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/pages/AdminPage.tsx",
+    "project_state.json"
+  ]
+}
