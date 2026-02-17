@@ -10,6 +10,7 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface BitcoinWallet { 'publicKey' : Uint8Array, 'address' : string }
 export interface SendBTCRequest {
   'id' : bigint,
   'status' : TransferStatus,
@@ -36,16 +37,37 @@ export type TransferStatus = { 'COMPLETED' : null } |
   { 'VERIFIED' : null } |
   { 'IN_PROGRESS' : null } |
   { 'FAILED' : null };
-export interface UserProfile { 'name' : string }
+export interface TransformationInput {
+  'context' : Uint8Array,
+  'response' : http_request_result,
+}
+export interface TransformationOutput {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
+export interface UserProfile {
+  'bitcoinWallet' : [] | [BitcoinWallet],
+  'name' : string,
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface http_header { 'value' : string, 'name' : string }
+export interface http_request_result {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<http_header>,
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'adjustCredits' : ActorMethod<[Principal, bigint, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignInitialAdminCredits' : ActorMethod<[], undefined>,
+  'confirmOnChain' : ActorMethod<[bigint], boolean>,
+  'createCallerBitcoinWallet' : ActorMethod<[], undefined>,
   'getCallerBalance' : ActorMethod<[], bigint>,
+  'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getEstimatedNetworkFee' : ActorMethod<[string, bigint], bigint>,
@@ -60,7 +82,7 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendBTC' : ActorMethod<[string, bigint], bigint>,
   'transferCreditsToUser' : ActorMethod<[Principal, bigint], undefined>,
-  'transform' : ActorMethod<[string], string>,
+  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'verifyBTCTransfer' : ActorMethod<[bigint, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

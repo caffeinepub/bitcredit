@@ -1,4 +1,4 @@
-import { AlertCircle, Copy, RefreshCw, LogOut, Home } from 'lucide-react';
+import { AlertCircle, Copy, RefreshCw, LogOut, Home, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -7,12 +7,16 @@ import { useNavigate } from '@tanstack/react-router';
 
 interface AdminAccessDeniedScreenProps {
   principal?: string;
+  tokenDetected?: boolean;
+  accessControlInitialized?: boolean;
   onRetry?: () => void;
   onSignOut?: () => void;
 }
 
 export default function AdminAccessDeniedScreen({ 
   principal, 
+  tokenDetected = false,
+  accessControlInitialized = false,
   onRetry, 
   onSignOut 
 }: AdminAccessDeniedScreenProps) {
@@ -82,6 +86,43 @@ export default function AdminAccessDeniedScreen({
             <p className="text-xs text-muted-foreground">
               Share this principal ID with the system administrator to request admin access.
             </p>
+          </div>
+
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <h3 className="text-sm font-medium mb-3">Session Diagnostics</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                {tokenDetected ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>Admin token detected in this session</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 text-amber-600" />
+                    <span>No admin token detected in this session</span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                {accessControlInitialized ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>Access control initialized</span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 text-amber-600" />
+                    <span>Access control not initialized</span>
+                  </>
+                )}
+              </div>
+            </div>
+            {!tokenDetected && (
+              <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+                To use the admin token, add <code className="px-1 py-0.5 bg-background rounded text-xs">?caffeineAdminToken=YOUR_TOKEN</code> to the URL before signing in.
+              </p>
+            )}
           </div>
 
           <div className="border-t pt-6">

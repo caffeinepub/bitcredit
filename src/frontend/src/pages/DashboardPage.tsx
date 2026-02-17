@@ -1,12 +1,17 @@
-import { useGetCallerBalance, useGetTransactionHistory } from '../hooks/useQueries';
+import { useGetCallerBalance, useGetTransactionHistory, useGetCallerBitcoinWallet } from '../hooks/useQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, TrendingUp, History, ArrowRight } from 'lucide-react';
+import { Coins, TrendingUp, History, ArrowRight, Wallet, Copy, CheckCircle, AlertCircle } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const { data: balance, isLoading: balanceLoading } = useGetCallerBalance();
   const { data: transactions, isLoading: historyLoading } = useGetTransactionHistory();
+  const { data: wallet, isLoading: walletLoading, isError: walletError, isFetched: walletFetched } = useGetCallerBitcoinWallet();
+  const [copied, setCopied] = useState(false);
 
   const recentTransactions = transactions?.slice(0, 5) || [];
 
@@ -25,6 +30,18 @@ export default function DashboardPage() {
         return 'Adjustment';
       default:
         return type;
+    }
+  };
+
+  const handleCopyWallet = async () => {
+    if (wallet?.address) {
+      try {
+        await navigator.clipboard.writeText(wallet.address);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy wallet address:', err);
+      }
     }
   };
 
@@ -89,6 +106,66 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      <Card className="financial-card">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <CardTitle>Your Anonymous Wallet</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              This is your app-managed custodial wallet identity tied to your account. The app manages this wallet on your behalf — you do not control private keys.
+            </AlertDescription>
+          </Alert>
+
+          {walletLoading && (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          )}
+
+          {walletError && walletFetched && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load wallet identity. Please try refreshing the page.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {wallet && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Wallet Identity</label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 p-3 bg-muted rounded-lg border border-border">
+                  <code className="text-sm font-mono break-all">{wallet.address}</code>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyWallet}
+                  className="shrink-0"
+                  title="Copy wallet address"
+                >
+                  {copied ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {copied && (
+                <p className="text-xs text-green-600 dark:text-green-400">Copied to clipboard!</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="financial-card">
           <CardHeader>
@@ -149,41 +226,47 @@ export default function DashboardPage() {
             <CardTitle>Getting Started</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="relative">
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                  1
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">Purchase Credits</p>
+                  <p className="text-sm text-muted-foreground">
+                    Buy BTC-denominated credits to fund your wallet
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                  2
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">Send Bitcoin</p>
+                  <p className="text-sm text-muted-foreground">
+                    Transfer BTC to any mainnet address using your credits
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
+                  3
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">Track Transactions</p>
+                  <p className="text-sm text-muted-foreground">
+                    Monitor all your activity in the transaction history
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6">
               <img
                 src="/assets/generated/btc-ledger-hero.dim_1600x900.png"
                 alt="Bitcoin Ledger"
-                className="w-full rounded-lg mb-4"
+                className="w-full rounded-lg border border-border"
               />
-            </div>
-            <div className="space-y-3 text-sm">
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium">Purchase Credits</p>
-                  <p className="text-muted-foreground text-xs">Submit a Bitcoin mainnet transaction ID to verify and receive credits</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-                  2
-                </div>
-                <div>
-                  <p className="font-medium">Send BTC</p>
-                  <p className="text-muted-foreground text-xs">Create transfer requests to any Bitcoin mainnet wallet — posted on-chain</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-                  3
-                </div>
-                <div>
-                  <p className="font-medium">Verify Transfers</p>
-                  <p className="text-muted-foreground text-xs">Attach blockchain transaction IDs to verify completed transfers</p>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>

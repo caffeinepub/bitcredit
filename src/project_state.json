@@ -1,21 +1,19 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 45,
+  "projectStateVersion": 57,
   "summary": "App to sell credits on a website (1 credit = 1 BTC) and enable sending BTC directly on-chain to mainnet wallets, with blockchain API-based transaction authentication/verification and network fees deducted from user credits.",
   "architectural_notes": [
     "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits).",
     "Admins receive and can access an initial 500-credit balance and can distribute credits via an admin page that auto-populates immediately after signing in with their Internet Identity principal.",
     "Post–Internet Identity login flow: determine admin status for the authenticated principal, then auto-redirect admin users to the Admin page (/admin).",
-    "Admin auto-redirect/admin flow should only occur after the initial Internet Identity sign-in completes; then verify the authenticated principal’s admin status before applying any admin-specific navigation."
+    "Admin auto-redirect/admin flow should only occur after the initial Internet Identity sign-in completes; then verify the authenticated principal’s admin status before applying any admin-specific navigation.",
+    "Support per-user app-managed (custodial) wallet behavior tied to the user profile (\"anonymous wallet\") for initiating on-chain mainnet broadcasts via blockchain APIs, funded/limited by the user’s credit balance."
   ],
   "known_issues": [
     "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
-    "Deployment/build is failing (deployment ran into an issue); needs debugging and a successful deploy.",
-    "User reports their principal is not getting access to the Admin panel after login (admin gating/redirect may be failing for some principals); needs investigation and fix.",
-    "Need to add the user principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist and retry build/deploy so they can access the Admin panel.",
-    "After the latest deployment (Draft Version 20), the user reports the Admin panel still does not open for their principal; admin gating/allowlist/login flow fix still not resolved."
+    "User reports a Send BTC / credit-to-wallet transfer did not post on the Bitcoin blockchain; on-chain broadcast/processing may be failing or not being triggered, needs investigation and fix."
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-add-internet-identity-authentication-so-each-user-has-an-account-and-a-persistent-credit-balance",
@@ -328,6 +326,94 @@
         "REQ-50"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-fix-frontend-actor-initialization-so-the-backend-access-control-initialization-secret-caffeineadmintoken-is-reliably-applied-across-the-internet-identity-login-redirect-read-the-token-from-a-url-query-string-and-b-url-hash-if-present-persist-it-to-sessionstorage-and-reuse-it-on-subsequent-page-loads-during-the-same-session",
+      "title": "Fix frontend actor initialization so the backend access-control initialization secret `caffeineAdminToken` is reliably applied across the Internet Identity login redirect: read the token from (a) URL query string and (b) URL hash (if present), persist it to `sessionStorage`, and reuse it on subsequent page loads during the same session.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-prevent-access-control-initialization-from-being-inadvertently-reset-by-an-empty-caffeineadmintoken-only-call-initializeaccesscontrolwithsecret-when-a-non-empty-token-value-is-available-and-add-development-only-console-diagnostics-showing-1-the-authenticated-principal-2-whether-a-token-was-present-and-3-whether-initializeaccesscontrolwithsecret-was-executed",
+      "title": "Prevent access-control initialization from being inadvertently reset by an empty `caffeineAdminToken`: only call `_initializeAccessControlWithSecret(...)` when a non-empty token value is available, and add development-only console diagnostics showing (1) the authenticated principal, (2) whether a token was present, and (3) whether `_initializeAccessControlWithSecret(...)` was executed.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-improve-the-admin-access-denied-troubleshooting-ui-to-show-actionable-user-facing-diagnostics-in-english-that-help-determine-why-admin-is-blocked-display-the-authenticated-principal-already-shown-and-additionally-show-whether-an-admin-token-was-detected-applied-for-this-session-plus-a-button-to-re-run-the-admin-check-without-navigating-away-from-the-page",
+      "title": "Improve the admin access denied troubleshooting UI to show actionable, user-facing diagnostics (in English) that help determine why `/admin` is blocked: display the authenticated principal (already shown) and additionally show whether an admin token was detected/applied for this session, plus a button to re-run the admin check without navigating away from the page.",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-send-btc-and-admin-send-btc-to-mainnet-wallet-flows-to-reflect-on-chain-posting-outcomes-after-submitting-a-send-show-the-created-request-id-and-display-the-on-chain-txid-status-when-available-if-broadcast-is-disabled-or-fails-show-an-english-error-explaining-why-the-transfer-was-not-posted",
+      "title": "Update the frontend Send BTC and Admin “Send BTC to Mainnet Wallet” flows to reflect on-chain posting outcomes: after submitting a send, show the created request ID and display the on-chain txid/status when available; if broadcast is disabled or fails, show an English error explaining why the transfer was not posted.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-extend-transfer-details-ui-e-g-the-existing-verify-details-dialog-fed-by-gettransferrequest-to-include-an-explicit-on-chain-transaction-id-txid-field-when-blockchaintxid-is-present-and-show-status-text-that-differentiates-in-progress-completed-and-failed-in-english",
+      "title": "Extend transfer details UI (e.g., the existing verify/details dialog fed by `getTransferRequest`) to include an explicit “On-chain Transaction ID (txid)” field when `blockchainTxId` is present, and show status text that differentiates `IN_PROGRESS`, `COMPLETED`, and `FAILED` in English.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-user-facing-error-handling-for-send-btc-both-send-and-admin-admin-send-btc-to-mainnet-wallet-so-that-when-broadcast-fails-or-is-unavailable-the-ui-clearly-states-in-english-that-the-transaction-was-not-posted-to-the-bitcoin-blockchain-and-that-the-user-s-credits-were-restored-and-provides-a-way-to-view-the-created-request-s-details-status-when-a-request-id-exists",
+      "title": "Update user-facing error handling for Send BTC (both `/send` and Admin `/admin` “Send BTC to Mainnet Wallet”) so that when broadcast fails or is unavailable, the UI clearly states in English that the transaction was not posted to the Bitcoin blockchain and that the user’s credits were restored, and provides a way to view the created request’s details/status when a request ID exists.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-send-btc-user-experience-so-it-no-longer-shows-a-blanket-message-that-the-broadcast-service-is-unavailable-when-on-chain-broadcast-is-enabled-and-ensure-any-user-facing-error-messages-are-clear-english-statements-about-on-chain-posting-outcomes",
+      "title": "Update the frontend Send BTC user experience so it no longer shows a blanket message that the broadcast service is unavailable when on-chain broadcast is enabled, and ensure any user-facing error messages are clear English statements about on-chain posting outcomes.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-to-display-the-authenticated-user-s-anonymous-wallet-identity-in-the-signed-in-experience-with-a-copy-to-clipboard-action-and-clear-english-explanatory-text",
+      "title": "Update the frontend to display the authenticated user’s anonymous wallet identity in the signed-in experience, with a copy-to-clipboard action and clear English explanatory text.",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-send-btc-flow-continues-to-use-credits-to-create-and-broadcast-bitcoin-mainnet-transfers-and-update-user-facing-copy-so-it-explicitly-describes-sending-from-your-app-wallet-balance-credits-to-an-external-mainnet-address",
+      "title": "Ensure the Send BTC flow continues to use credits to create and broadcast Bitcoin mainnet transfers, and update user-facing copy so it explicitly describes sending “from your app wallet balance (credits)” to an external mainnet address.",
+      "reqIds": [
+        "REQ-71"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-minimal-frontend-query-support-react-query-hook-to-fetch-the-caller-wallet-identity-from-the-backend-and-reuse-it-across-screens-without-refetch-loops",
+      "title": "Add minimal frontend query support (React Query hook) to fetch the caller wallet identity from the backend and reuse it across screens without refetch loops.",
+      "reqIds": [
+        "REQ-72"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-transfer-details-experience-so-a-signed-in-user-can-confirm-transaction-completion-for-a-send-btc-transfer-request-and-see-the-latest-on-chain-status-including-txid-when-available",
+      "title": "Update the frontend transfer details experience so a signed-in user can confirm transaction completion for a Send BTC transfer request and see the latest on-chain status (including txid when available).",
+      "reqIds": [
+        "REQ-76"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -456,6 +542,142 @@
       "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` / `isCallerAdmin()` after sign-in and can access the Admin panel route `/admin`.",
       "reqIds": [
         "REQ-51"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Ensure the backend recognizes the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` as an admin in the backend access-control allowlist so `isCallerAdmin()` returns `true` for that principal after sign-in.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Fix/ensure Send BTC transactions are actually broadcast and posted on the Bitcoin mainnet (on-chain), and reflect correct status in the app when a user sends credits to a wallet.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Update the backend `sendBTC(destination, amount)` flow so that creating a Bitcoin mainnet transfer also triggers an on-chain broadcast attempt (via the app’s configured blockchain API/outcall path), and records the resulting on-chain transaction ID (txid) when broadcast succeeds.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Ensure funds/ledger accounting stays correct when an on-chain broadcast fails: if the backend cannot broadcast a transaction for a new Send BTC request, the request must be marked `FAILED` and the user’s credits must be restored so the user is not charged for an unposted on-chain transfer.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Enable real on-chain broadcast for the backend `sendBTC(destination, amount)` flow so that a Send BTC action attempts to post a Bitcoin mainnet transaction instead of always returning `BTC_API_DISABLED`. Use the existing http-outcalls capability (`http-outcalls/outcall`) to perform the broadcast via the app’s configured blockchain API/outcall path, and capture the resulting on-chain transaction ID (txid) when available.",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Fix backend failure semantics so users are not charged for unposted on-chain transfers and the app can still show an auditable transfer record. Specifically: if broadcast fails, do not delete the transfer request; mark it as `FAILED`, keep `blockchainTxId = null`, restore the user balance for the full `totalCost`, and ensure transaction history does not incorrectly show a net debit for a failed broadcast.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-36",
+      "summary": "Align backend transfer status updates with the UI’s on-chain lifecycle: after a successful broadcast, persist the request with `blockchainTxId` set and a non-failed status that indicates “broadcast submitted / in progress” (do not mark as `FAILED`). The status must support the existing frontend status labels (`IN_PROGRESS`, `FAILED`, etc.) shown in the transfer details dialog.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-37",
+      "summary": "Add an in-app “cloud mining” capability (AI solving complex puzzles) that converts the resulting output into admin credits.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-38",
+      "summary": "Update the backend `sendBTC(destination, amount)` flow so that creating a Send BTC request results in a real Bitcoin mainnet transaction broadcast attempt to the receiver address (instead of always returning `BTC_API_DISABLED`), and persist the resulting on-chain transaction ID (txid) on success.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Fix backend failure/rollback semantics for Send BTC so users are not charged when an on-chain broadcast fails or is unavailable, while still keeping an auditable transfer record in the app.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Align backend transfer status updates with the frontend’s on-chain lifecycle display: after a successful broadcast, persist the request with a status that represents “broadcast submitted / in progress” and include `blockchainTxId` when available; do not mark broadcast-success transfers as `FAILED`.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Make each user profile act as an app-managed (custodial) anonymous Bitcoin wallet so users can send BTC to mainnet addresses with credits and have transactions broadcast via blockchain network APIs.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Extend the backend user profile model so each authenticated user has a persistent, app-managed anonymous Bitcoin wallet identity that is created on first use and can be fetched later.",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Add backend APIs to retrieve the caller’s wallet identity (e.g., deposit address / wallet address) and ensure it is created if missing.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Add a user-facing capability to confirm/verify that a Send BTC transfer request has completed on Bitcoin mainnet (e.g., show on-chain confirmation/completion state for the transfer).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "Update the backend `sendBTC(destination, amount)` flow so that creating a transfer request attempts an on-chain Bitcoin mainnet broadcast (instead of always returning `BTC_API_DISABLED`), and persists the resulting on-chain transaction id (txid) on the `SendBTCRequest.blockchainTxId` when broadcast succeeds.",
+      "reqIds": [
+        "REQ-73"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Fix backend failure/rollback semantics for Send BTC so users are not charged for an unposted on-chain transfer while preserving an auditable transfer record: when broadcast fails or is unavailable, do not delete the transfer request; mark it `FAILED`, restore the user’s credits for the full `totalCost`, and ensure transaction history reflects that the funds were restored.",
+      "reqIds": [
+        "REQ-74"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Add a backend capability to confirm a transfer’s completion on Bitcoin mainnet and update the saved `SendBTCRequest.status` accordingly, so the app can show a reliable completion state (e.g., move from `IN_PROGRESS` to `COMPLETED` once confirmed).",
+      "reqIds": [
+        "REQ-75"
       ],
       "status": "pending"
     }

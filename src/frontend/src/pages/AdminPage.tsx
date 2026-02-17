@@ -5,12 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Coins, Send, Copy, Check, User, History, Wallet, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, Coins, Send, Copy, Check, User, History, Wallet, AlertCircle, Loader2, XCircle, CheckCircle } from 'lucide-react';
 import { Principal } from '@dfinity/principal';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useNavigate } from '@tanstack/react-router';
 
 export default function AdminPage() {
   const { identity } = useInternetIdentity();
@@ -18,6 +19,7 @@ export default function AdminPage() {
   const { data: transactions } = useGetTransactionHistory();
   const transferCredits = useTransferCreditsToUser();
   const sendBTC = useSendBTC();
+  const navigate = useNavigate();
 
   const [recipientPrincipal, setRecipientPrincipal] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
@@ -27,6 +29,7 @@ export default function AdminPage() {
   // BTC mainnet wallet send state
   const [btcDestination, setBtcDestination] = useState('');
   const [btcAmount, setBtcAmount] = useState('');
+  const [successRequestId, setSuccessRequestId] = useState<bigint | null>(null);
 
   const adminPrincipal = identity?.getPrincipal().toString() || '';
 
@@ -42,6 +45,9 @@ export default function AdminPage() {
   const networkFee = estimatedFee ? Number(estimatedFee) : 0;
   const totalDeducted = receiverAmount + networkFee;
   const insufficientFunds = totalDeducted > availableBalance;
+
+  // Check if broadcast is unavailable based on fee error
+  const broadcastUnavailable = feeError && feeError.message.toLowerCase().includes('btc_api_disabled');
 
   const validatePrincipal = (value: string): boolean => {
     if (!value.trim()) {
@@ -125,15 +131,22 @@ export default function AdminPage() {
     }
 
     try {
-      await sendBTC.mutateAsync({
+      const requestId = await sendBTC.mutateAsync({
         destination: btcDestination.trim(),
         amount: BigInt(amount),
       });
-      setBtcDestination('');
-      setBtcAmount('');
+      if (requestId !== null) {
+        setSuccessRequestId(requestId);
+        setBtcDestination('');
+        setBtcAmount('');
+      }
     } catch (error) {
-      // Error already handled by mutation
+      // Error already handled by mutation with normalized message
     }
+  };
+
+  const handleViewHistory = () => {
+    navigate({ to: '/history' });
   };
 
   // Filter admin transfer transactions
@@ -197,6 +210,25 @@ export default function AdminPage() {
         </Card>
       </div>
 
+      {successRequestId !== null && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Transfer request created successfully!</strong>
+            <br />
+            Request ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{successRequestId.toString()}</code>
+            <br />
+            <Button
+              variant="link"
+              className="h-auto p-0 text-green-700 dark:text-green-300 underline mt-1"
+              onClick={handleViewHistory}
+            >
+              View transfer details and status in History →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="financial-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -215,6 +247,15 @@ export default function AdminPage() {
                 All transactions are posted on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
               </AlertDescription>
             </Alert>
+
+            {broadcastUnavailable && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Broadcast service unavailable:</strong> The Bitcoin broadcast service is currently disabled. Transactions cannot be posted to the blockchain at this time. Any transfer attempts will fail and your credits will be automatically restored.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="btc-destination">Destination Bitcoin Address</Label>
@@ -284,6 +325,15 @@ export default function AdminPage() {
                   </Alert>
                 )}
               </div>
+            )}
+
+            {sendBTC.isError && sendBTC.error && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {sendBTC.error.message}
+                </AlertDescription>
+              </Alert>
             )}
 
             <Button
@@ -424,33 +474,15 @@ export default function AdminPage() {
 
       <Card className="financial-card bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-base">Admin Capabilities</CardTitle>
+          <CardTitle className="text-sm">Admin Capabilities</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex gap-2">
-            <div className="text-primary mt-0.5">•</div>
-            <p>
-              <strong>Send BTC to Mainnet:</strong> Create transfer requests to any Bitcoin mainnet wallet. Transactions are posted on the Bitcoin blockchain with network fees deducted from your credits.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <div className="text-primary mt-0.5">•</div>
-            <p>
-              <strong>Transfer Credits to Users:</strong> Distribute credits from your admin balance to any user principal for internal credit management.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <div className="text-primary mt-0.5">•</div>
-            <p>
-              <strong>Initial Admin Credits:</strong> The first time you use admin features, you automatically receive 500 credits to get started.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <div className="text-primary mt-0.5">•</div>
-            <p>
-              <strong>View All Transactions:</strong> Access complete transaction history for all users in the History page.
-            </p>
-          </div>
+        <CardContent className="text-sm space-y-2">
+          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+            <li>Send BTC to any Bitcoin mainnet wallet (when broadcast service is available)</li>
+            <li>Transfer credits to any user principal</li>
+            <li>View all transaction history across the system</li>
+            <li>Initial 500 credits granted automatically on first admin use</li>
+          </ul>
         </CardContent>
       </Card>
     </div>

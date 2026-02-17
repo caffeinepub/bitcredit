@@ -1,6 +1,34 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Bitcoin Credit Transfer — Frontend-only plan (no changes required for backend allowlist update)",
-  "requirements": []
+  "title": "Send BTC transfer details: confirm on-chain completion and display latest status/txid",
+  "requirements": [
+    {
+      "id": "REQ-76",
+      "summary": "Let a signed-in user re-check a Send BTC transfer’s on-chain completion from transfer details, and display refreshed status and txid (copyable)",
+      "acceptanceCriteria": [
+        "In the transfer details UI (e.g., the existing dialog that loads `getTransferRequest`), the user has a clear action to re-check/confirm on-chain completion when the request is not yet `COMPLETED` or `FAILED`.",
+        "After the user triggers the confirm action, the UI refreshes the transfer request and shows updated status text in English, including a distinct `Completed` state when applicable.",
+        "When `blockchainTxId` is present, it is displayed as “On-chain Transaction ID (txid)” and is copyable.",
+        "The Send BTC success experience continues to show the created request id and provides a clear path to view/confirm status in History."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a React Query mutation hook (e.g., `useConfirmOnChain`) that calls the backend confirm capability for a given `requestId`, handles loading/error states, and invalidates the relevant cached queries (transfer request + transaction history) so the UI can refresh to the latest `SendBTCRequest.status` and txid."
+        },
+        {
+          "path": "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+          "operation": "modify",
+          "description": "Extend the Transfer Details dialog to include a clear “Confirm on-chain completion” / “Re-check status” action when the request status is not `COMPLETED` or `FAILED`. Wire the action to the new `useConfirmOnChain` hook, show user-friendly English status text/description after refresh, and keep txid display labeled exactly “On-chain Transaction ID (txid)” with existing copy-to-clipboard behavior."
+        },
+        {
+          "path": "frontend/src/pages/SendBtcPage.tsx",
+          "operation": "modify",
+          "description": "Ensure the Send BTC success panel continues to show the created request id and provides an obvious path to confirm status in History (keep/clarify the existing History navigation action text to emphasize viewing/confirming status)."
+        }
+      ]
+    }
+  ]
 }

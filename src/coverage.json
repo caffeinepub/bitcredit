@@ -1,33 +1,66 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T15:47:51.127Z",
+  "generatedAt": "2026-02-17T19:02:27.384Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 0,
+    "total": 4,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-51",
-        "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` / `isCallerAdmin()` after sign-in and can access the Admin panel route `/admin`.",
+        "id": "REQ-73",
+        "summary": "Update the backend `sendBTC(destination, amount)` flow so that creating a transfer request attempts an on-chain Bitcoin mainnet broadcast (instead of always returning `BTC_API_DISABLED`), and persists the resulting on-chain transaction id (txid) on the `SendBTCRequest.blockchainTxId` when broadcast succeeds.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-74",
+        "summary": "Fix backend failure/rollback semantics for Send BTC so users are not charged for an unposted on-chain transfer while preserving an auditable transfer record: when broadcast fails or is unavailable, do not delete the transfer request; mark it `FAILED`, restore the user’s credits for the full `totalCost`, and ensure transaction history reflects that the funds were restored.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-75",
+        "summary": "Add a backend capability to confirm a transfer’s completion on Bitcoin mainnet and update the saved `SendBTCRequest.status` accordingly, so the app can show a reliable completion state (e.g., move from `IN_PROGRESS` to `COMPLETED` once confirmed).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-76",
+        "summary": "Update the frontend transfer details experience so a signed-in user can confirm transaction completion for a Send BTC transfer request and see the latest on-chain status (including txid when available).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+          "frontend/src/pages/SendBtcPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/transfers/VerifyTransferDialog.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/utils/urlParams.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

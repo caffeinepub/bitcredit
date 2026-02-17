@@ -1,15 +1,20 @@
 import Map "mo:core/Map";
-import Array "mo:core/Array";
 import Time "mo:core/Time";
 import List "mo:core/List";
 import Int "mo:core/Int";
+import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
 import Order "mo:core/Order";
-import AccessControl "authorization/access-control";
+import Runtime "mo:core/Runtime";
+import Blob "mo:core/Blob";
+import Array "mo:core/Array";
 import MixinAuthorization "authorization/MixinAuthorization";
+import AccessControl "authorization/access-control";
+import OutCall "http-outcalls/outcall";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let currentNetworkFee = 10;
   let balances = Map.empty<Principal, CreditBalance>();
@@ -24,6 +29,12 @@ actor {
 
   public type UserProfile = {
     name : Text;
+    bitcoinWallet : ?BitcoinWallet;
+  };
+
+  public type BitcoinWallet = {
+    address : Text;
+    publicKey : Blob;
   };
 
   public type SendBTCRequest = {
@@ -81,6 +92,12 @@ actor {
     matchingDeposit : Bool;
   };
 
+  public type BroadcastResponse = {
+    success : Bool;
+    txid : ?Text;
+    error : ?Text;
+  };
+
   public type BlockchainAPIResponse = {
     amount : Nat;
     destinationAddress : Text;
@@ -105,6 +122,55 @@ actor {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
+  };
+
+  public query ({ caller }) func getCallerBitcoinWallet() : async ?BitcoinWallet {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view wallet");
+    };
+
+    let profile = switch (userProfiles.get(caller)) {
+      case (null) {
+        Runtime.trap("User profile not found");
+      };
+      case (?profile) { profile };
+    };
+
+    profile.bitcoinWallet;
+  };
+
+  public shared ({ caller }) func createCallerBitcoinWallet() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create wallets");
+    };
+
+    let existingProfile = switch (userProfiles.get(caller)) {
+      case (null) {
+        Runtime.trap("User profile not found");
+      };
+      case (?profile) { profile };
+    };
+
+    switch (existingProfile.bitcoinWallet) {
+      case (?_wallet) {
+        Runtime.trap("Wallet already exists");
+      };
+      case (null) {
+        let generatedAddress : Text = "MOCKED_ADDRESS_" # caller.toText();
+        let publicKeyBytes = Blob.fromArray([0]);
+        let newWallet : BitcoinWallet = {
+          address = generatedAddress;
+          publicKey = publicKeyBytes;
+        };
+
+        let updatedProfile : UserProfile = {
+          existingProfile with
+          bitcoinWallet = ?newWallet;
+        };
+
+        userProfiles.add(caller, updatedProfile);
+      };
+    };
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
@@ -182,6 +248,10 @@ actor {
     currentNetworkFee;
   };
 
+  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    OutCall.transform(input);
+  };
+
   public shared ({ caller }) func sendBTC(destination : Text, amount : Nat) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send BTC");
@@ -202,8 +272,10 @@ actor {
       case (?balance) { balance.adjustments };
     };
 
+    let checkedBalance = (currentBalance - totalCost : Nat);
+
     let newBalance = {
-      balance = currentBalance - totalCost;
+      balance = checkedBalance;
       adjustments = currentAdjustments;
     };
 
@@ -236,7 +308,99 @@ actor {
 
     transactions.add(transaction);
 
+    let submitResult = await broadcastTransactionToBlockchain(requestId, destination, amount);
+
+    if (submitResult.success == false) {
+      let requestOpt = transferRequests.get(requestId);
+      switch (requestOpt) {
+        case (null) { Runtime.trap("Request not found") };
+        case (?request) { assert(request.owner == caller) };
+      };
+
+      updateRequestOnFailure(requestId, caller, totalCost);
+    };
+
+    switch (submitResult.txid) {
+      case (?txid) {
+        let requestOpt = transferRequests.get(requestId);
+        switch (requestOpt) {
+          case (null) { Runtime.trap("Request not found") };
+          case (?existingRequest) {
+            assert(existingRequest.owner == caller);
+            let updatedRequest : SendBTCRequest = {
+              existingRequest with
+              status = #IN_PROGRESS;
+              blockchainTxId = ?txid;
+            };
+            transferRequests.add(requestId, updatedRequest);
+          };
+        };
+      };
+      case (null) {};
+    };
+
     requestId;
+  };
+
+  func broadcastTransactionToBlockchain(transactionId : Nat, _destination : Text, _amount : Nat) : async BroadcastResponse {
+    switch (transferRequests.get(transactionId)) {
+      case (null) {
+        {
+          success = false;
+          txid = null;
+          error = ?"Request not found";
+        };
+      };
+      case (?_) {
+        {
+          success = false;
+          txid = null;
+          error = ?"BTC_API_DISABLED";
+        };
+      };
+    };
+  };
+
+  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : Nat) {
+    let requestOpt = transferRequests.get(requestId);
+
+    if (requestOpt == null) {
+      transferRequests.remove(requestId);
+      restoreUserBalance(owner, totalCost);
+      return;
+    };
+
+    let existingRequest = switch (requestOpt) {
+      case (null) { Runtime.trap("Request not found") };
+      case (?request) { assert(request.owner == owner); request };
+    };
+
+    let failedRequest : SendBTCRequest = {
+      existingRequest with
+      status = #FAILED;
+    };
+
+    transferRequests.add(requestId, failedRequest);
+    restoreUserBalance(owner, totalCost);
+  };
+
+  func restoreUserBalance(user : Principal, amount : Nat) {
+    let currentBalance = switch (balances.get(user)) {
+      case (null) { 0 };
+      case (?balance) { balance.balance };
+    };
+
+    let currentAdjustments = switch (balances.get(user)) {
+      case (null) { [] };
+      case (?balance) { balance.adjustments };
+    };
+
+    let newBalance = {
+      balance = currentBalance + amount;
+      adjustments = currentAdjustments;
+    };
+
+    balances.add(user, newBalance);
   };
 
   public query ({ caller }) func getTransferRequest(requestId : Nat) : async ?SendBTCRequest {
@@ -364,15 +528,11 @@ actor {
     };
   };
 
-  public shared ({ caller }) func makeTestOutcall(endpoint : Text) : async Text {
+  public shared ({ caller }) func makeTestOutcall(_endpoint : Text) : async Text {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can make test outcalls");
     };
     "BTC_API_DISABLED";
-  };
-
-  public query func transform(_input : Text) : async Text {
-    Runtime.trap("Cannot make outcalls on IC. This function is position to prevent page errors");
   };
 
   public shared ({ caller }) func assignInitialAdminCredits() : async () {
@@ -440,8 +600,10 @@ actor {
       case (?balance) { balance.adjustments };
     };
 
+    let checkedAdminBalance = (adminCurrentBalance - amount : Nat);
+
     let adminNewBalance = {
-      balance = adminCurrentBalance - amount;
+      balance = checkedAdminBalance;
       adjustments = adminCurrentAdjustments;
     };
 
@@ -490,4 +652,34 @@ actor {
     };
     transactions.add(recipientCreditTransaction);
   };
+
+  public shared ({ caller }) func confirmOnChain(requestId : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can confirm transactions");
+    };
+
+    let requestOpt = transferRequests.get(requestId);
+
+    if (requestOpt == null) {
+      return false;
+    };
+
+    let existingRequest = switch (requestOpt) {
+      case (null) { Runtime.trap("Request not found") };
+      case (?request) { request };
+    };
+
+    switch (existingRequest.status) {
+      case (#IN_PROGRESS or #VERIFIED) {
+        let confirmedRequest : SendBTCRequest = {
+          existingRequest with status = #COMPLETED;
+        };
+        transferRequests.add(requestId, confirmedRequest);
+        true;
+      };
+      case (#COMPLETED) { true };
+      case (#FAILED) { false };
+    };
+  };
 };
+

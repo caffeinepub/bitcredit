@@ -13,7 +13,14 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const BitcoinWallet = IDL.Record({
+  'publicKey' : IDL.Vec(IDL.Nat8),
+  'address' : IDL.Text,
+});
+export const UserProfile = IDL.Record({
+  'bitcoinWallet' : IDL.Opt(BitcoinWallet),
+  'name' : IDL.Text,
+});
 export const TransactionType = IDL.Variant({
   'adjustment' : IDL.Null,
   'creditPurchase' : IDL.Null,
@@ -44,13 +51,34 @@ export const SendBTCRequest = IDL.Record({
   'blockchainTxId' : IDL.Opt(IDL.Text),
   'amount' : IDL.Nat,
 });
+export const http_header = IDL.Record({
+  'value' : IDL.Text,
+  'name' : IDL.Text,
+});
+export const http_request_result = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
+export const TransformationInput = IDL.Record({
+  'context' : IDL.Vec(IDL.Nat8),
+  'response' : http_request_result,
+});
+export const TransformationOutput = IDL.Record({
+  'status' : IDL.Nat,
+  'body' : IDL.Vec(IDL.Nat8),
+  'headers' : IDL.Vec(http_header),
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'adjustCredits' : IDL.Func([IDL.Principal, IDL.Nat, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'assignInitialAdminCredits' : IDL.Func([], [], []),
+  'confirmOnChain' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+  'createCallerBitcoinWallet' : IDL.Func([], [], []),
   'getCallerBalance' : IDL.Func([], [IDL.Nat], ['query']),
+  'getCallerBitcoinWallet' : IDL.Func([], [IDL.Opt(BitcoinWallet)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getEstimatedNetworkFee' : IDL.Func(
@@ -81,7 +109,11 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendBTC' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Nat], []),
   'transferCreditsToUser' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
-  'transform' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+  'transform' : IDL.Func(
+      [TransformationInput],
+      [TransformationOutput],
+      ['query'],
+    ),
   'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
 });
 
@@ -93,7 +125,14 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const BitcoinWallet = IDL.Record({
+    'publicKey' : IDL.Vec(IDL.Nat8),
+    'address' : IDL.Text,
+  });
+  const UserProfile = IDL.Record({
+    'bitcoinWallet' : IDL.Opt(BitcoinWallet),
+    'name' : IDL.Text,
+  });
   const TransactionType = IDL.Variant({
     'adjustment' : IDL.Null,
     'creditPurchase' : IDL.Null,
@@ -124,13 +163,35 @@ export const idlFactory = ({ IDL }) => {
     'blockchainTxId' : IDL.Opt(IDL.Text),
     'amount' : IDL.Nat,
   });
+  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const http_request_result = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
+  const TransformationInput = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : http_request_result,
+  });
+  const TransformationOutput = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(http_header),
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'adjustCredits' : IDL.Func([IDL.Principal, IDL.Nat, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'assignInitialAdminCredits' : IDL.Func([], [], []),
+    'confirmOnChain' : IDL.Func([IDL.Nat], [IDL.Bool], []),
+    'createCallerBitcoinWallet' : IDL.Func([], [], []),
     'getCallerBalance' : IDL.Func([], [IDL.Nat], ['query']),
+    'getCallerBitcoinWallet' : IDL.Func(
+        [],
+        [IDL.Opt(BitcoinWallet)],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getEstimatedNetworkFee' : IDL.Func(
@@ -161,7 +222,11 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendBTC' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Nat], []),
     'transferCreditsToUser' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
-    'transform' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+    'transform' : IDL.Func(
+        [TransformationInput],
+        [TransformationOutput],
+        ['query'],
+      ),
     'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   });
 };

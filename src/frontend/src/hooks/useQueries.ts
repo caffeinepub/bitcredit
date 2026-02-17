@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
-import type { Transaction, UserProfile, TransferStatus, SendBTCRequest } from '../backend';
+import type { Transaction, UserProfile, TransferStatus, SendBTCRequest, BitcoinWallet } from '../backend';
 import { toast } from 'sonner';
 import { Principal } from '@dfinity/principal';
 import { adminStatusCache } from '../utils/adminStatusCache';
+import { normalizeSendBTCError } from '../utils/errors';
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -45,6 +46,47 @@ export function useSaveCallerUserProfile() {
   });
 }
 
+export function useGetCallerBitcoinWallet() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  const query = useQuery<BitcoinWallet | null>({
+    queryKey: ['callerBitcoinWallet'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getCallerBitcoinWallet();
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes - wallet identity is stable
+  });
+
+  return {
+    ...query,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
+}
+
+export function useCreateCallerBitcoinWallet() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.createCallerBitcoinWallet();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['callerBitcoinWallet'] });
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      toast.success('Wallet created successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create wallet: ${error.message}`);
+    },
+  });
+}
+
 export function useGetCallerBalance() {
   const { actor, isFetching: actorFetching } = useActor();
 
@@ -61,6 +103,7 @@ export function useGetCallerBalance() {
 export function useIsCallerAdmin() {
   const actorResult = useActor();
   const { actor, isFetching: actorFetching } = actorResult;
+  const tokenDetected = (actorResult as any).tokenDetected || false;
   const accessControlInitialized = (actorResult as any).accessControlInitialized || false;
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
@@ -80,7 +123,8 @@ export function useIsCallerAdmin() {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('[Admin Check] Starting admin verification');
         console.log(`[Admin Check] Principal: ${principalString}`);
-        console.log(`[Admin Check] Actor access-control initialized: ${accessControlInitialized}`);
+        console.log(`[Admin Check] Token detected in session: ${tokenDetected}`);
+        console.log(`[Admin Check] Access control initialized: ${accessControlInitialized}`);
       }
       
       // Check if this principal was verified in the current page load
@@ -141,6 +185,8 @@ export function useIsCallerAdmin() {
     isLoading: actorFetching || query.isLoading,
     isFetched: !!actor && !!identity && query.isFetched,
     retryAdminCheck,
+    tokenDetected,
+    accessControlInitialized,
   };
 }
 
@@ -218,8 +264,7 @@ export function useGetEstimatedNetworkFee(destination: string, amount: bigint) {
       if (!actor) throw new Error('Actor not available');
       return actor.getEstimatedNetworkFee(destination, amount);
     },
-    enabled: !!actor && !actorFetching && !!destination.trim() && amount > BigInt(0),
-    retry: false,
+    enabled: !!actor && !actorFetching && !!destination && amount > BigInt(0),
   });
 }
 
@@ -227,18 +272,38 @@ export function useSendBTC() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<bigint | null, Error, { destination: string; amount: bigint }>({
     mutationFn: async ({ destination, amount }: { destination: string; amount: bigint }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.sendBTC(destination, amount);
+      try {
+        const requestId = await actor.sendBTC(destination, amount);
+        return requestId;
+      } catch (error: any) {
+        // Backend traps when broadcast fails, so we won't get a requestId
+        // Normalize the error and re-throw with clear message
+        const normalizedMessage = normalizeSendBTCError(error);
+        const enhancedError = new Error(normalizedMessage);
+        throw enhancedError;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (requestId) => {
+      // Always invalidate balance and history to show updated state
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
-      toast.success('Transfer request created successfully');
+      
+      // If we got a requestId, show success and invalidate transfer request
+      if (requestId !== null) {
+        toast.success(`Transfer request created! Request ID: ${requestId.toString()}`);
+        queryClient.invalidateQueries({ queryKey: ['transferRequest', requestId.toString()] });
+      }
     },
     onError: (error: Error) => {
-      toast.error(`Transfer failed: ${error.message}`);
+      // Error message is already normalized in mutationFn
+      toast.error(error.message);
+      
+      // Invalidate balance to show restored credits
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
     },
   });
 }
@@ -256,17 +321,16 @@ export function useGetTransactionHistory() {
   });
 }
 
-export function useGetTransferRequest(requestId: bigint) {
+export function useGetTransferRequest(requestId: bigint | null) {
   const { actor, isFetching: actorFetching } = useActor();
 
   return useQuery<SendBTCRequest | null>({
-    queryKey: ['transferRequest', requestId.toString()],
+    queryKey: ['transferRequest', requestId?.toString()],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor || requestId === null) return null;
       return actor.getTransferRequest(requestId);
     },
-    enabled: !!actor && !actorFetching,
-    retry: false,
+    enabled: !!actor && !actorFetching && requestId !== null,
   });
 }
 
@@ -279,13 +343,57 @@ export function useVerifyBTCTransfer() {
       if (!actor) throw new Error('Actor not available');
       return actor.verifyBTCTransfer(requestId, blockchainTxId);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['transferRequest', variables.requestId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
-      queryClient.invalidateQueries({ queryKey: ['transferRequest'] });
       toast.success('Transfer verified successfully');
     },
     onError: (error: Error) => {
       toast.error(`Verification failed: ${error.message}`);
+    },
+  });
+}
+
+export function useConfirmOnChain() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.confirmOnChain(requestId);
+    },
+    onSuccess: (confirmed, requestId) => {
+      queryClient.invalidateQueries({ queryKey: ['transferRequest', requestId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      if (confirmed) {
+        toast.success('Transfer confirmed as completed on-chain');
+      } else {
+        toast.info('Transfer status checked');
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to confirm on-chain status: ${error.message}`);
+    },
+  });
+}
+
+export function useAdjustCredits() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ user, amount, reason }: { user: Principal; amount: bigint; reason: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.adjustCredits(user, amount, reason);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      toast.success('Credits adjusted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Adjustment failed: ${error.message}`);
     },
   });
 }

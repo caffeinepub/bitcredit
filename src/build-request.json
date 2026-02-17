@@ -1,37 +1,94 @@
 {
   "kind": "build_request",
-  "title": "Allowlist specified Internet Identity principal as admin",
-  "projectName": "Bitcoin Credit Transfer",
-  "priority": "high",
+  "title": "Ensure Send BTC posts on Bitcoin mainnet and supports confirmation of completion",
+  "projectName": "Mainnet Credit Wallet",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-51",
-      "text": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` / `isCallerAdmin()` after sign-in and can access the Admin panel route `/admin`.",
+      "id": "REQ-73",
+      "text": "Update the backend `sendBTC(destination, amount)` flow so that creating a transfer request attempts an on-chain Bitcoin mainnet broadcast (instead of always returning `BTC_API_DISABLED`), and persists the resulting on-chain transaction id (txid) on the `SendBTCRequest.blockchainTxId` when broadcast succeeds.",
       "target": "backend",
       "source": {
         "messageIds": [
           "msg-4"
         ],
         "quotes": [
-          "ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe"
+          "When you create transfer request to send to mainnet wallet. the app completes transaction and posts on mainnet using credits to generate purchase and send bitcoin to another mainnet wallet. Has ability to confirm transaction completion"
         ]
       },
       "acceptanceCriteria": [
-        "After signing in with Internet Identity as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, the backend admin check returns true for that principal (i.e., admin gating recognizes the user as an admin).",
-        "When authenticated as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, navigating to `/admin` renders the Admin page and does not show the Admin access denied troubleshooting screen.",
-        "When authenticated as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, any backend methods guarded by `AccessControl.isAdmin(...)` (e.g., `adjustCredits`, `assignInitialAdminCredits`, `transferCreditsToUser`, `makeTestOutcall`) do not trap with an unauthorized error."
+        "Calling `sendBTC(destination, amount)` performs a broadcast attempt via the existing backend broadcast path (`broadcastTransactionToBlockchain(...)`) and no longer always returns an error with `BTC_API_DISABLED`.",
+        "When the broadcast succeeds and a txid is returned, `getTransferRequest(requestId)` returns `blockchainTxId = ?txid` for that request.",
+        "On a successful broadcast, the request remains stored with a non-failed status representing that it has been submitted to the Bitcoin network (e.g., `IN_PROGRESS`)."
+      ]
+    },
+    {
+      "id": "REQ-74",
+      "text": "Fix backend failure/rollback semantics for Send BTC so users are not charged for an unposted on-chain transfer while preserving an auditable transfer record: when broadcast fails or is unavailable, do not delete the transfer request; mark it `FAILED`, restore the user’s credits for the full `totalCost`, and ensure transaction history reflects that the funds were restored.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "the app completes transaction and posts on mainnet using credits"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If broadcasting fails, `getTransferRequest(requestId)` still returns an existing request with `status = FAILED` (not removed).",
+        "After a broadcast failure, the caller’s balance is restored by `totalCost` so the user is not charged for an unposted transfer.",
+        "Transaction history shows an explicit restoration/refund entry (or equivalent) so a user can audit that the failed transfer did not result in a net debit.",
+        "User-facing error messages that result from this failure are clear English statements that the transaction was not posted to the Bitcoin blockchain and that credits were restored."
+      ]
+    },
+    {
+      "id": "REQ-75",
+      "text": "Add a backend capability to confirm a transfer’s completion on Bitcoin mainnet and update the saved `SendBTCRequest.status` accordingly, so the app can show a reliable completion state (e.g., move from `IN_PROGRESS` to `COMPLETED` once confirmed).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Has ability to confirm transaction completion"
+        ]
+      },
+      "acceptanceCriteria": [
+        "There is a backend method that can be called by the frontend to re-check a transfer’s on-chain state (using the request’s stored `blockchainTxId` when present, or a provided txid) and update `SendBTCRequest.status` to `COMPLETED` when confirmation criteria are met.",
+        "If the backend’s on-chain verification fails for a provided txid, the backend does not incorrectly mark the request `COMPLETED`.",
+        "The `TransferStatus.COMPLETED` variant is reachable via normal application flows (not dead code)."
+      ]
+    },
+    {
+      "id": "REQ-76",
+      "text": "Update the frontend transfer details experience so a signed-in user can confirm transaction completion for a Send BTC transfer request and see the latest on-chain status (including txid when available).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "Has ability to confirm transaction completion"
+        ]
+      },
+      "acceptanceCriteria": [
+        "In the transfer details UI (e.g., the existing dialog that loads `getTransferRequest`), the user has a clear action to re-check/confirm on-chain completion when the request is not yet `COMPLETED` or `FAILED`.",
+        "After the user triggers the confirm action, the UI refreshes the transfer request and shows updated status text in English, including a distinct `Completed` state when applicable.",
+        "When `blockchainTxId` is present, it is displayed as “On-chain Transaction ID (txid)” and is copyable.",
+        "The Send BTC success experience continues to show the created request id and provides a clear path to view/confirm status in History."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with all logic in `backend/main.mo` (no additional backend services).",
-    "Do not edit any frontend files under the immutable paths listed in SYSTEM_CONTEXT (compose existing UI components instead).",
-    "Use English for any user-facing text."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
+    "Do not edit files under `frontend/src/components/ui` or other frontend immutable paths listed in SYSTEM_CONTEXT; compose existing UI components instead.",
+    "Use English for all user-facing text.",
+    "Do not rely on WebSockets/push notifications/third-party auth providers; Internet Identity remains the only auth mechanism."
   ],
   "nonGoals": [
-    "Do not change the admin verification UX, routing flow, or caching behavior beyond what is required to recognize the specified principal as an admin.",
-    "Do not add new authentication providers beyond Internet Identity.",
-    "Do not introduce any external databases or backend services."
+    "Implementing unrelated features such as “cloud mining” or AI puzzle solving.",
+    "Adding external databases or moving state off-canister.",
+    "Changing the credit denomination model (1 credit = 1 BTC) beyond what is required to support on-chain send and completion confirmation."
   ],
   "imageRequirements": {
     "required": [],

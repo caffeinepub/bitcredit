@@ -206,3 +206,24 @@ export function getSecretFromHash(paramName: string): string | null {
 export function getSecretParameter(paramName: string): string | null {
     return getSecretFromHash(paramName);
 }
+
+/**
+ * Admin token management helpers
+ */
+const ADMIN_TOKEN_KEY = 'caffeineAdminToken';
+
+/**
+ * Gets the admin token from URL hash or session storage
+ * @returns The admin token if found, null otherwise
+ */
+export function getAdminToken(): string | null {
+    return getSecretParameter(ADMIN_TOKEN_KEY);
+}
+
+/**
+ * Clears the admin token from session storage
+ * Used during logout to ensure the token is removed
+ */
+export function clearAdminToken(): void {
+    clearSessionParameter(ADMIN_TOKEN_KEY);
+}

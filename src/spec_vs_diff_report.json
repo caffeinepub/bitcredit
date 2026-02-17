@@ -1,30 +1,42 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T15:47:51.124Z",
-  "summary": "The diff does not show any change that adds the specified Internet Identity principal to the backend admin allowlist used by AccessControl. The only visible backend excerpt includes AccessControl initialization and unrelated authorization checks; no allowlist/principal update is evidenced. Additionally, project_state.json was modified without being requested.",
-  "missing_requirements": [
-    {
-      "id": "REQ-51",
-      "requirement": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` / `isCallerAdmin()` and can access `/admin`.",
-      "reason": "In the provided (truncated) backend/main.mo diff, there is no evidence of the specified principal being added to any admin allowlist or AccessControl state configuration; only generic permission checks and AccessControl initialization are shown.",
-      "evidence": [
-        "backend/main.mo (truncated; no allowlist/principal addition shown)"
-      ]
-    }
-  ],
+  "generatedAt": "2026-02-17T19:02:27.381Z",
+  "summary": "The diff clearly adds frontend UI affordances for re-checking on-chain status and copying/displaying a txid in the transfer details dialog, and introduces new helper utilities and admin-related diagnostics that are not part of the stated requirements. Due to backend/main.mo being truncated, the core backend requirements (broadcast-on-create, failure rollback semantics, and a confirm-on-chain backend method) cannot be conclusively verified from the provided diff summary.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Updated project metadata/state (e.g., projectStateVersion and/or feature listings) in project_state.json.",
-      "reason": "The BuildRequest only asks to add a principal to the backend admin allowlist; it does not request any changes to project_state.json.",
+      "description": "Added URL/sessionStorage parameter utility helpers (including hash query parsing and session persistence) unrelated to Send BTC mainnet broadcast/confirmation requirements.",
+      "reason": "BuildRequest does not ask for any URL parameter parsing or sessionStorage persistence functionality.",
       "evidence": [
-        "project_state.json (modified)"
+        "frontend/src/utils/urlParams.ts"
+      ]
+    },
+    {
+      "description": "Admin gating/debug/diagnostic behavior added/expanded in frontend hooks and app flow (development-only traces, token detection, admin verification UX).",
+      "reason": "BuildRequest focuses on Send BTC mainnet posting and completion confirmation; it does not request admin diagnostics or token-related routing behavior changes.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts",
+        "frontend-file-summaries.txt (App.tsx, AppHeader.tsx, LoginButton.tsx, AdminPage.tsx entries)"
+      ]
+    },
+    {
+      "description": "Introduced a backend migration module.",
+      "reason": "BuildRequest does not request adding a migration module; it only constrains the backend to remain a single Motoko actor in backend/main.mo (a migration file may be legitimate support work, but it is not explicitly requested).",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo (import Migration \"migration\"; with migration = Migration.run)"
       ]
     }
   ],
-  "confidence": 0.72,
+  "confidence": 0.58,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/utils/urlParams.ts",
     "project_state.json"
   ]
 }

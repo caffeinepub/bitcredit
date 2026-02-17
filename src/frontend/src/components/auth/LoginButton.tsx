@@ -2,6 +2,7 @@ import React from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { adminStatusCache } from '../../utils/adminStatusCache';
+import { clearAdminToken } from '../../utils/urlParams';
 import { Button } from '@/components/ui/button';
 import { LogIn, LogOut } from 'lucide-react';
 
@@ -17,6 +18,7 @@ export default function LoginButton() {
       await clear();
       queryClient.clear();
       adminStatusCache.clearAll();
+      clearAdminToken();
     } else {
       try {
         await login();

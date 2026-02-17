@@ -3,7 +3,7 @@ import type { Transaction } from '../../backend';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Clock, Info } from 'lucide-react';
+import { FileText, Clock, Info } from 'lucide-react';
 import VerifyTransferDialog from './VerifyTransferDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -52,7 +52,7 @@ export default function TransferHistoryTable({ transactions }: TransferHistoryTa
     }
   };
 
-  const handleVerifyClick = (requestId: string) => {
+  const handleDetailsClick = (requestId: string) => {
     try {
       setSelectedRequestId(BigInt(requestId));
       setVerifyDialogOpen(true);
@@ -144,11 +144,11 @@ export default function TransferHistoryTable({ transactions }: TransferHistoryTa
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleVerifyClick(tx.id)}
+                      onClick={() => handleDetailsClick(tx.id)}
                       className="gap-1"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Verify
+                      <FileText className="h-3.5 w-3.5" />
+                      Details
                     </Button>
                   )}
                 </TableCell>

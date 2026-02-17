@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSendBTC, useGetCallerBalance, useGetEstimatedNetworkFee } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Send, AlertCircle, CheckCircle2, Wallet, Loader2 } from 'lucide-react';
+import { Send, AlertCircle, Wallet, Loader2, XCircle, CheckCircle } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
 
 export default function SendBtcPage() {
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
-  const { mutate: sendBTC, isPending, isSuccess } = useSendBTC();
+  const [successRequestId, setSuccessRequestId] = useState<bigint | null>(null);
+  const navigate = useNavigate();
+  
+  const { mutate: sendBTC, isPending, isError, error } = useSendBTC();
   const { data: balance } = useGetCallerBalance();
 
   const requestedAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
@@ -25,19 +29,29 @@ export default function SendBtcPage() {
   const totalDeducted = receiverAmount + networkFee;
   const insufficientFunds = totalDeducted > availableBalance;
 
+  // Check if broadcast is unavailable based on fee error
+  const broadcastUnavailable = feeError && feeError.message.toLowerCase().includes('btc_api_disabled');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (destination.trim() && amount && Number(amount) > 0 && !insufficientFunds && !feeError) {
       sendBTC(
         { destination: destination.trim(), amount: BigInt(amount) },
         {
-          onSuccess: () => {
-            setDestination('');
-            setAmount('');
+          onSuccess: (requestId) => {
+            if (requestId !== null) {
+              setSuccessRequestId(requestId);
+              setDestination('');
+              setAmount('');
+            }
           },
         }
       );
     }
+  };
+
+  const handleViewHistory = () => {
+    navigate({ to: '/history' });
   };
 
   return (
@@ -45,7 +59,7 @@ export default function SendBtcPage() {
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Send BTC</h1>
         <p className="text-muted-foreground">
-          Send Bitcoin to any mainnet wallet — posted on the Bitcoin blockchain
+          Transfer Bitcoin from your app wallet balance to any Bitcoin mainnet address
         </p>
       </div>
 
@@ -53,23 +67,42 @@ export default function SendBtcPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Available Balance</CardTitle>
-              <CardDescription>BTC-denominated credits ready to transfer</CardDescription>
+              <CardTitle>App Wallet Balance</CardTitle>
+              <CardDescription>Credits available to send as Bitcoin mainnet transfers</CardDescription>
             </div>
             <Wallet className="h-8 w-8 text-primary" />
           </div>
         </CardHeader>
         <CardContent>
           <div className="stat-value text-primary">{balance?.toString() || '0'} BTC</div>
-          <p className="text-sm text-muted-foreground mt-1">Available for transfer</p>
+          <p className="text-sm text-muted-foreground mt-1">Available in your app wallet</p>
         </CardContent>
       </Card>
+
+      {successRequestId !== null && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Transfer request created successfully!</strong>
+            <br />
+            Request ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{successRequestId.toString()}</code>
+            <br />
+            <Button
+              variant="link"
+              className="h-auto p-0 text-green-700 dark:text-green-300 underline mt-1"
+              onClick={handleViewHistory}
+            >
+              View transfer details and status in History →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="financial-card">
         <CardHeader>
           <CardTitle>Create Transfer Request</CardTitle>
           <CardDescription>
-            Enter the destination Bitcoin address and amount to transfer
+            Send BTC from your app wallet balance to an external Bitcoin mainnet address
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,9 +110,18 @@ export default function SendBtcPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                All transactions are posted on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
+                Transfers are sent from your app wallet balance (credits) to the Bitcoin blockchain. Network fees are deducted from your credits. This is an app-managed wallet — you do not control private keys.
               </AlertDescription>
             </Alert>
+
+            {broadcastUnavailable && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Broadcast service unavailable:</strong> The Bitcoin broadcast service is currently disabled. Transactions cannot be posted to the blockchain at this time. Any transfer attempts will fail and your credits will be automatically restored.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="destination">Destination Bitcoin Address</Label>
@@ -93,7 +135,7 @@ export default function SendBtcPage() {
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                The Bitcoin mainnet address where you want to send funds
+                The external Bitcoin mainnet address where you want to send funds
               </p>
             </div>
 
@@ -125,7 +167,7 @@ export default function SendBtcPage() {
                     <span className="font-semibold">{receiverAmount} BTC</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Estimated network fee:</span>
+                    <span className="text-muted-foreground">Bitcoin network fee:</span>
                     {feeLoading ? (
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -138,7 +180,7 @@ export default function SendBtcPage() {
                     )}
                   </div>
                   <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="font-semibold">Total deducted from credits:</span>
+                    <span className="font-semibold">Total deducted from your app wallet:</span>
                     <span className="font-bold text-lg">{totalDeducted} BTC</span>
                   </div>
                 </div>
@@ -146,18 +188,18 @@ export default function SendBtcPage() {
                   <Alert variant="destructive" className="mt-2">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC available.
+                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC available in your app wallet.
                     </AlertDescription>
                   </Alert>
                 )}
               </div>
             )}
 
-            {isSuccess && (
-              <Alert className="border-chart-1 bg-chart-1/10">
-                <CheckCircle2 className="h-4 w-4 text-chart-1" />
-                <AlertDescription className="text-chart-1">
-                  Transfer request created successfully! Credits have been reserved. Check History to verify the transaction on-chain.
+            {isError && error && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {error.message}
                 </AlertDescription>
               </Alert>
             )}
@@ -168,20 +210,9 @@ export default function SendBtcPage() {
               disabled={isPending || insufficientFunds || !destination.trim() || !amount || feeLoading || !!feeError}
             >
               <Send className="h-4 w-4 mr-2" />
-              {isPending ? 'Creating Request...' : 'Create Transfer Request'}
+              {isPending ? 'Creating Request...' : 'Send BTC from App Wallet'}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg space-y-2">
-            <h4 className="font-semibold text-sm">What happens next:</h4>
-            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Your credits are reserved for this transfer (receiver amount + Bitcoin network fee)</li>
-              <li>A transfer request is created with status "IN_PROGRESS"</li>
-              <li>Complete the Bitcoin transaction and post it on the Bitcoin blockchain</li>
-              <li>Submit the blockchain transaction ID in History to verify</li>
-              <li>Once verified, the transfer status updates to "VERIFIED"</li>
-            </ol>
-          </div>
         </CardContent>
       </Card>
     </div>

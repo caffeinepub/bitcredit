@@ -16,6 +16,7 @@ import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { adminStatusCache } from './utils/adminStatusCache';
+import { clearAdminToken } from './utils/urlParams';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
@@ -133,7 +134,7 @@ function RootLayout() {
 }
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { data: isAdmin, isFetched, isLoading, retryAdminCheck } = useIsCallerAdmin();
+  const { data: isAdmin, isFetched, isLoading, retryAdminCheck, tokenDetected, accessControlInitialized } = useIsCallerAdmin();
   const { identity, clear } = useInternetIdentity();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -144,8 +145,9 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (import.meta.env.DEV && isFetched && principalString) {
       console.log(`[AdminGuard] Final gating decision for ${principalString}: ${isAdmin ? 'ALLOWED' : 'DENIED'}`);
+      console.log(`[AdminGuard] Token detected: ${tokenDetected}, Access control initialized: ${accessControlInitialized}`);
     }
-  }, [isFetched, isAdmin, principalString]);
+  }, [isFetched, isAdmin, principalString, tokenDetected, accessControlInitialized]);
 
   const handleRetry = async () => {
     if (import.meta.env.DEV) {
@@ -161,6 +163,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     await clear();
     queryClient.clear();
     adminStatusCache.clearAll();
+    clearAdminToken();
     navigate({ to: '/', replace: true });
   };
 
@@ -180,6 +183,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     return (
       <AdminAccessDeniedScreen
         principal={principalString}
+        tokenDetected={tokenDetected}
+        accessControlInitialized={accessControlInitialized}
         onRetry={handleRetry}
         onSignOut={handleSignOut}
       />
