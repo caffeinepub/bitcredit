@@ -36,25 +36,10 @@ export type TransferStatus = { 'COMPLETED' : null } |
   { 'VERIFIED' : null } |
   { 'IN_PROGRESS' : null } |
   { 'FAILED' : null };
-export interface TransformationInput {
-  'context' : Uint8Array,
-  'response' : http_request_result,
-}
-export interface TransformationOutput {
-  'status' : bigint,
-  'body' : Uint8Array,
-  'headers' : Array<http_header>,
-}
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export interface http_header { 'value' : string, 'name' : string }
-export interface http_request_result {
-  'status' : bigint,
-  'body' : Uint8Array,
-  'headers' : Array<http_header>,
-}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'adjustCredits' : ActorMethod<[Principal, bigint, string], undefined>,
@@ -75,7 +60,7 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendBTC' : ActorMethod<[string, bigint], bigint>,
   'transferCreditsToUser' : ActorMethod<[Principal, bigint], undefined>,
-  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'transform' : ActorMethod<[string], string>,
   'verifyBTCTransfer' : ActorMethod<[bigint, string], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

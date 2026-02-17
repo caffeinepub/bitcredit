@@ -1,27 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Ensure allowlisted admin principal can reach /admin after II login",
-  "requirements": [
-    {
-      "id": "REQ-45",
-      "summary": "Ensure the II login flow correctly fetches admin status and allows the allowlisted principal to access /admin without being blocked by admin gating.",
-      "acceptanceCriteria": [
-        "After signing in as the specified principal, the app navigates to `/admin` (or the Admin link is visible and `/admin` renders successfully) once admin status is fetched.",
-        "Visiting `/admin` while signed in as this principal does not show the non-admin troubleshooting UI and does not redirect to `/`. "
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Update the admin gating UX for the /admin routes: while the admin check is still loading, render the existing AdminAccessLoadingScreen instead of returning null; wire its Retry action to useIsCallerAdmin().retryAdminCheck and its Sign Out action to the existing Internet Identity logout flow (clearing React Query + admin status cache). Keep the current redirect-to-/admin behavior once admin status resolves true. Use the authorization component’s role/admin-check flow (frontend calling backend isCallerAdmin) to determine access; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Ensure useIsCallerAdmin exposes stable loading/fetched/error states suitable for the /admin route gating screen, and that retryAdminCheck reliably forces a fresh admin re-check for the current principal. Use the authorization component’s admin-check capability (isCallerAdmin) as the source of truth; verify the component's usage instructions before implementing."
-        }
-      ]
-    }
-  ]
+  "title": "Bitcoin Credit Transfer — Frontend-only plan (no changes required for backend allowlist update)",
+  "requirements": []
 }

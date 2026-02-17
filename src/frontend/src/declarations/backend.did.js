@@ -44,24 +44,6 @@ export const SendBTCRequest = IDL.Record({
   'blockchainTxId' : IDL.Opt(IDL.Text),
   'amount' : IDL.Nat,
 });
-export const http_header = IDL.Record({
-  'value' : IDL.Text,
-  'name' : IDL.Text,
-});
-export const http_request_result = IDL.Record({
-  'status' : IDL.Nat,
-  'body' : IDL.Vec(IDL.Nat8),
-  'headers' : IDL.Vec(http_header),
-});
-export const TransformationInput = IDL.Record({
-  'context' : IDL.Vec(IDL.Nat8),
-  'response' : http_request_result,
-});
-export const TransformationOutput = IDL.Record({
-  'status' : IDL.Nat,
-  'body' : IDL.Vec(IDL.Nat8),
-  'headers' : IDL.Vec(http_header),
-});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -99,11 +81,7 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendBTC' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Nat], []),
   'transferCreditsToUser' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
-  'transform' : IDL.Func(
-      [TransformationInput],
-      [TransformationOutput],
-      ['query'],
-    ),
+  'transform' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
   'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
 });
 
@@ -146,21 +124,6 @@ export const idlFactory = ({ IDL }) => {
     'blockchainTxId' : IDL.Opt(IDL.Text),
     'amount' : IDL.Nat,
   });
-  const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
-  const http_request_result = IDL.Record({
-    'status' : IDL.Nat,
-    'body' : IDL.Vec(IDL.Nat8),
-    'headers' : IDL.Vec(http_header),
-  });
-  const TransformationInput = IDL.Record({
-    'context' : IDL.Vec(IDL.Nat8),
-    'response' : http_request_result,
-  });
-  const TransformationOutput = IDL.Record({
-    'status' : IDL.Nat,
-    'body' : IDL.Vec(IDL.Nat8),
-    'headers' : IDL.Vec(http_header),
-  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -198,11 +161,7 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendBTC' : IDL.Func([IDL.Text, IDL.Nat], [IDL.Nat], []),
     'transferCreditsToUser' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
-    'transform' : IDL.Func(
-        [TransformationInput],
-        [TransformationOutput],
-        ['query'],
-      ),
+    'transform' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
     'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   });
 };

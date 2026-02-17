@@ -5,24 +5,22 @@ import List "mo:core/List";
 import Int "mo:core/Int";
 import Nat "mo:core/Nat";
 import Principal "mo:core/Principal";
-import OutCall "http-outcalls/outcall";
 import Runtime "mo:core/Runtime";
 import Order "mo:core/Order";
-import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
 
 actor {
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
-
   let currentNetworkFee = 10;
   let balances = Map.empty<Principal, CreditBalance>();
   let transactions = List.empty<Transaction>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let transferRequests = Map.empty<Nat, SendBTCRequest>();
   let adminInitialCreditsIssued = Map.empty<Principal, Bool>();
-
   var requestIdCounter = 0;
+
+  let accessControlState = AccessControl.initState();
+  include MixinAuthorization(accessControlState);
 
   public type UserProfile = {
     name : Text;
@@ -370,11 +368,11 @@ actor {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can make test outcalls");
     };
-    await OutCall.httpGetRequest(endpoint, [], transform);
+    "BTC_API_DISABLED";
   };
 
-  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
-    OutCall.transform(input);
+  public query func transform(_input : Text) : async Text {
+    Runtime.trap("Cannot make outcalls on IC. This function is position to prevent page errors");
   };
 
   public shared ({ caller }) func assignInitialAdminCredits() : async () {

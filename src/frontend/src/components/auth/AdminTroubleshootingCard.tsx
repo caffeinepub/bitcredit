@@ -80,7 +80,7 @@ export default function AdminTroubleshootingCard() {
             className="gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
-            {isRetrying ? 'Checking...' : 'Retry Admin Check'}
+            {isRetrying ? 'Checking...' : 'Re-run Admin Check'}
           </Button>
         </div>
 

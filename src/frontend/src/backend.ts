@@ -89,32 +89,7 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface http_header {
-    value: string;
-    name: string;
-}
-export interface http_request_result {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export interface Transaction {
-    id: string;
-    transactionType: TransactionType;
-    user: Principal;
-    timestamp: Time;
-    amount: bigint;
-}
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
 export type Time = bigint;
-export interface TransformationInput {
-    context: Uint8Array;
-    response: http_request_result;
-}
 export interface SendBTCRequest {
     id: bigint;
     status: TransferStatus;
@@ -128,6 +103,13 @@ export interface SendBTCRequest {
 }
 export interface UserProfile {
     name: string;
+}
+export interface Transaction {
+    id: string;
+    transactionType: TransactionType;
+    user: Principal;
+    timestamp: Time;
+    amount: bigint;
 }
 export enum TransactionType {
     adjustment = "adjustment",
@@ -165,7 +147,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendBTC(destination: string, amount: bigint): Promise<bigint>;
     transferCreditsToUser(user: Principal, amount: bigint): Promise<void>;
-    transform(input: TransformationInput): Promise<TransformationOutput>;
+    transform(_input: string): Promise<string>;
     verifyBTCTransfer(requestId: bigint, blockchainTxId: string): Promise<void>;
 }
 import type { SendBTCRequest as _SendBTCRequest, Time as _Time, Transaction as _Transaction, TransactionType as _TransactionType, TransferStatus as _TransferStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
@@ -437,7 +419,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async transform(arg0: TransformationInput): Promise<TransformationOutput> {
+    async transform(arg0: string): Promise<string> {
         if (this.processError) {
             try {
                 const result = await this.actor.transform(arg0);

@@ -59,7 +59,9 @@ export function useGetCallerBalance() {
 }
 
 export function useIsCallerAdmin() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const actorResult = useActor();
+  const { actor, isFetching: actorFetching } = actorResult;
+  const accessControlInitialized = (actorResult as any).accessControlInitialized || false;
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
@@ -73,19 +75,30 @@ export function useIsCallerAdmin() {
       
       const startTime = Date.now();
       
-      console.log(`[Admin Check] Principal: ${principalString}`);
+      // Development-only: Single-pass trace for admin gating
+      if (import.meta.env.DEV) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Admin Check] Starting admin verification');
+        console.log(`[Admin Check] Principal: ${principalString}`);
+        console.log(`[Admin Check] Actor access-control initialized: ${accessControlInitialized}`);
+      }
       
       // Check if this principal was verified in the current page load
       const verifiedInLoad = adminStatusCache.isVerifiedInCurrentLoad(principalString);
       
       if (!verifiedInLoad) {
         // First verification in this page load - bypass cache and do fresh check
-        console.log(`[Admin Check] First verification for this page load, bypassing cache`);
+        if (import.meta.env.DEV) {
+          console.log(`[Admin Check] First verification for this page load, bypassing cache`);
+        }
       } else {
         // Already verified in this page load - check cache
         const cached = adminStatusCache.get(principalString);
         if (cached !== null) {
-          console.log(`[Admin Check] Using cached result from this page load: ${cached}`);
+          if (import.meta.env.DEV) {
+            console.log(`[Admin Check] Using cached result from this page load: ${cached}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          }
           return cached;
         }
       }
@@ -94,9 +107,12 @@ export function useIsCallerAdmin() {
       const result = await actor.isCallerAdmin();
       const queryEndTime = Date.now();
       
-      console.log(`[Admin Check] Query completed in: ${queryEndTime - queryStartTime}ms`);
-      console.log(`[Admin Check] Total time: ${queryEndTime - startTime}ms`);
-      console.log(`[Admin Check] Result: ${result}`);
+      if (import.meta.env.DEV) {
+        console.log(`[Admin Check] Backend query completed in: ${queryEndTime - queryStartTime}ms`);
+        console.log(`[Admin Check] Total time: ${queryEndTime - startTime}ms`);
+        console.log(`[Admin Check] Result: ${result}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      }
       
       // Cache the result and mark as verified in current page load
       adminStatusCache.set(principalString, result);
@@ -111,7 +127,9 @@ export function useIsCallerAdmin() {
   // Helper to force a refetch bypassing cache - returns a stable function reference
   const retryAdminCheck = async () => {
     if (principalString) {
-      console.log(`[Admin Check] Manual retry requested for: ${principalString}`);
+      if (import.meta.env.DEV) {
+        console.log(`[Admin Check] Manual retry requested for: ${principalString}`);
+      }
       adminStatusCache.clear(principalString);
     }
     queryClient.invalidateQueries({ queryKey: ['isAdmin', principalString] });
@@ -138,7 +156,9 @@ export function useAssignInitialAdminCredits() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
-      console.log('[Admin Credits] Initial 500 credits assigned successfully');
+      if (import.meta.env.DEV) {
+        console.log('[Admin Credits] Initial 500 credits assigned successfully');
+      }
     },
     onError: (error: Error) => {
       // Only log error if it's not "already assigned"

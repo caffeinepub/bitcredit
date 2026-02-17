@@ -12,22 +12,13 @@ import AdminPage from './pages/AdminPage';
 import AdminCredentialsPage from './pages/AdminCredentialsPage';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminAccessLoadingScreen from './components/auth/AdminAccessLoadingScreen';
+import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getAdminToken } from './utils/urlParams';
 import { adminStatusCache } from './utils/adminStatusCache';
-import { clearAdminToken } from './utils/urlParams';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
-
-  // Capture admin token early (before login) so it persists through II redirect
-  useEffect(() => {
-    const token = getAdminToken();
-    if (token) {
-      console.log('[App] Admin token captured and persisted');
-    }
-  }, []);
 
   if (!identity) {
     return (
@@ -74,7 +65,9 @@ function RootLayout() {
       const currentPrincipal = identity.getPrincipal().toString();
       if (lastPrincipalRef.current !== currentPrincipal) {
         // Principal changed (new login or different user)
-        console.log(`[App] Principal changed to: ${currentPrincipal}`);
+        if (import.meta.env.DEV) {
+          console.log(`[App] Principal changed to: ${currentPrincipal}`);
+        }
         hasRedirectedRef.current = false;
         hasRefreshedDataRef.current = false;
         hasAssignedCreditsRef.current = false;
@@ -92,7 +85,9 @@ function RootLayout() {
   // Assign initial admin credits automatically when admin is verified
   useEffect(() => {
     if (identity && adminFetched && isAdmin && !hasAssignedCreditsRef.current && !assignInitialCredits.isPending) {
-      console.log(`[App] Admin verified, assigning initial 500 credits`);
+      if (import.meta.env.DEV) {
+        console.log(`[App] Admin verified, assigning initial 500 credits`);
+      }
       hasAssignedCreditsRef.current = true;
       assignInitialCredits.mutate();
     }
@@ -101,7 +96,9 @@ function RootLayout() {
   // Admin auto-redirect: redirect admins to /admin once admin status is verified
   useEffect(() => {
     if (identity && adminFetched && !hasRedirectedRef.current && isAdmin) {
-      console.log(`[App] Admin verified, redirecting to /admin`);
+      if (import.meta.env.DEV) {
+        console.log(`[App] Admin verified, redirecting to /admin`);
+      }
       hasRedirectedRef.current = true;
       navigate({ to: '/admin', replace: true });
     }
@@ -110,7 +107,9 @@ function RootLayout() {
   // Refresh balance and transaction history after admin verification to show automatic initial grant
   useEffect(() => {
     if (identity && adminFetched && isAdmin && !hasRefreshedDataRef.current) {
-      console.log(`[App] Refreshing balance and history for admin after verification`);
+      if (import.meta.env.DEV) {
+        console.log(`[App] Refreshing balance and history for admin after verification`);
+      }
       hasRefreshedDataRef.current = true;
       // Delay refresh slightly to allow the mutation to complete
       setTimeout(() => {
@@ -139,25 +138,29 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // If not admin after check completes, redirect to dashboard
+  const principalString = identity?.getPrincipal().toString();
+
+  // Development-only: Log final gating decision
   useEffect(() => {
-    if (isFetched && !isAdmin) {
-      console.log('[AdminGuard] Access denied, redirecting to dashboard');
-      navigate({ to: '/', replace: true });
+    if (import.meta.env.DEV && isFetched && principalString) {
+      console.log(`[AdminGuard] Final gating decision for ${principalString}: ${isAdmin ? 'ALLOWED' : 'DENIED'}`);
     }
-  }, [isAdmin, isFetched, navigate]);
+  }, [isFetched, isAdmin, principalString]);
 
   const handleRetry = async () => {
-    console.log('[AdminGuard] Retry admin check requested');
+    if (import.meta.env.DEV) {
+      console.log('[AdminGuard] Retry admin check requested');
+    }
     await retryAdminCheck();
   };
 
   const handleSignOut = async () => {
-    console.log('[AdminGuard] Sign out requested from admin loading screen');
+    if (import.meta.env.DEV) {
+      console.log('[AdminGuard] Sign out requested from admin screen');
+    }
     await clear();
     queryClient.clear();
     adminStatusCache.clearAll();
-    clearAdminToken();
     navigate({ to: '/', replace: true });
   };
 
@@ -165,16 +168,22 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLoading || !isFetched) {
     return (
       <AdminAccessLoadingScreen
-        principal={identity?.getPrincipal().toString()}
+        principal={principalString}
         onRetry={handleRetry}
         onSignOut={handleSignOut}
       />
     );
   }
 
-  // Don't render children if not admin
+  // Show access denied screen if not admin (no redirect)
   if (!isAdmin) {
-    return null;
+    return (
+      <AdminAccessDeniedScreen
+        principal={principalString}
+        onRetry={handleRetry}
+        onSignOut={handleSignOut}
+      />
+    );
   }
 
   return <>{children}</>;

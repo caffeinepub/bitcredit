@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 37,
+  "projectStateVersion": 45,
   "summary": "App to sell credits on a website (1 credit = 1 BTC) and enable sending BTC directly on-chain to mainnet wallets, with blockchain API-based transaction authentication/verification and network fees deducted from user credits.",
   "architectural_notes": [
     "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits).",
@@ -12,7 +12,8 @@
     "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
     "Deployment/build is failing (deployment ran into an issue); needs debugging and a successful deploy.",
     "User reports their principal is not getting access to the Admin panel after login (admin gating/redirect may be failing for some principals); needs investigation and fix.",
-    "Need to add the user principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist and retry build/deploy so they can access the Admin panel."
+    "Need to add the user principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist and retry build/deploy so they can access the Admin panel.",
+    "After the latest deployment (Draft Version 20), the user reports the Admin panel still does not open for their principal; admin gating/allowlist/login flow fix still not resolved."
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -311,6 +312,22 @@
         "REQ-45"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-fix-the-admin-gating-ux-so-that-when-a-signed-in-user-attempts-to-open-admin-but-is-not-detected-as-an-admin-the-app-shows-an-on-page-troubleshooting-experience-including-the-full-principal-id-with-a-copy-action-and-a-safe-re-run-admin-check-action-instead-of-immediately-redirecting-away-before-the-user-can-see-why-access-was-denied",
+      "title": "Fix the admin gating UX so that when a signed-in user attempts to open `/admin` but is not detected as an admin, the app shows an on-page troubleshooting experience (including the full principal ID with a copy action and a safe “Re-run admin check” action) instead of immediately redirecting away before the user can see why access was denied.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-lightweight-development-diagnostics-to-help-confirm-why-the-admin-panel-does-not-open-including-logging-in-development-the-currently-authenticated-principal-whether-the-actor-finished-initializeaccesscontrolwithsecret-and-the-final-iscalleradmin-result-used-by-admin-gating",
+      "title": "Add lightweight development diagnostics to help confirm why the admin panel does not open, including logging (in development) the currently authenticated principal, whether the actor finished `_initializeAccessControlWithSecret(...)`, and the final `isCallerAdmin()` result used by `/admin` gating.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -407,6 +424,38 @@
       "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)`.",
       "reqIds": [
         "REQ-44"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-26",
+      "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` and can access the Admin panel route `/admin`.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` and can access the Admin panel route `/admin`.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Ensure the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` is recognized as an admin by the backend access-control allowlist so that `isCallerAdmin()` returns `true` for that principal after sign-in.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)` / `isCallerAdmin()` after sign-in and can access the Admin panel route `/admin`.",
+      "reqIds": [
+        "REQ-51"
       ],
       "status": "pending"
     }

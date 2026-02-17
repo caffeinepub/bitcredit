@@ -2,7 +2,8 @@ import React from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
 import { adminStatusCache } from '../../utils/adminStatusCache';
-import { clearAdminToken } from '../../utils/urlParams';
+import { Button } from '@/components/ui/button';
+import { LogIn, LogOut } from 'lucide-react';
 
 export default function LoginButton() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
@@ -10,15 +11,12 @@ export default function LoginButton() {
 
   const isAuthenticated = !!identity;
   const disabled = loginStatus === 'logging-in';
-  const text = loginStatus === 'logging-in' ? 'Logging in...' : isAuthenticated ? 'Logout' : 'Login';
 
   const handleAuth = async () => {
     if (isAuthenticated) {
       await clear();
       queryClient.clear();
       adminStatusCache.clearAll();
-      clearAdminToken();
-      console.log('[LoginButton] Cleared all caches and admin token on logout');
     } else {
       try {
         await login();
@@ -33,16 +31,25 @@ export default function LoginButton() {
   };
 
   return (
-    <button
+    <Button
       onClick={handleAuth}
       disabled={disabled}
-      className={`px-6 py-2 rounded-full transition-colors font-medium ${
-        isAuthenticated
-          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-          : 'bg-blue-600 hover:bg-blue-700 text-white'
-      } disabled:opacity-50`}
+      variant={isAuthenticated ? 'outline' : 'default'}
+      className="gap-2"
     >
-      {text}
-    </button>
+      {loginStatus === 'logging-in' ? (
+        <>Signing in...</>
+      ) : isAuthenticated ? (
+        <>
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </>
+      ) : (
+        <>
+          <LogIn className="h-4 w-4" />
+          Sign In
+        </>
+      )}
+    </Button>
   );
 }
