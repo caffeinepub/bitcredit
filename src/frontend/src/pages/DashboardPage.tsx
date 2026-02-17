@@ -20,7 +20,7 @@ export default function DashboardPage() {
       case 'creditPurchase':
         return 'Credit Purchase';
       case 'debit':
-        return 'Transfer Request';
+        return 'Bitcoin Mainnet Transfer';
       case 'adjustment':
         return 'Adjustment';
       default:
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="font-medium">Send BTC</p>
-                  <p className="text-muted-foreground text-xs">Create transfer requests to any Bitcoin mainnet wallet</p>
+                  <p className="text-muted-foreground text-xs">Create transfer requests to any Bitcoin mainnet wallet — posted on-chain</p>
                 </div>
               </div>
               <div className="flex gap-3">

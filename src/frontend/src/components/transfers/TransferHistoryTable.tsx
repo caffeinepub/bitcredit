@@ -31,7 +31,7 @@ export default function TransferHistoryTable({ transactions }: TransferHistoryTa
       case 'creditPurchase':
         return 'Credit Purchase';
       case 'debit':
-        return 'Transfer Request';
+        return 'Bitcoin Mainnet Transfer';
       case 'adjustment':
         return 'Adjustment';
       default:
@@ -104,7 +104,7 @@ export default function TransferHistoryTable({ transactions }: TransferHistoryTa
                           </TooltipTrigger>
                           <TooltipContent side="right" className="max-w-xs">
                             <p className="text-xs">
-                              This amount includes the network fee charged for the Bitcoin transaction.
+                              On-chain Bitcoin mainnet transfer. This amount includes the Bitcoin network fee deducted from your credits.
                             </p>
                           </TooltipContent>
                         </Tooltip>

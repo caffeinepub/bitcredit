@@ -58,7 +58,7 @@ export default function HistoryPage() {
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs">
                     <p className="text-xs">
-                      Includes transfer amounts plus network fees deducted from your credits.
+                      On-chain Bitcoin mainnet transfers posted on the Bitcoin blockchain. Amounts include Bitcoin network fees deducted from your credits.
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -68,7 +68,7 @@ export default function HistoryPage() {
           </CardHeader>
           <CardContent>
             <div className="stat-value text-muted-foreground">-{totalDebits} BTC</div>
-            <p className="text-xs text-muted-foreground mt-1">Transfer requests (incl. fees)</p>
+            <p className="text-xs text-muted-foreground mt-1">Mainnet transfers (incl. fees)</p>
           </CardContent>
         </Card>
       </div>

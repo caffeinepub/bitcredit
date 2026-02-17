@@ -45,7 +45,7 @@ export default function SendBtcPage() {
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Send BTC</h1>
         <p className="text-muted-foreground">
-          Create a transfer request to send Bitcoin to any mainnet wallet
+          Send Bitcoin to any mainnet wallet — posted on the Bitcoin blockchain
         </p>
       </div>
 
@@ -77,7 +77,7 @@ export default function SendBtcPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Transactions go directly to the receiver's wallet on the Bitcoin blockchain. Network fees are deducted from your credits.
+                All transactions are posted on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
               </AlertDescription>
             </Alert>
 
@@ -157,7 +157,7 @@ export default function SendBtcPage() {
               <Alert className="border-chart-1 bg-chart-1/10">
                 <CheckCircle2 className="h-4 w-4 text-chart-1" />
                 <AlertDescription className="text-chart-1">
-                  Transfer request created successfully! Credits have been reserved. Check History to verify the transaction.
+                  Transfer request created successfully! Credits have been reserved. Check History to verify the transaction on-chain.
                 </AlertDescription>
               </Alert>
             )}
@@ -175,9 +175,9 @@ export default function SendBtcPage() {
           <div className="mt-6 p-4 bg-muted/50 rounded-lg space-y-2">
             <h4 className="font-semibold text-sm">What happens next:</h4>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Your credits are reserved for this transfer (amount + network fee)</li>
+              <li>Your credits are reserved for this transfer (receiver amount + Bitcoin network fee)</li>
               <li>A transfer request is created with status "IN_PROGRESS"</li>
-              <li>Complete the Bitcoin transaction on-chain</li>
+              <li>Complete the Bitcoin transaction and post it on the Bitcoin blockchain</li>
               <li>Submit the blockchain transaction ID in History to verify</li>
               <li>Once verified, the transfer status updates to "VERIFIED"</li>
             </ol>

@@ -1,15 +1,20 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 23,
+  "projectStateVersion": 37,
   "summary": "App to sell credits on a website (1 credit = 1 BTC) and enable sending BTC directly on-chain to mainnet wallets, with blockchain API-based transaction authentication/verification and network fees deducted from user credits.",
   "architectural_notes": [
-    "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits)."
+    "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits).",
+    "Admins receive and can access an initial 500-credit balance and can distribute credits via an admin page that auto-populates immediately after signing in with their Internet Identity principal.",
+    "Post–Internet Identity login flow: determine admin status for the authenticated principal, then auto-redirect admin users to the Admin page (/admin).",
+    "Admin auto-redirect/admin flow should only occur after the initial Internet Identity sign-in completes; then verify the authenticated principal’s admin status before applying any admin-specific navigation."
   ],
   "known_issues": [
     "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
-    "Deployment/build is failing (deployment ran into an issue); needs debugging and a successful deploy."
+    "Deployment/build is failing (deployment ran into an issue); needs debugging and a successful deploy.",
+    "User reports their principal is not getting access to the Admin panel after login (admin gating/redirect may be failing for some principals); needs investigation and fix.",
+    "Need to add the user principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist and retry build/deploy so they can access the Admin panel."
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-add-internet-identity-authentication-so-each-user-has-an-account-and-a-persistent-credit-balance",
@@ -210,6 +215,102 @@
         "REQ-31"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-post-internet-identity-sign-in-routing-so-that-when-the-signed-in-caller-is-verified-as-an-admin-principal-the-app-automatically-navigates-the-user-directly-to-the-admin-page-admin-instead-of-admin-credentials-immediately-after-admin-status-has-been-determined",
+      "title": "Update the post–Internet Identity sign-in routing so that when the signed-in caller is verified as an admin principal, the app automatically navigates the user directly to the Admin page (`/admin`) (instead of `/admin-credentials`) immediately after admin status has been determined.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-post-internet-identity-login-flow-so-the-app-does-not-treat-the-user-as-an-admin-including-auto-redirecting-to-an-admin-route-until-after-the-user-has-completed-the-initial-sign-in-and-the-signed-in-principal-has-been-verified-via-an-admin-permission-check-for-that-principal",
+      "title": "Update the post–Internet Identity login flow so the app does not treat the user as an admin (including auto-redirecting to an admin route) until AFTER the user has completed the initial sign-in and the signed-in principal has been verified via an admin-permission check for that principal.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-change-the-admin-verification-ux-so-that-admin-checking-happens-in-the-background-during-the-initial-signed-in-experience-instead-of-blocking-the-entire-app-with-the-full-screen-admin-verification-loading-screen",
+      "title": "Change the admin-verification UX so that admin checking happens in the background during the initial signed-in experience, instead of blocking the entire app with the full-screen admin verification loading screen.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-admin-verification-step-for-a-newly-authenticated-principal-is-a-real-verification-for-that-principal-not-solely-a-reused-cached-result-by-forcing-a-fresh-admin-check-at-least-once-per-login-session-for-the-current-principal-before-allowing-admin-auto-navigation",
+      "title": "Ensure the admin verification step for a newly authenticated principal is a real verification for that principal (not solely a reused cached result) by forcing a fresh admin check at least once per login session for the current principal before allowing admin auto-navigation.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-admin-only-send-btc-to-mainnet-wallet-section-to-the-existing-admin-page-admin-so-verified-admins-can-create-btc-transfer-requests-directly-from-their-admin-credit-balance-the-same-transfer-request-behavior-as-the-existing-send-btc-page",
+      "title": "Add an admin-only \"Send BTC to Mainnet Wallet\" section to the existing Admin page (/admin) so verified admins can create BTC transfer requests directly from their admin credit balance (the same transfer-request behavior as the existing Send BTC page).",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-the-new-admin-page-send-btc-to-mainnet-wallet-section-show-the-estimated-network-fee-and-total-credits-that-will-be-deducted-and-block-submission-when-the-admin-balance-is-insufficient-for-amount-estimated-fee-or-when-the-fee-estimate-is-unavailable",
+      "title": "In the new Admin page \"Send BTC to Mainnet Wallet\" section, show the estimated network fee and total credits that will be deducted, and block submission when the admin balance is insufficient for (amount + estimated fee) or when the fee estimate is unavailable.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-user-facing-copy-across-all-btc-to-mainnet-transfer-entry-points-to-explicitly-state-that-transfers-are-posted-on-the-bitcoin-blockchain-and-that-bitcoin-network-fees-are-deducted-from-the-user-s-credits",
+      "title": "Update user-facing copy across all BTC-to-mainnet transfer entry points to explicitly state that transfers are posted on the Bitcoin blockchain and that Bitcoin network fees are deducted from the user’s credits.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-transfer-related-labels-for-debit-transactions-consistently-describe-them-as-on-chain-bitcoin-mainnet-transfers-not-only-transfer-requests-while-preserving-the-existing-verification-workflow-attach-txid-and-verify-against-destination-amount",
+      "title": "Ensure transfer-related labels for debit transactions consistently describe them as on-chain Bitcoin mainnet transfers (not only “transfer requests”) while preserving the existing verification workflow (attach txid and verify against destination/amount).",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-post-internet-identity-login-flow-so-that-an-allowlisted-admin-principal-reliably-gains-access-to-the-admin-panel-after-login-including-correct-admin-detection-and-auto-navigation-to-admin-once-admin-status-is-confirmed-for-the-currently-authenticated-principal",
+      "title": "Fix the post–Internet Identity login flow so that an allowlisted admin principal reliably gains access to the Admin panel after login, including correct admin detection and auto-navigation to `/admin` once admin status is confirmed for the currently authenticated principal.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-admin-verification-uses-the-same-backend-access-control-initialization-path-as-the-rest-of-the-app-by-reliably-applying-any-caffeineadmintoken-url-parameter-during-actor-initialization-across-the-internet-identity-login-redirect-so-admin-checks-are-not-performed-with-an-uninitialized-incorrect-access-control-state",
+      "title": "Ensure admin verification uses the same backend access-control initialization path as the rest of the app by reliably applying any `caffeineAdminToken` URL parameter during actor initialization across the Internet Identity login redirect (so admin checks are not performed with an uninitialized/incorrect access-control state).",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-clear-non-blocking-troubleshooting-experience-when-a-signed-in-user-expects-admin-access-but-is-not-detected-as-an-admin-show-the-full-principal-id-copyable-and-a-plain-english-message-explaining-that-admin-access-is-granted-only-to-specific-principals-plus-a-safe-action-to-re-run-the-admin-check",
+      "title": "Add a clear, non-blocking troubleshooting experience when a signed-in user expects admin access but is not detected as an admin: show the full principal ID (copyable) and a plain-English message explaining that admin access is granted only to specific principals, plus a safe action to re-run the admin check.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-end-to-end-login-flow-works-for-the-allowlisted-principal-after-signing-in-with-internet-identity-as-ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe-the-frontend-recognizes-admin-status-and-the-user-can-reach-the-admin-panel-at-route-admin-without-being-blocked-by-admin-gating",
+      "title": "Ensure the end-to-end login flow works for the allowlisted principal: after signing in with Internet Identity as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, the frontend recognizes admin status and the user can reach the Admin panel at route `/admin` without being blocked by admin gating.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -245,32 +346,6 @@
       "reqIds": [
         "REQ-6"
       ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Create an admin login (credentials) with a preloaded admin account balance of 500 credits, and allow the admin to give/transfer credits to users",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-12",
-      "summary": "Ensure the admin account receives an initial balance of 500 credits exactly once, and that this credit issuance is recorded in the transaction/ledger history in a way that is visible in history views.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-13",
-      "summary": "Add an on-sign-in admin flow: show an admin-credential/setup page after sign-in to manage/administer the account (e.g., admin onboarding or credential entry).",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-14",
-      "summary": "Support automatic admin onboarding on first sign-in for a specified admin identity/principal (auto-recognize admin and apply initial setup such as credits) instead of requiring manual actions in the UI.",
-      "reqIds": [],
       "status": "pending"
     },
     {
@@ -314,18 +389,24 @@
       "status": "pending"
     },
     {
-      "id": "AR-21",
-      "summary": "Ensure each admin principal receives an initial balance of 500 credits exactly once (per admin principal), and that the issuance is recorded in the transaction/ledger history.",
-      "reqIds": [
-        "REQ-30"
-      ],
-      "status": "pending"
-    },
-    {
       "id": "AR-23",
       "summary": "If existing deployed state uses a global \"admin initial credits issued\" flag, add a safe state migration so the app can track initial-credit issuance per admin principal without breaking existing balances, transactions, or transfer requests.",
       "reqIds": [
         "REQ-32"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "After Internet Identity sign-in, verify whether the principal is an admin and then automatically navigate admins directly to the Admin page (/admin)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)`.",
+      "reqIds": [
+        "REQ-44"
       ],
       "status": "pending"
     }

@@ -69,18 +69,23 @@ export function useIsCallerAdmin() {
     queryKey: ['isAdmin', principalString],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
+      if (!principalString) throw new Error('No principal available');
       
       const startTime = Date.now();
-      const actorReadyTime = Date.now();
       
       console.log(`[Admin Check] Principal: ${principalString}`);
-      console.log(`[Admin Check] Actor ready in: ${actorReadyTime - startTime}ms`);
       
-      // Check cache first (unless this is a forced refetch)
-      if (principalString) {
+      // Check if this principal was verified in the current page load
+      const verifiedInLoad = adminStatusCache.isVerifiedInCurrentLoad(principalString);
+      
+      if (!verifiedInLoad) {
+        // First verification in this page load - bypass cache and do fresh check
+        console.log(`[Admin Check] First verification for this page load, bypassing cache`);
+      } else {
+        // Already verified in this page load - check cache
         const cached = adminStatusCache.get(principalString);
         if (cached !== null) {
-          console.log(`[Admin Check] Using cached result: ${cached}`);
+          console.log(`[Admin Check] Using cached result from this page load: ${cached}`);
           return cached;
         }
       }
@@ -93,10 +98,8 @@ export function useIsCallerAdmin() {
       console.log(`[Admin Check] Total time: ${queryEndTime - startTime}ms`);
       console.log(`[Admin Check] Result: ${result}`);
       
-      // Cache the result
-      if (principalString) {
-        adminStatusCache.set(principalString, result);
-      }
+      // Cache the result and mark as verified in current page load
+      adminStatusCache.set(principalString, result);
       
       return result;
     },
@@ -105,8 +108,8 @@ export function useIsCallerAdmin() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Helper to force a refetch bypassing cache
-  const retryAdminCheck = () => {
+  // Helper to force a refetch bypassing cache - returns a stable function reference
+  const retryAdminCheck = async () => {
     if (principalString) {
       console.log(`[Admin Check] Manual retry requested for: ${principalString}`);
       adminStatusCache.clear(principalString);
@@ -121,6 +124,29 @@ export function useIsCallerAdmin() {
     isFetched: !!actor && !!identity && query.isFetched,
     retryAdminCheck,
   };
+}
+
+export function useAssignInitialAdminCredits() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.assignInitialAdminCredits();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      console.log('[Admin Credits] Initial 500 credits assigned successfully');
+    },
+    onError: (error: Error) => {
+      // Only log error if it's not "already assigned"
+      if (!error.message.includes('already assigned')) {
+        console.error('[Admin Credits] Failed to assign initial credits:', error.message);
+      }
+    },
+  });
 }
 
 export function useTransferCreditsToUser() {

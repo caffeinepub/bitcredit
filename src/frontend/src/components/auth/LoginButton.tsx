@@ -1,7 +1,8 @@
+import React from 'react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useQueryClient } from '@tanstack/react-query';
-import { LogIn, LogOut } from 'lucide-react';
 import { adminStatusCache } from '../../utils/adminStatusCache';
+import { clearAdminToken } from '../../utils/urlParams';
 
 export default function LoginButton() {
   const { login, clear, loginStatus, identity } = useInternetIdentity();
@@ -9,13 +10,15 @@ export default function LoginButton() {
 
   const isAuthenticated = !!identity;
   const disabled = loginStatus === 'logging-in';
-  const text = loginStatus === 'logging-in' ? 'Signing in...' : isAuthenticated ? 'Sign Out' : 'Sign In';
+  const text = loginStatus === 'logging-in' ? 'Logging in...' : isAuthenticated ? 'Logout' : 'Login';
 
   const handleAuth = async () => {
     if (isAuthenticated) {
       await clear();
-      adminStatusCache.clearAll();
       queryClient.clear();
+      adminStatusCache.clearAll();
+      clearAdminToken();
+      console.log('[LoginButton] Cleared all caches and admin token on logout');
     } else {
       try {
         await login();
@@ -33,14 +36,13 @@ export default function LoginButton() {
     <button
       onClick={handleAuth}
       disabled={disabled}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+      className={`px-6 py-2 rounded-full transition-colors font-medium ${
         isAuthenticated
-          ? 'bg-secondary hover:bg-secondary/80 text-secondary-foreground'
-          : 'bg-primary hover:opacity-90 text-primary-foreground'
-      } disabled:opacity-50 disabled:cursor-not-allowed`}
+          ? 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+          : 'bg-blue-600 hover:bg-blue-700 text-white'
+      } disabled:opacity-50`}
     >
-      {isAuthenticated ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
-      <span className="hidden sm:inline">{text}</span>
+      {text}
     </button>
   );
 }

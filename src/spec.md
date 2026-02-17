@@ -1,11 +1,10 @@
 # Specification
 
 ## Summary
-**Goal:** Add an admin-only page that allows the signed-in admin principal to distribute credits.
+**Goal:** Allow the specified Internet Identity principal to be recognized as a backend admin so they can access the `/admin` area.
 
 **Planned changes:**
-- Add an admin-only frontend page/view for credit distribution (accessible only when the signed-in principal is the configured admin).
-- Add backend Motoko methods to support admin credit distribution and any required state updates, keeping a single actor in `backend/main.mo`.
-- Update frontend routing/navigation as needed without modifying immutable UI/component and hook paths.
+- Add principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by `AccessControl.isAdmin(...)`.
+- Ensure the frontend admin-gating logic recognizes admin status after login for that principal and permits rendering/navigation to `/admin`.
 
-**User-visible outcome:** When signed in as the admin, the user can open an admin page and distribute credits; non-admin users cannot access or use this page.
+**User-visible outcome:** After signing in with Internet Identity as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, the user is treated as an admin and can access the Admin panel at `/admin` without being blocked or redirected.

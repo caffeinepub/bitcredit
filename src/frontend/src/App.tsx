@@ -1,6 +1,6 @@
 import { createRouter, createRoute, createRootRoute, RouterProvider, Outlet, useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from './hooks/useInternetIdentity';
-import { useGetCallerUserProfile, useIsCallerAdmin } from './hooks/useQueries';
+import { useGetCallerUserProfile, useIsCallerAdmin, useAssignInitialAdminCredits } from './hooks/useQueries';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import AppLayout from './components/layout/AppLayout';
@@ -14,10 +14,20 @@ import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminAccessLoadingScreen from './components/auth/AdminAccessLoadingScreen';
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { getAdminToken } from './utils/urlParams';
 import { adminStatusCache } from './utils/adminStatusCache';
+import { clearAdminToken } from './utils/urlParams';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { identity, login, isLoggingIn } = useInternetIdentity();
+
+  // Capture admin token early (before login) so it persists through II redirect
+  useEffect(() => {
+    const token = getAdminToken();
+    if (token) {
+      console.log('[App] Admin token captured and persisted');
+    }
+  }, []);
 
   if (!identity) {
     return (
@@ -45,14 +55,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 function RootLayout() {
-  const { identity, clear } = useInternetIdentity();
+  const { identity } = useInternetIdentity();
   const { data: userProfile, isLoading: profileLoading, isFetched: profileFetched } = useGetCallerUserProfile();
-  const { data: isAdmin, isLoading: adminLoading, isFetched: adminFetched, retryAdminCheck } = useIsCallerAdmin();
+  const { data: isAdmin, isFetched: adminFetched } = useIsCallerAdmin();
+  const assignInitialCredits = useAssignInitialAdminCredits();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const hasRedirectedRef = useRef(false);
   const lastPrincipalRef = useRef<string | null>(null);
   const hasRefreshedDataRef = useRef(false);
+  const hasAssignedCreditsRef = useRef(false);
 
   const principalString = identity?.getPrincipal().toString();
 
@@ -65,6 +77,7 @@ function RootLayout() {
         console.log(`[App] Principal changed to: ${currentPrincipal}`);
         hasRedirectedRef.current = false;
         hasRefreshedDataRef.current = false;
+        hasAssignedCreditsRef.current = false;
         lastPrincipalRef.current = currentPrincipal;
       }
     } else {
@@ -72,15 +85,25 @@ function RootLayout() {
       lastPrincipalRef.current = null;
       hasRedirectedRef.current = false;
       hasRefreshedDataRef.current = false;
+      hasAssignedCreditsRef.current = false;
     }
   }, [identity]);
 
-  // Admin auto-redirect: redirect admins to /admin-credentials once admin status is resolved
+  // Assign initial admin credits automatically when admin is verified
+  useEffect(() => {
+    if (identity && adminFetched && isAdmin && !hasAssignedCreditsRef.current && !assignInitialCredits.isPending) {
+      console.log(`[App] Admin verified, assigning initial 500 credits`);
+      hasAssignedCreditsRef.current = true;
+      assignInitialCredits.mutate();
+    }
+  }, [identity, isAdmin, adminFetched, assignInitialCredits]);
+
+  // Admin auto-redirect: redirect admins to /admin once admin status is verified
   useEffect(() => {
     if (identity && adminFetched && !hasRedirectedRef.current && isAdmin) {
-      console.log(`[App] Admin verified, redirecting to /admin-credentials`);
+      console.log(`[App] Admin verified, redirecting to /admin`);
       hasRedirectedRef.current = true;
-      navigate({ to: '/admin-credentials', replace: true });
+      navigate({ to: '/admin', replace: true });
     }
   }, [identity, isAdmin, adminFetched, navigate]);
 
@@ -89,36 +112,13 @@ function RootLayout() {
     if (identity && adminFetched && isAdmin && !hasRefreshedDataRef.current) {
       console.log(`[App] Refreshing balance and history for admin after verification`);
       hasRefreshedDataRef.current = true;
-      queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      // Delay refresh slightly to allow the mutation to complete
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['balance'] });
+        queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      }, 500);
     }
   }, [identity, isAdmin, adminFetched, queryClient]);
-
-  // Handle sign out from loading screen
-  const handleSignOut = async () => {
-    await clear();
-    adminStatusCache.clearAll();
-    queryClient.clear();
-  };
-
-  // Handle retry from loading screen
-  const handleRetry = () => {
-    if (retryAdminCheck) {
-      console.log(`[App] User requested admin check retry`);
-      retryAdminCheck();
-    }
-  };
-
-  // Show loading screen while checking admin status after login
-  if (identity && adminLoading) {
-    return (
-      <AdminAccessLoadingScreen 
-        principal={principalString}
-        onRetry={handleRetry}
-        onSignOut={handleSignOut}
-      />
-    );
-  }
 
   // Only show profile setup modal for non-admins with no profile
   const showProfileSetup = !!identity && !profileLoading && profileFetched && userProfile === null && adminFetched && !isAdmin;
@@ -134,26 +134,45 @@ function RootLayout() {
 }
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { data: isAdmin, isLoading, isFetched } = useIsCallerAdmin();
+  const { data: isAdmin, isFetched, isLoading, retryAdminCheck } = useIsCallerAdmin();
+  const { identity, clear } = useInternetIdentity();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  // If not admin after check completes, redirect to dashboard
   useEffect(() => {
     if (isFetched && !isAdmin) {
-      navigate({ to: '/' });
+      console.log('[AdminGuard] Access denied, redirecting to dashboard');
+      navigate({ to: '/', replace: true });
     }
   }, [isAdmin, isFetched, navigate]);
 
+  const handleRetry = async () => {
+    console.log('[AdminGuard] Retry admin check requested');
+    await retryAdminCheck();
+  };
+
+  const handleSignOut = async () => {
+    console.log('[AdminGuard] Sign out requested from admin loading screen');
+    await clear();
+    queryClient.clear();
+    adminStatusCache.clearAll();
+    clearAdminToken();
+    navigate({ to: '/', replace: true });
+  };
+
+  // Show loading screen while checking admin status
   if (isLoading || !isFetched) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-2">
-          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Verifying access...</p>
-        </div>
-      </div>
+      <AdminAccessLoadingScreen
+        principal={identity?.getPrincipal().toString()}
+        onRetry={handleRetry}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
+  // Don't render children if not admin
   if (!isAdmin) {
     return null;
   }
@@ -189,16 +208,6 @@ const historyRoute = createRoute({
   component: HistoryPage,
 });
 
-const adminCredentialsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin-credentials',
-  component: () => (
-    <AdminGuard>
-      <AdminCredentialsPage />
-    </AdminGuard>
-  ),
-});
-
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
@@ -209,13 +218,23 @@ const adminRoute = createRoute({
   ),
 });
 
+const adminCredentialsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/credentials',
+  component: () => (
+    <AdminGuard>
+      <AdminCredentialsPage />
+    </AdminGuard>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   buyCreditsRoute,
   sendBtcRoute,
   historyRoute,
-  adminCredentialsRoute,
   adminRoute,
+  adminCredentialsRoute,
 ]);
 
 const router = createRouter({ routeTree });

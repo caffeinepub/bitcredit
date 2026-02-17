@@ -1,18 +1,54 @@
 {
   "kind": "build_request",
-  "title": "Admin page for distributing credits",
+  "title": "Add user principal to backend admin allowlist so they can access /admin",
   "projectName": "Bitcoin Credit Transfer",
-  "priority": "normal",
-  "requirements": [],
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-44",
+      "text": "Add the Internet Identity principal `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe` to the backend admin allowlist used by the AccessControl system so this principal is recognized as an admin by `AccessControl.isAdmin(...)`.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When calling the backend admin-check for the authenticated caller (the query/method the frontend uses), this principal is reported as admin.",
+        "Admin-only backend methods (e.g., credit adjustment/admin tools) accept calls from this principal and continue to reject calls from non-allowlisted principals.",
+        "No changes break existing balances, transactions, user profiles, or transfer requests."
+      ]
+    },
+    {
+      "id": "REQ-45",
+      "text": "Ensure the end-to-end login flow works for the allowlisted principal: after signing in with Internet Identity as `ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe`, the frontend recognizes admin status and the user can reach the Admin panel at route `/admin` without being blocked by admin gating.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "Yes"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After signing in as the specified principal, the app navigates to `/admin` (or the Admin link is visible and `/admin` renders successfully) once admin status is fetched.",
+        "Visiting `/admin` while signed in as this principal does not show the non-admin troubleshooting UI and does not redirect to `/`."
+      ]
+    }
+  ],
   "constraints": [
-    "Do not add new features beyond an admin-only credit distribution page for the signed-in admin principal.",
-    "Backend must remain a single Motoko actor in backend/main.mo; only add backend/migration.mo changes if a state upgrade is required.",
-    "Do not edit files under frontend/src/components/ui or any frontend immutable paths (frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui)."
+    "Backend must remain a single Motoko actor in `backend/main.mo`; do not introduce additional backend services.",
+    "Do not edit frontend files under `frontend/src/components/ui` or the immutable hook paths listed in SYSTEM_CONTEXT.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Add new authentication methods beyond Internet Identity.",
-    "Add non-admin credit distribution capabilities.",
-    "Introduce external databases or third-party auth providers."
+    "Do not add new authentication providers (only Internet Identity).",
+    "Do not implement or change payment providers or blockchain API integrations as part of this request beyond what is required to recognize the principal as an admin.",
+    "Do not redesign the UI theme or generate new images for this change."
   ],
   "imageRequirements": {
     "required": [],
