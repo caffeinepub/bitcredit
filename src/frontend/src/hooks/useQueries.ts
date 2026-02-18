@@ -151,7 +151,29 @@ export function useGetTransferRequest(requestId: bigint | null, enableLiveRefres
       if (data && data.status === 'IN_PROGRESS') {
         return 3000; // Poll every 3 seconds
       }
-      return false; // Stop polling when COMPLETED or FAILED
+      // Stop polling for COMPLETED, FAILED, or EVICTED
+      return false;
+    },
+  });
+}
+
+export function useRefreshTransferStatus() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.refreshTransferRequestStatus(requestId);
+    },
+    onSuccess: (data, requestId) => {
+      // Update the cached transfer request with fresh data
+      queryClient.setQueryData(['transferRequest', requestId.toString()], data);
+      queryClient.invalidateQueries({ queryKey: ['confirmationAnalysis', requestId.toString()] });
+      toast.success('Transfer status refreshed');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to refresh status: ${error.message || 'Unknown error'}`);
     },
   });
 }
@@ -166,7 +188,7 @@ export function useAnalyzeSendBTCRequestConfirmation(requestId: bigint | null, f
       return actor.analyzeSendBTCRequestConfirmation(requestId, forceFreshCheck);
     },
     enabled: !!actor && !isFetching && requestId !== null,
-    staleTime: 30000, // Cache for 30 seconds
+    staleTime: forceFreshCheck ? 0 : 30000, // No cache when forcing fresh check
   });
 }
 

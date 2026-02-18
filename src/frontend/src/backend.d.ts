@@ -38,6 +38,11 @@ export type ReserveManagementAction = {
     __kind__: "correction";
     correction: BitcoinAmount;
 };
+export interface CoverageDetails {
+    adjustedCoverageRatio: number;
+    pendingOutflow: bigint;
+    pendingOutflowWithFees: bigint;
+}
 export interface http_header {
     value: string;
     name: string;
@@ -79,6 +84,7 @@ export interface SendBTCRequest {
     totalCost: BitcoinAmount;
     networkFee: BitcoinAmount;
     evictedDetectedTimestamp?: Time;
+    tempStorageForBTCTransaction?: Uint8Array;
     timestamp: Time;
     blockchainTxId?: string;
     amount: BitcoinAmount;
@@ -86,7 +92,9 @@ export interface SendBTCRequest {
 }
 export interface ReserveStatus {
     reserveBtcBalance: BitcoinAmount;
+    coverageDetails?: CoverageDetails;
     outstandingIssuedCredits: BitcoinAmount;
+    timestamp: Time;
     coverageRatio?: number;
 }
 export type BitcoinAmount = bigint;
@@ -146,6 +154,15 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCurrentBtcPriceUsd(): Promise<number | null>;
     getEstimatedNetworkFee(_destination: string, _amount: BitcoinAmount): Promise<BitcoinAmount>;
+    /**
+     * / Returns actual reserve status after netting all positive and negative adjustments.
+     * / # Reserve Status Calculation
+     * / The fields returned by this query represent the canonical source of truth for reserve coverage:
+     * / - outstandingIssuedCredits represents the net outstanding deposited credits after accounting for all adjustments
+     * / - reserveBtcBalance represents the net available reserve balance (sum of all deposits minus withdrawals)
+     * / - minReserveBalanceAvailable represents the tracked reserve balance available for credit issuance (reserveBtcBalance - outstandingIssuedCredits)
+     * / - coverageRatio represents the coverage ratio (outstandingIssuedCredits / reserveBtcBalance), which must always be >= 1.
+     */
     getReserveStatus(): Promise<ReserveStatus>;
     getTransactionHistory(): Promise<Array<Transaction>>;
     getTransferRequest(requestId: bigint): Promise<SendBTCRequest | null>;
@@ -155,6 +172,15 @@ export interface backendInterface {
     isCallerAdmin(): Promise<boolean>;
     manageReserve(action: ReserveManagementAction): Promise<void>;
     markWithdrawalPaid(requestId: bigint): Promise<void>;
+    /**
+     * / Issues credits to user upon successful verification of on-chain deposit. This function performs reserve accounting.
+     * /
+     * / # Reserve Accounting Rules
+     * / - Always increment outstandingIssuedCredits by the credited amount (corresponds to outstanding deposit promise).
+     * / - Only increment reserveBtcBalance if the deposit is actually received on-chain.
+     * / - The getReserveStatus query must always return the correct coverage ratio (outstandingIssuedCredits / reserveBtcBalance).
+     * / - The minReserveBalanceAvailable (tracked reserve after accounting for all outstanding credits) is calculated in getReserveStatus (no need to check/increment here).
+     */
     purchaseCredits(transactionId: string, amount: BitcoinAmount): Promise<void>;
     refreshBtcPrice(): Promise<number | null>;
     refreshTransferRequestStatus(requestId: bigint): Promise<SendBTCRequest | null>;

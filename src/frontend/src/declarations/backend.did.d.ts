@@ -22,6 +22,11 @@ export interface ConfirmationAnalysisResult {
   'feeDecryptorAnalysis' : [] | [MempoolAnalysisResult],
   'statusTimestamp' : Time,
 }
+export interface CoverageDetails {
+  'adjustedCoverageRatio' : number,
+  'pendingOutflow' : bigint,
+  'pendingOutflowWithFees' : bigint,
+}
 export type FeeRateSufficiency = { 'BORDERLINE' : null } |
   { 'SUFFICIENT' : null } |
   { 'INSUFFICIENT' : null };
@@ -41,7 +46,9 @@ export type ReserveManagementAction = { 'withdraw' : BitcoinAmount } |
   { 'correction' : BitcoinAmount };
 export interface ReserveStatus {
   'reserveBtcBalance' : BitcoinAmount,
+  'coverageDetails' : [] | [CoverageDetails],
   'outstandingIssuedCredits' : BitcoinAmount,
+  'timestamp' : Time,
   'coverageRatio' : [] | [number],
 }
 export interface SendBTCRequest {
@@ -55,6 +62,7 @@ export interface SendBTCRequest {
   'totalCost' : BitcoinAmount,
   'networkFee' : BitcoinAmount,
   'evictedDetectedTimestamp' : [] | [Time],
+  'tempStorageForBTCTransaction' : [] | [Uint8Array],
   'timestamp' : Time,
   'blockchainTxId' : [] | [string],
   'amount' : BitcoinAmount,
@@ -133,6 +141,15 @@ export interface _SERVICE {
     [string, BitcoinAmount],
     BitcoinAmount
   >,
+  /**
+   * / Returns actual reserve status after netting all positive and negative adjustments.
+   * / # Reserve Status Calculation
+   * / The fields returned by this query represent the canonical source of truth for reserve coverage:
+   * / - outstandingIssuedCredits represents the net outstanding deposited credits after accounting for all adjustments
+   * / - reserveBtcBalance represents the net available reserve balance (sum of all deposits minus withdrawals)
+   * / - minReserveBalanceAvailable represents the tracked reserve balance available for credit issuance (reserveBtcBalance - outstandingIssuedCredits)
+   * / - coverageRatio represents the coverage ratio (outstandingIssuedCredits / reserveBtcBalance), which must always be >= 1.
+   */
   'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getTransferRequest' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
@@ -145,6 +162,15 @@ export interface _SERVICE {
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'manageReserve' : ActorMethod<[ReserveManagementAction], undefined>,
   'markWithdrawalPaid' : ActorMethod<[bigint], undefined>,
+  /**
+   * / Issues credits to user upon successful verification of on-chain deposit. This function performs reserve accounting.
+   * /
+   * / # Reserve Accounting Rules
+   * / - Always increment outstandingIssuedCredits by the credited amount (corresponds to outstanding deposit promise).
+   * / - Only increment reserveBtcBalance if the deposit is actually received on-chain.
+   * / - The getReserveStatus query must always return the correct coverage ratio (outstandingIssuedCredits / reserveBtcBalance).
+   * / - The minReserveBalanceAvailable (tracked reserve after accounting for all outstanding credits) is calculated in getReserveStatus (no need to check/increment here).
+   */
   'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
   'refreshBtcPrice' : ActorMethod<[], [] | [number]>,
   'refreshTransferRequestStatus' : ActorMethod<[bigint], [] | [SendBTCRequest]>,

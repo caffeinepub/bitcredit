@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw, Wrench } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw, Wrench, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface VerifyTransferDialogProps {
@@ -76,7 +76,7 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
             </Badge>
           ),
           text: 'In Progress',
-          description: 'The transfer request has been broadcast to the Bitcoin network and is awaiting confirmation.',
+          description: 'The transfer request has been broadcast to the Bitcoin network and is awaiting confirmation. Status will auto-update until the transaction is confirmed (COMPLETED) or dropped from the mempool (FAILED/EVICTED).',
         };
       case 'VERIFIED':
         return {
@@ -111,13 +111,24 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
           text: 'Failed',
           description: 'The transfer could not be posted to the Bitcoin blockchain. Your credits have been restored.',
         };
+      case 'EVICTED':
+        return {
+          badge: (
+            <Badge variant="destructive" className="gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Evicted
+            </Badge>
+          ),
+          text: 'Evicted',
+          description: 'The transaction was dropped from the mempool, typically due to a low fee rate or extended pending time without confirmation. Your credits have been restored. You may create a new transfer request with a higher fee.',
+        };
       default:
         return null;
     }
   };
 
   const statusInfo = getStatusInfo();
-  const isFailed = transferRequest?.status === 'FAILED';
+  const isFailed = transferRequest?.status === 'FAILED' || transferRequest?.status === 'EVICTED';
   const isInProgress = transferRequest?.status === 'IN_PROGRESS';
   const hasTxId = transferRequest?.blockchainTxId !== undefined && transferRequest?.blockchainTxId !== null;
 
@@ -147,7 +158,7 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                 <strong>Auto-updating</strong>
                 <br />
                 <span className="text-sm">
-                  This transfer is in progress. Status updates automatically every 3 seconds.
+                  This transfer is in progress. Status updates automatically every 3 seconds until the transaction is confirmed or dropped from the mempool.
                 </span>
               </AlertDescription>
             </Alert>
@@ -172,14 +183,22 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                   </div>
                   <div className="pt-1.5 border-t flex justify-between">
                     <span className="font-semibold">Total cost:</span>
-                    <span className="font-bold">{transferRequest.totalCost.toString()} BTC</span>
+                    <span className="font-semibold">{transferRequest.totalCost.toString()} BTC</span>
                   </div>
                 </div>
               </div>
 
-              {hasTxId && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Status</p>
+                  {statusInfo?.badge}
+                </div>
+                <p className="text-sm text-muted-foreground">{statusInfo?.description}</p>
+              </div>
+
+              {transferRequest.blockchainTxId && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">On-Chain Transaction ID</p>
+                  <p className="text-sm font-medium">Transaction ID</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-muted p-2 rounded font-mono break-all">
                       {transferRequest.blockchainTxId}
@@ -192,52 +211,35 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                       {copiedTxId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
-                </div>
-              )}
-
-              {isFailed && (
-                <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Transfer Failed</strong>
-                    <br />
-                    <span className="text-sm">
-                      {transferRequest.failureReason || 'The transaction could not be broadcast to the Bitcoin blockchain.'}
-                    </span>
-                    {!hasTxId && (
-                      <>
-                        <br />
-                        <br />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={handleTroubleshoot}
-                        >
-                          <Wrench className="h-3.5 w-3.5 mr-1" />
-                          Troubleshoot & Retry
-                        </Button>
-                      </>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {transferRequest.diagnosticData && (
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Diagnostic Data</p>
-                  <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono">
-                    {transferRequest.diagnosticData}
+                  <p className="text-xs text-muted-foreground">
+                    View on{' '}
+                    <a
+                      href={`https://blockstream.info/tx/${transferRequest.blockchainTxId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Blockstream Explorer
+                    </a>
                   </p>
                 </div>
+              )}
+
+              {transferRequest.failureReason && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    <strong>Failure Reason:</strong>
+                    <br />
+                    {transferRequest.failureReason}
+                  </AlertDescription>
+                </Alert>
               )}
             </>
           ) : (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Unable to load transfer request details. Please try again.
-              </AlertDescription>
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>Transfer request not found</AlertDescription>
             </Alert>
           )}
         </div>
@@ -250,11 +252,28 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
             className="w-full sm:w-auto"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${requestFetching ? 'animate-spin' : ''}`} />
-            Refresh Status
+            Refresh
           </Button>
-          <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-            Close
-          </Button>
+          {isFailed && !hasTxId && (
+            <Button
+              variant="default"
+              onClick={handleTroubleshoot}
+              className="w-full sm:w-auto"
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              Troubleshoot & Retry
+            </Button>
+          )}
+          {(hasTxId || (isFailed && hasTxId)) && (
+            <Button
+              variant="default"
+              onClick={handleTroubleshoot}
+              className="w-full sm:w-auto"
+            >
+              <Wrench className="h-4 w-4 mr-2" />
+              View Troubleshooting
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

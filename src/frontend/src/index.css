@@ -84,4 +84,202 @@
     .stat-label {
         @apply text-sm text-muted-foreground font-medium;
     }
+
+    /* AI Lottery Page Styles */
+    .lottery-header-gradient {
+        background: linear-gradient(135deg, 
+            oklch(0.65 0.20 45) 0%, 
+            oklch(0.60 0.22 35) 50%, 
+            oklch(0.55 0.18 25) 100%);
+    }
+
+    .dark .lottery-header-gradient {
+        background: linear-gradient(135deg, 
+            oklch(0.50 0.18 45) 0%, 
+            oklch(0.45 0.20 35) 50%, 
+            oklch(0.40 0.16 25) 100%);
+    }
+
+    .lottery-card-gradient {
+        background: linear-gradient(to bottom right, 
+            oklch(1 0 0) 0%, 
+            oklch(0.98 0.02 65) 100%);
+    }
+
+    .dark .lottery-card-gradient {
+        background: linear-gradient(to bottom right, 
+            oklch(0.22 0.018 60) 0%, 
+            oklch(0.24 0.025 55) 100%);
+    }
+
+    .lottery-section-title {
+        background: linear-gradient(135deg, 
+            oklch(0.60 0.20 45) 0%, 
+            oklch(0.55 0.22 35) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .dark .lottery-section-title {
+        background: linear-gradient(135deg, 
+            oklch(0.75 0.20 45) 0%, 
+            oklch(0.70 0.22 35) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .lottery-outcome-card {
+        background: linear-gradient(to bottom, 
+            oklch(1 0 0) 0%, 
+            oklch(0.99 0.01 60) 100%);
+        border-color: oklch(0.85 0.05 55);
+    }
+
+    .dark .lottery-outcome-card {
+        background: linear-gradient(to bottom, 
+            oklch(0.24 0.020 60) 0%, 
+            oklch(0.22 0.018 60) 100%);
+        border-color: oklch(0.35 0.030 55);
+    }
+
+    .lottery-outcome-header {
+        border-bottom: 2px solid oklch(0.90 0.03 55);
+    }
+
+    .dark .lottery-outcome-header {
+        border-bottom: 2px solid oklch(0.30 0.025 55);
+    }
+
+    .lottery-confidence-badge {
+        background: linear-gradient(135deg, 
+            oklch(0.70 0.18 65) 0%, 
+            oklch(0.65 0.20 55) 100%);
+        color: oklch(1 0 0);
+        border: none;
+        font-weight: 600;
+        box-shadow: 0 2px 8px oklch(0.65 0.18 65 / 0.3);
+    }
+
+    .dark .lottery-confidence-badge {
+        background: linear-gradient(135deg, 
+            oklch(0.75 0.20 65) 0%, 
+            oklch(0.70 0.22 55) 100%);
+        color: oklch(0.15 0.015 60);
+        box-shadow: 0 2px 8px oklch(0.75 0.20 65 / 0.4);
+    }
+
+    /* Lottery Ball Base Styles */
+    .lottery-ball {
+        @apply flex items-center justify-center w-14 h-14 rounded-full font-bold text-xl;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        transition: transform 0.2s ease;
+    }
+
+    .lottery-ball:hover {
+        transform: scale(1.1);
+    }
+
+    /* Colorful Main Ball Variants */
+    .lottery-ball-amber {
+        background: linear-gradient(135deg, 
+            oklch(0.80 0.18 75) 0%, 
+            oklch(0.70 0.20 65) 100%);
+        color: oklch(0.20 0.015 60);
+    }
+
+    .dark .lottery-ball-amber {
+        background: linear-gradient(135deg, 
+            oklch(0.75 0.20 75) 0%, 
+            oklch(0.65 0.22 65) 100%);
+        color: oklch(0.15 0.015 60);
+    }
+
+    .lottery-ball-orange {
+        background: linear-gradient(135deg, 
+            oklch(0.75 0.20 55) 0%, 
+            oklch(0.65 0.22 45) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .dark .lottery-ball-orange {
+        background: linear-gradient(135deg, 
+            oklch(0.70 0.22 55) 0%, 
+            oklch(0.60 0.24 45) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .lottery-ball-rose {
+        background: linear-gradient(135deg, 
+            oklch(0.70 0.20 15) 0%, 
+            oklch(0.60 0.22 5) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .dark .lottery-ball-rose {
+        background: linear-gradient(135deg, 
+            oklch(0.65 0.22 15) 0%, 
+            oklch(0.55 0.24 5) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .lottery-ball-emerald {
+        background: linear-gradient(135deg, 
+            oklch(0.70 0.18 155) 0%, 
+            oklch(0.60 0.20 145) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .dark .lottery-ball-emerald {
+        background: linear-gradient(135deg, 
+            oklch(0.65 0.20 155) 0%, 
+            oklch(0.55 0.22 145) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .lottery-ball-teal {
+        background: linear-gradient(135deg, 
+            oklch(0.70 0.16 185) 0%, 
+            oklch(0.60 0.18 175) 100%);
+        color: oklch(1 0 0);
+    }
+
+    .dark .lottery-ball-teal {
+        background: linear-gradient(135deg, 
+            oklch(0.65 0.18 185) 0%, 
+            oklch(0.55 0.20 175) 100%);
+        color: oklch(1 0 0);
+    }
+
+    /* Powerball - Distinct Red/Rose Gradient */
+    .lottery-powerball {
+        @apply flex items-center justify-center w-14 h-14 rounded-full font-bold text-xl;
+        background: linear-gradient(135deg, 
+            oklch(0.60 0.24 25) 0%, 
+            oklch(0.50 0.26 15) 100%);
+        color: oklch(1 0 0);
+        box-shadow: 0 4px 16px oklch(0.55 0.24 20 / 0.5), 
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        border: 2px solid oklch(0.70 0.22 25);
+        transition: transform 0.2s ease;
+    }
+
+    .dark .lottery-powerball {
+        background: linear-gradient(135deg, 
+            oklch(0.65 0.26 25) 0%, 
+            oklch(0.55 0.28 15) 100%);
+        color: oklch(1 0 0);
+        box-shadow: 0 4px 16px oklch(0.60 0.26 20 / 0.6), 
+                    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+                    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+        border: 2px solid oklch(0.75 0.24 25);
+    }
+
+    .lottery-powerball:hover {
+        transform: scale(1.1);
+    }
 }

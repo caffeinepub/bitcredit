@@ -1,58 +1,61 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T08:19:46.251Z",
-  "summary": "REQ-146 appears implemented by wiring the existing BTC/USD price query into TransferHistoryTable and importing/using the existing UsdEstimateLine under each transaction amount. REQ-147 adds an AiLotteryPage, links it in AppHeader, and imports it in App.tsx, but the Lottery page does not appear to actually use fetched draw data when available (it intentionally throws on successful fetch), and required English disclosures/results rendering can’t be confirmed from the truncated diff.",
+  "generatedAt": "2026-02-18T09:04:38.681Z",
+  "summary": "The diff shows type-level additions in backend/main.mo around reserve status reporting, but it does not provide evidence of the required reserve-matching logic changes for credit issuance or send/broadcast enforcement. It also appears to introduce unrelated scope in project_state.json and includes an incorrect coverage ratio definition in comments/types.",
   "missing_requirements": [
     {
-      "id": "REQ-147",
-      "requirement": "The page attempts to fetch recent draw data from https://data.ny.gov and uses the fetched data when possible.",
-      "reason": "In AiLotteryPage, even when the fetch succeeds (response.ok), the code explicitly throws 'Data parsing not implemented' and falls back to local numbers, so it never uses live fetched data.",
+      "id": "REQ-152",
+      "requirement": "Expose a single source of truth for reserve coverage where coverageRatio is computed as reserveBtcBalance / outstandingIssuedCredits and returned in a reserve-status response.",
+      "reason": "The diff introduces a ReserveStatus type, but its documentation explicitly defines the ratio as outstandingIssuedCredits / reserveBtcBalance, which conflicts with the requirement’s example and intent (reserve coverage). No other implementation is shown to correct this.",
       "evidence": [
-        "frontend/src/pages/AiLotteryPage.tsx"
+        "backend/main.mo (ReserveStatus comments: \"coverageRatio ... outstandingIssuedCredits / reserveBtcBalance\")"
       ]
     },
     {
-      "id": "REQ-147",
-      "requirement": "The UI includes an explicit English disclosure that lottery outcomes are for entertainment only, do not improve odds, and do not guarantee winnings.",
-      "reason": "The provided/truncated AiLotteryPage snippet shows error messaging and generation logic but no evidence of the required entertainment-only disclosure text being rendered.",
+      "id": "REQ-153",
+      "requirement": "Fix verified credit purchase accounting so first purchase can mint credits even when reserveBtcBalance starts at 0, while ensuring reserveBtcBalance and outstandingIssuedCredits increase appropriately after purchase.",
+      "reason": "The diff snippet contains only state/type declarations; it does not show any deposit verification or credit-minting logic changes that would adjust reserve tracking during purchase verification.",
       "evidence": [
-        "frontend/src/pages/AiLotteryPage.tsx"
+        "backend/main.mo (truncated; no deposit verification / minting logic shown)"
       ]
     },
     {
-      "id": "REQ-147",
-      "requirement": "The UI includes an explicit English disclosure that the app is not running Python/scikit-learn code in the browser or backend, and that results are generated in-app using a simplified Powerball-style randomization approach inspired by the provided pseudocode.",
-      "reason": "The provided/truncated AiLotteryPage snippet does not show any rendered disclosure about not using Python/scikit-learn or describing the simplified in-app approach; cannot verify it was implemented.",
+      "id": "REQ-154",
+      "requirement": "Enforce reserve-aware send/broadcast behavior by checking tracked reserve coverage for totalCost before creating/broadcasting a send request, decrementing reserve exactly once on success, and not decrementing on failed broadcasts where credits are restored.",
+      "reason": "No code paths for creating/broadcasting Send BTC requests are shown in the diff excerpt; therefore there is no evidence of the required pre-checks and reserve accounting adjustments tied to broadcast outcomes.",
       "evidence": [
-        "frontend/src/pages/AiLotteryPage.tsx"
+        "backend/main.mo (truncated; no send/broadcast logic shown)"
       ]
     },
     {
-      "id": "REQ-147",
-      "requirement": "A results area that displays 3 outcomes with: Spin number, 5 sorted main numbers (1–69), Powerball (1–26), and an “AI Confidence” percentage (70%–95%).",
-      "reason": "While the generation logic and outcome interface are present, the diff is truncated before the component’s render/output of the results area, so there is no visible evidence that the UI actually displays the 3 outcomes in the required format.",
+      "id": "REQ-155",
+      "requirement": "Provide a backend query method that returns ReserveStatus including reserveBtcBalance, outstandingIssuedCredits, and coverageRatio, and does not mutate state.",
+      "reason": "A ReserveStatus type is added, but the diff excerpt does not show any query method (e.g., getReserveStatus) that returns it, nor evidence that such a method is non-mutating.",
       "evidence": [
-        "frontend/src/pages/AiLotteryPage.tsx"
-      ]
-    },
-    {
-      "id": "REQ-147",
-      "requirement": "A new route is added in frontend/src/App.tsx for the Lottery page (e.g., /ai-lottery) and it is accessible to signed-in users under the existing AuthGate flow.",
-      "reason": "AiLotteryPage is imported in App.tsx, but the routing section where the /ai-lottery route is defined and wrapped by AuthGate is not shown in the truncated diff snippet, so this cannot be verified from the provided evidence alone.",
-      "evidence": [
-        "frontend/src/App.tsx"
+        "backend/main.mo (truncated; only type definitions shown)"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "Project scope expanded to include an \"AI-driven lottery page\" and displaying USD value beneath credits in transaction history.",
+      "reason": "This is not requested in the BuildRequest and conflicts with the constraint/non-goals around avoiding AI/LLM-related functionality.",
+      "evidence": [
+        "project_state.json (\"summary\": \"... add an AI-driven lottery page ...\")"
+      ]
+    },
+    {
+      "description": "Added fields/types related to detached signed transactions and mempool/fee analysis (e.g., tempStorageForBTCTransaction, MempoolAnalysisResult, FeeRateSufficiency).",
+      "reason": "These additions are not explicitly requested by REQ-152 through REQ-155, which focus on reserve accounting, reserve-aware send enforcement, and reserve status reporting.",
+      "evidence": [
+        "backend/main.mo (SendBTCRequest.tempStorageForBTCTransaction; MempoolAnalysisResult; FeeRateSufficiency; ConfirmationAnalysisResult.feeDecryptorAnalysis)"
+      ]
+    }
+  ],
   "confidence": 0.62,
   "changed_files": [
-    "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/layout/AppHeader.tsx",
-    "frontend/src/components/transfers/TransferHistoryTable.tsx",
-    "frontend/src/pages/AiLotteryPage.tsx",
+    "backend/main.mo",
     "project_state.json"
   ]
 }

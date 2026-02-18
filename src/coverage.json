@@ -1,52 +1,54 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T08:19:46.259Z",
+  "generatedAt": "2026-02-18T09:04:38.687Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 4,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-146",
-        "summary": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/transfers/TransferHistoryTable.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/transfers/TransferHistoryTable.tsx"
-        ]
+        "id": "REQ-152",
+        "summary": "Implement a backend reserve-matching mechanism that deterministically tracks (a) total outstanding issued credits and (b) BTC reserve available for on-chain broadcasts, and exposes a single source of truth for reserve coverage (no AI/LLM logic).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-147",
-        "summary": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AiLotteryPage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/AppHeader.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AiLotteryPage.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/AppHeader.tsx"
-        ]
+        "id": "REQ-153",
+        "summary": "Fix credit-issuance reserve accounting so that a successfully verified credit purchase can mint credits even when the tracked reserve starts at 0, while still preserving the invariant that issued credits are 1:1 backed by tracked reserve after the purchase completes.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-154",
+        "summary": "Enforce reserve-aware send/broadcast behavior: before creating or broadcasting a Send BTC transfer request, ensure there is sufficient tracked reserve coverage for the total on-chain spend (receiver amount + network fee), and keep reserve accounting consistent with broadcast outcomes.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-155",
+        "summary": "Expose (or ensure the existing exposure of) a backend API that returns reserve status for admin UI consumption, including reserve BTC balance, outstanding issued credits, and coverage ratio, using clear English field naming and documentation comments.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/components/layout/AppHeader.tsx",
-    "frontend/src/components/transfers/TransferHistoryTable.tsx",
-    "frontend/src/pages/AiLotteryPage.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

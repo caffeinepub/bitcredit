@@ -72,9 +72,16 @@ export const UserProfile = IDL.Record({
   'bitcoinWallet' : IDL.Opt(BitcoinWallet),
   'name' : IDL.Text,
 });
+export const CoverageDetails = IDL.Record({
+  'adjustedCoverageRatio' : IDL.Float64,
+  'pendingOutflow' : IDL.Nat,
+  'pendingOutflowWithFees' : IDL.Nat,
+});
 export const ReserveStatus = IDL.Record({
   'reserveBtcBalance' : BitcoinAmount,
+  'coverageDetails' : IDL.Opt(CoverageDetails),
   'outstandingIssuedCredits' : BitcoinAmount,
+  'timestamp' : Time,
   'coverageRatio' : IDL.Opt(IDL.Float64),
 });
 export const TransactionType = IDL.Variant({
@@ -103,6 +110,7 @@ export const SendBTCRequest = IDL.Record({
   'totalCost' : BitcoinAmount,
   'networkFee' : BitcoinAmount,
   'evictedDetectedTimestamp' : IDL.Opt(Time),
+  'tempStorageForBTCTransaction' : IDL.Opt(IDL.Vec(IDL.Nat8)),
   'timestamp' : Time,
   'blockchainTxId' : IDL.Opt(IDL.Text),
   'amount' : BitcoinAmount,
@@ -271,9 +279,16 @@ export const idlFactory = ({ IDL }) => {
     'bitcoinWallet' : IDL.Opt(BitcoinWallet),
     'name' : IDL.Text,
   });
+  const CoverageDetails = IDL.Record({
+    'adjustedCoverageRatio' : IDL.Float64,
+    'pendingOutflow' : IDL.Nat,
+    'pendingOutflowWithFees' : IDL.Nat,
+  });
   const ReserveStatus = IDL.Record({
     'reserveBtcBalance' : BitcoinAmount,
+    'coverageDetails' : IDL.Opt(CoverageDetails),
     'outstandingIssuedCredits' : BitcoinAmount,
+    'timestamp' : Time,
     'coverageRatio' : IDL.Opt(IDL.Float64),
   });
   const TransactionType = IDL.Variant({
@@ -302,6 +317,7 @@ export const idlFactory = ({ IDL }) => {
     'totalCost' : BitcoinAmount,
     'networkFee' : BitcoinAmount,
     'evictedDetectedTimestamp' : IDL.Opt(Time),
+    'tempStorageForBTCTransaction' : IDL.Opt(IDL.Vec(IDL.Nat8)),
     'timestamp' : Time,
     'blockchainTxId' : IDL.Opt(IDL.Text),
     'amount' : BitcoinAmount,

@@ -119,21 +119,34 @@ export default function AiLotteryPage() {
     }
   };
 
+  // Helper function to get colorful ball class based on number
+  const getBallColorClass = (num: number): string => {
+    const mod = num % 5;
+    switch (mod) {
+      case 0: return 'lottery-ball-amber';
+      case 1: return 'lottery-ball-orange';
+      case 2: return 'lottery-ball-rose';
+      case 3: return 'lottery-ball-emerald';
+      case 4: return 'lottery-ball-teal';
+      default: return 'lottery-ball-amber';
+    }
+  };
+
   return (
     <div className="container max-w-4xl py-8 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Sparkles className="h-8 w-8 text-primary" />
+      <div className="lottery-header-gradient rounded-2xl p-8 space-y-3 shadow-lg">
+        <h1 className="text-4xl font-bold flex items-center gap-3 text-white drop-shadow-md">
+          <Sparkles className="h-10 w-10 text-yellow-300 animate-pulse" />
           AI Lottery Generator
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-white/90 text-lg">
           Generate Powerball-style lottery numbers using an AI-inspired algorithm that analyzes historical patterns.
         </p>
       </div>
 
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription className="space-y-2">
+      <Alert className="border-2 border-amber-500/50 bg-amber-50 dark:bg-amber-950/30">
+        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <AlertDescription className="space-y-2 text-amber-900 dark:text-amber-100">
           <p className="font-semibold">Entertainment Only - Important Disclaimers:</p>
           <ul className="list-disc list-inside space-y-1 text-sm">
             <li>
@@ -150,7 +163,7 @@ export default function AiLotteryPage() {
       </Alert>
 
       {dataFetchError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="border-2">
           <Info className="h-4 w-4" />
           <AlertDescription>
             <p className="font-semibold">Data Fetch Error:</p>
@@ -159,10 +172,10 @@ export default function AiLotteryPage() {
         </Alert>
       )}
 
-      <Card>
+      <Card className="border-2 shadow-lg lottery-card-gradient">
         <CardHeader>
-          <CardTitle>Generate AI Spins</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl">Generate AI Spins</CardTitle>
+          <CardDescription className="text-base">
             Click the button below to generate 3 Powerball-style lottery outcomes with AI confidence scores.
           </CardDescription>
         </CardHeader>
@@ -171,16 +184,16 @@ export default function AiLotteryPage() {
             onClick={generateOutcomes}
             disabled={isGenerating}
             size="lg"
-            className="w-full gap-2"
+            className="w-full gap-2 text-lg h-14 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md"
           >
             {isGenerating ? (
               <>
-                <RefreshCw className="h-5 w-5 animate-spin" />
+                <RefreshCw className="h-6 w-6 animate-spin" />
                 Generating...
               </>
             ) : (
               <>
-                <Sparkles className="h-5 w-5" />
+                <Sparkles className="h-6 w-6" />
                 Generate AI Spins
               </>
             )}
@@ -190,39 +203,41 @@ export default function AiLotteryPage() {
 
       {outcomes.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Generated Outcomes</h2>
-          <div className="grid gap-4">
+          <h2 className="text-3xl font-bold lottery-section-title">Generated Outcomes</h2>
+          <div className="grid gap-6">
             {outcomes.map((outcome) => (
-              <Card key={outcome.spin} className="border-2">
-                <CardHeader className="pb-3">
+              <Card key={outcome.spin} className="border-2 shadow-xl lottery-outcome-card">
+                <CardHeader className="pb-4 lottery-outcome-header">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Outcome {outcome.spin}</CardTitle>
-                    <Badge variant="outline" className="gap-1">
-                      <Sparkles className="h-3 w-3" />
+                    <CardTitle className="text-2xl font-bold">Outcome {outcome.spin}</CardTitle>
+                    <Badge className="gap-1.5 px-3 py-1.5 text-base lottery-confidence-badge">
+                      <Sparkles className="h-4 w-4" />
                       AI Confidence: {outcome.confidence}%
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Main Numbers (1-69):</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {outcome.numbers.map((num, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-lg"
-                          >
-                            {num}
-                          </div>
-                        ))}
-                      </div>
+                <CardContent className="space-y-6">
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+                      Main Numbers (1-69):
+                    </p>
+                    <div className="flex gap-3 flex-wrap">
+                      {outcome.numbers.map((num, idx) => (
+                        <div
+                          key={idx}
+                          className={`lottery-ball ${getBallColorClass(num)}`}
+                        >
+                          {num}
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Powerball (1-26):</p>
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive text-destructive-foreground font-bold text-lg">
-                        {outcome.powerball}
-                      </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
+                      Powerball (1-26):
+                    </p>
+                    <div className="lottery-ball lottery-powerball">
+                      {outcome.powerball}
                     </div>
                   </div>
                 </CardContent>
@@ -232,9 +247,9 @@ export default function AiLotteryPage() {
         </div>
       )}
 
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription className="text-xs">
+      <Alert className="border-2 border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/30">
+        <Info className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <AlertDescription className="text-xs text-emerald-900 dark:text-emerald-100">
           <p className="font-semibold mb-1">How It Works:</p>
           <p>
             The generator attempts to fetch recent Powerball draw data from data.ny.gov. If successful, it uses that data to identify frequently drawn numbers and less common numbers. It then generates outcomes by mixing both types of numbers. If the data fetch fails, it uses a local fallback dataset of historically common numbers. The "AI Confidence" score is a randomly generated percentage (70-95%) for entertainment purposes and does not reflect actual probability.

@@ -1,47 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-display-an-estimated-usd-value-for-each-transaction-amount-in-the-transaction-history-ui-using-the-existing-live-btc-usd-price-query-and-the-same-clear-english-estimate-disclosure-already-used-in-balance-cards",
-      "featureTitle": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
-      "files": [
-        "frontend/src/components/transfers/TransferHistoryTable.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-146"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-new-authenticated-ai-lottery-page-that-generates-powerball-style-number-outcomes-based-on-the-user-provided-algorithm-concept-recent-draw-data-filtered-selection-and-make-it-reachable-via-routing-and-navigation",
-      "featureTitle": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/layout/AppHeader.tsx",
-        "frontend/src/pages/AiLotteryPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-147"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

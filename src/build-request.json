@@ -1,64 +1,93 @@
 {
   "kind": "build_request",
-  "title": "Add USD estimates to transaction history and create AI-driven Lottery page",
-  "projectName": "BTC Credits",
+  "title": "Backend reserve accounting to match issued credits with real reserve for broadcasts",
+  "projectName": "Reserve Ledger",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-146",
-      "text": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
-      "target": "frontend",
+      "id": "REQ-152",
+      "text": "Implement a backend reserve-matching mechanism that deterministically tracks (a) total outstanding issued credits and (b) BTC reserve available for on-chain broadcasts, and exposes a single source of truth for reserve coverage (no AI/LLM logic).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-5"
         ],
         "quotes": [
-          "Yes add to transaction history"
+          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
         ]
       },
       "acceptanceCriteria": [
-        "On `/history`, each transaction row (in `frontend/src/components/transfers/TransferHistoryTable.tsx`) shows the BTC-denominated amount and, directly beneath it, an estimated USD value line when BTC/USD price data is available.",
-        "When BTC/USD price data is unavailable or still loading, the UI shows an English placeholder consistent with `frontend/src/components/balance/UsdEstimateLine.tsx` behavior (e.g., loading skeleton and/or “USD value unavailable”).",
-        "The USD estimate copy includes the existing English disclosure that it is an estimate and can fluctuate (same wording as `UsdEstimateLine`).",
-        "The implementation uses the existing `useGetCurrentBtcPriceUsd()` hook from `frontend/src/hooks/useQueries.ts` (no new price-fetching mechanism).",
-        "User-facing text added/changed for this requirement is in clear English."
+        "Backend maintains explicit state for reserve BTC balance and outstanding issued credits (already present as `reserveBtcBalance` and `outstandingIssuedCredits`) and uses deterministic logic only.",
+        "Reserve coverage can be computed as a ratio (e.g., `reserveBtcBalance / outstandingIssuedCredits`) and returned as part of a reserve-status response.",
+        "No code path references or implies using external AI services for reserve matching/allocation."
       ]
     },
     {
-      "id": "REQ-147",
-      "text": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
-      "target": "frontend",
+      "id": "REQ-153",
+      "text": "Fix credit-issuance reserve accounting so that a successfully verified credit purchase can mint credits even when the tracked reserve starts at 0, while still preserving the invariant that issued credits are 1:1 backed by tracked reserve after the purchase completes.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-5"
         ],
         "quotes": [
-          "Add ai driven lottery page with this code",
-          "url = \"https://data.ny.gov\"",
-          "def ai_spin_filtered_by_errors():"
+          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
         ]
       },
       "acceptanceCriteria": [
-        "A new route is added in `frontend/src/App.tsx` for the Lottery page (for example: `/ai-lottery`) and it is accessible to signed-in users under the existing `AuthGate` flow.",
-        "The main app navigation is updated to include a link to the Lottery page (update `frontend/src/components/layout/AppHeader.tsx` nav links list).",
-        "A new page component is created (e.g., `frontend/src/pages/AiLotteryPage.tsx`) that renders: (1) a page title, (2) a short English explanation of what the page does, (3) a primary action to generate outcomes (e.g., “Generate AI Spins”), and (4) a results area that displays 3 outcomes with: Spin number, 5 sorted main numbers (1–69), Powerball (1–26), and an “AI Confidence” percentage (70%–95%).",
-        "The page attempts to fetch recent draw data from the user-provided URL `https://data.ny.gov` and uses the fetched data when possible; if the fetch fails or the data is not usable as expected, the UI must show a clear English error state and still allow the user to generate outcomes using a local fallback dataset/logic so the page remains usable.",
-        "The UI includes an explicit English disclosure that lottery outcomes are for entertainment only, do not improve odds, and do not guarantee winnings.",
-        "The UI includes an explicit English disclosure that the app is not running Python/scikit-learn code in the browser or backend, and that the displayed results are generated in-app using a simplified, Powerball-style randomization approach inspired by the provided pseudocode.",
-        "All user-facing text added for this page is in clear English."
+        "When a deposit is verified, the backend updates reserve tracking in a way that does not block the very first purchase solely because `reserveBtcBalance` was 0 before the purchase.",
+        "After a successful purchase, `outstandingIssuedCredits` increases by the minted amount and `reserveBtcBalance` reflects the corresponding increase so coverage is not worse than before the purchase.",
+        "Any user-facing trap/error messages remain clear English."
+      ]
+    },
+    {
+      "id": "REQ-154",
+      "text": "Enforce reserve-aware send/broadcast behavior: before creating or broadcasting a Send BTC transfer request, ensure there is sufficient tracked reserve coverage for the total on-chain spend (receiver amount + network fee), and keep reserve accounting consistent with broadcast outcomes.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If a Send BTC attempt cannot be covered by tracked reserve for the full `totalCost` (amount + fee), the backend fails safely with a clear English error (and does not create an inconsistent transfer record).",
+        "If broadcast succeeds (a txid is produced and the request is persisted as in-progress/posted), reserve tracking is decremented exactly once for the on-chain spend amount governed by the request’s `totalCost` (or a clearly defined equivalent).",
+        "If broadcast fails and the request is persisted as `FAILED` with credits restored, reserve tracking is not decremented for that failed attempt.",
+        "Failure reasons and diagnostic text remain in clear English and do not mention AI."
+      ]
+    },
+    {
+      "id": "REQ-155",
+      "text": "Expose (or ensure the existing exposure of) a backend API that returns reserve status for admin UI consumption, including reserve BTC balance, outstanding issued credits, and coverage ratio, using clear English field naming and documentation comments.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A backend query method exists that returns `ReserveStatus` including `reserveBtcBalance`, `outstandingIssuedCredits`, and `coverageRatio`.",
+        "The method is safe to call repeatedly and does not mutate state.",
+        "All associated developer/user-facing text (if any) is in clear English."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any files under `frontend/src/components/ui` (Shadcn UI components are read-only in this project).",
-    "Do not edit files listed in `frontend.immutablePaths` in SYSTEM_CONTEXT (compose them instead).",
-    "Do not introduce Python, scikit-learn, LangChain, or any external AI/LLM integrations; implement the Lottery logic in the existing React + TypeScript frontend stack only.",
-    "Keep all user-facing text in clear English."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no new backend services).",
+    "Do not add any external AI/LLM integrations or dependencies; reserve matching must be deterministic and implemented fully in Motoko.",
+    "All user-facing text must be clear English.",
+    "Do not edit files under `frontend/src/components/ui` or other `frontend.immutablePaths`."
   ],
   "nonGoals": [
-    "Do not add any backend canister endpoints specifically for the Lottery page (no new Motoko APIs required for this request).",
-    "Do not store Lottery results in the credit ledger or transaction history (only display on the Lottery page).",
-    "Do not integrate any real-money lottery purchasing, ticket submission, or payment flows."
+    "Implementing “flash bitcoin” instant-guarantee transfers that claim delivery without an on-chain broadcast/confirmation.",
+    "Adding any automated private-key custody, signing, or external Python/Node.js agents for reserve management or broadcasting.",
+    "Integrating external reserve funding providers (e.g., BitPay/MoonPay/MetaMask) as direct in-app payment rails as part of this change."
   ],
   "imageRequirements": {
     "required": [],
