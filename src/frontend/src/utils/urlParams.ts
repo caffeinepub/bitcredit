@@ -209,11 +209,13 @@ export function getSecretParameter(paramName: string): string | null {
 
 /**
  * Admin token management helpers
+ * These functions provide a convenient interface for managing the admin access token
  */
+
 const ADMIN_TOKEN_KEY = 'caffeineAdminToken';
 
 /**
- * Gets the admin token from URL hash or session storage
+ * Gets the admin token from URL hash or sessionStorage
  * @returns The admin token if found, null otherwise
  */
 export function getAdminToken(): string | null {
@@ -221,7 +223,7 @@ export function getAdminToken(): string | null {
 }
 
 /**
- * Clears the admin token from session storage
+ * Clears the admin token from sessionStorage
  * Used during logout to ensure the token is removed
  */
 export function clearAdminToken(): void {

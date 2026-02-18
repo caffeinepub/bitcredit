@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-transfer-details-experience-so-a-signed-in-user-can-confirm-transaction-completion-for-a-send-btc-transfer-request-and-see-the-latest-on-chain-status-including-txid-when-available",
-      "featureTitle": "Update the frontend transfer details experience so a signed-in user can confirm transaction completion for a Send BTC transfer request and see the latest on-chain status (including txid when available).",
+      "featureId": "feature-add-an-admin-visible-reserve-section-in-the-existing-admin-page-that-displays-reserve-btc-balance-outstanding-credits-and-reserve-coverage-ratio-and-includes-a-simple-admin-only-control-to-adjust-the-tracked-reserve-balance-with-a-required-english-reason",
+      "featureTitle": "Add an admin-visible Reserve section in the existing Admin page that displays reserve BTC balance, outstanding credits, and reserve coverage ratio, and includes a simple admin-only control to adjust the tracked reserve balance with a required English reason.",
       "files": [
-        "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,7 +18,27 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-76"
+        "REQ-91"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-user-facing-copy-in-the-signed-in-experience-to-clearly-state-that-credits-are-btc-denominated-represent-1-1-backing-by-btc-held-in-reserve-and-that-the-usd-market-value-fluctuates-with-the-bitcoin-market-price",
+      "featureTitle": "Update user-facing copy in the signed-in experience to clearly state that credits are BTC-denominated, represent 1:1 backing by BTC held in reserve, and that the USD market value fluctuates with the Bitcoin market price.",
+      "files": [
+        "frontend/src/pages/DashboardPage.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-92"
       ],
       "confidence": "high"
     }

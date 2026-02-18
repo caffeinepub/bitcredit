@@ -1,41 +1,50 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T19:02:27.381Z",
-  "summary": "The diff clearly adds frontend UI affordances for re-checking on-chain status and copying/displaying a txid in the transfer details dialog, and introduces new helper utilities and admin-related diagnostics that are not part of the stated requirements. Due to backend/main.mo being truncated, the core backend requirements (broadcast-on-create, failure rollback semantics, and a confirm-on-chain backend method) cannot be conclusively verified from the provided diff summary.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-18T03:08:49.016Z",
+  "summary": "Frontend changes clearly add 1:1 BTC backing copy on the Dashboard and introduce an admin Reserve Management UI section/hooks. Backend diff evidence shows new reserve-related state/types, but the truncated backend snippet does not show the required reserve query, lifecycle accounting updates, enforcement, or auditable reserve-adjustment history being implemented/queryable.",
+  "missing_requirements": [
     {
-      "description": "Added URL/sessionStorage parameter utility helpers (including hash query parsing and session persistence) unrelated to Send BTC mainnet broadcast/confirmation requirements.",
-      "reason": "BuildRequest does not ask for any URL parameter parsing or sessionStorage persistence functionality.",
+      "id": "REQ-88",
+      "requirement": "Expose a backend query that returns reserve status including: reserve BTC balance, total outstanding issued credits, and a reserve coverage ratio computed from backend state.",
+      "reason": "The backend diff snippet shows new state/types (e.g., `reserveBtcBalance`, `outstandingIssuedCredits`, `ReserveStatus`) but does not show a public query method that returns these fields, nor evidence that outstanding credits are computed deterministically from backend state within that query.",
       "evidence": [
-        "frontend/src/utils/urlParams.ts"
+        "backend/main.mo (truncated)"
       ]
     },
     {
-      "description": "Admin gating/debug/diagnostic behavior added/expanded in frontend hooks and app flow (development-only traces, token detection, admin verification UX).",
-      "reason": "BuildRequest focuses on Send BTC mainnet posting and completion confirmation; it does not request admin diagnostics or token-related routing behavior changes.",
+      "id": "REQ-89",
+      "requirement": "Automatically update reserve status during credit lifecycle events (increase reserve on verified purchase issuance; decrease reserve on broadcast-successful send by amount+networkFee; do not decrement reserve on broadcast failure; ensure no double-counting).",
+      "reason": "The diff snippet does not show any modifications to the credit purchase verification/issuance flow or the on-chain broadcast flow that adjust `reserveBtcBalance` according to the specified rules, nor any idempotency/deduplication mechanism for retries.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend-file-summaries.txt (App.tsx, AppHeader.tsx, LoginButton.tsx, AdminPage.tsx entries)"
+        "backend/main.mo (truncated)"
       ]
     },
     {
-      "description": "Introduced a backend migration module.",
-      "reason": "BuildRequest does not request adding a migration module; it only constrains the backend to remain a single Motoko actor in backend/main.mo (a migration file may be legitimate support work, but it is not explicitly requested).",
+      "id": "REQ-90",
+      "requirement": "Enforce 1:1 reserve backing by preventing issuance when outstanding credits would exceed tracked reserve unless an admin override exists; add an admin-only reserve adjustment method with required English reason and auditable, queryable history.",
+      "reason": "The backend snippet includes reserve-related types (e.g., `ReserveAdjustment`, `ReserveChangeReason`) but does not show (a) issuance-time enforcement that fails with a clear English message, (b) an admin-only method to adjust reserve with a reason string, or (c) a queryable audit log/history of reserve adjustments.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo (import Migration \"migration\"; with migration = Migration.run)"
+        "backend/main.mo (truncated)"
       ]
     }
   ],
-  "confidence": 0.58,
+  "hallucinated_features": [
+    {
+      "description": "Added URL/session parameter persistence utilities (including sensitive-parameter handling via hash/query parsing and sessionStorage persistence) that are unrelated to the reserve backing + admin reserve monitoring requirements.",
+      "reason": "BuildRequest does not request URL parameter/session persistence utilities; this appears to be additional functionality beyond the specified reserve model/admin monitoring/copy updates.",
+      "evidence": [
+        "frontend/src/utils/urlParams.ts"
+      ]
+    }
+  ],
+  "confidence": 0.55,
   "changed_files": [
     "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/DashboardPage.tsx",
     "frontend/src/utils/urlParams.ts",
     "project_state.json"
   ]

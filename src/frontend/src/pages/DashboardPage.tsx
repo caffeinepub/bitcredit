@@ -1,6 +1,6 @@
 import { useGetCallerBalance, useGetTransactionHistory, useGetCallerBitcoinWallet } from '../hooks/useQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, TrendingUp, History, ArrowRight, Wallet, Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { Coins, TrendingUp, History, ArrowRight, Wallet, Copy, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -53,6 +53,16 @@ export default function DashboardPage() {
           Manage your Bitcoin credits and track your transactions
         </p>
       </div>
+
+      <Alert className="border-primary/20 bg-primary/5">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-sm space-y-1">
+          <p className="font-medium">1 credit = 1 BTC</p>
+          <p>
+            All credits are backed 1:1 by Bitcoin held in reserve. The USD market value of your credits fluctuates with the Bitcoin market price.
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="financial-card">

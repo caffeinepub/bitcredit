@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Transaction } from '../../backend';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,11 +9,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface TransferHistoryTableProps {
   transactions: Transaction[];
+  initialRequestId?: bigint | null;
 }
 
-export default function TransferHistoryTable({ transactions }: TransferHistoryTableProps) {
+export default function TransferHistoryTable({ transactions, initialRequestId }: TransferHistoryTableProps) {
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<bigint | null>(null);
+
+  useEffect(() => {
+    // Auto-open dialog if initialRequestId is provided
+    if (initialRequestId !== undefined && initialRequestId !== null) {
+      setSelectedRequestId(initialRequestId);
+      setVerifyDialogOpen(true);
+    }
+  }, [initialRequestId]);
 
   const formatTimestamp = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) / 1_000_000);

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
-import type { Transaction, UserProfile, TransferStatus, SendBTCRequest, BitcoinWallet } from '../backend';
+import type { Transaction, UserProfile, TransferStatus, SendBTCRequest, BitcoinWallet, ReserveStatus, ReserveManagementAction } from '../backend';
 import { toast } from 'sonner';
 import { Principal } from '@dfinity/principal';
 import { adminStatusCache } from '../utils/adminStatusCache';
@@ -247,6 +247,7 @@ export function usePurchaseCredits() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
       toast.success('Credits purchased successfully');
     },
     onError: (error: Error) => {
@@ -272,35 +273,76 @@ export function useSendBTC() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation<bigint | null, Error, { destination: string; amount: bigint }>({
+  return useMutation<
+    { requestId: bigint; transferRequest: SendBTCRequest | null },
+    Error,
+    { destination: string; amount: bigint }
+  >({
     mutationFn: async ({ destination, amount }: { destination: string; amount: bigint }) => {
       if (!actor) throw new Error('Actor not available');
+
+      if (import.meta.env.DEV) {
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Send BTC] Starting submission');
+        console.log(`[Send BTC] Destination: ${destination}`);
+        console.log(`[Send BTC] Amount: ${amount.toString()}`);
+      }
+
       try {
         const requestId = await actor.sendBTC(destination, amount);
-        return requestId;
+
+        if (import.meta.env.DEV) {
+          console.log(`[Send BTC] Request created with ID: ${requestId.toString()}`);
+        }
+
+        // Fetch the created transfer request to get status/txid/failureReason
+        const transferRequest = await actor.getTransferRequest(requestId);
+
+        if (import.meta.env.DEV) {
+          console.log(`[Send BTC] Transfer request fetched:`);
+          console.log(`  - Status: ${transferRequest?.status || 'null'}`);
+          console.log(`  - Has txid: ${!!transferRequest?.blockchainTxId}`);
+          console.log(`  - Failure reason: ${transferRequest?.failureReason || 'none'}`);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
+
+        return { requestId, transferRequest };
       } catch (error: any) {
-        // Backend traps when broadcast fails, so we won't get a requestId
+        if (import.meta.env.DEV) {
+          console.error('[Send BTC] Submission failed:', error.message);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
         // Normalize the error and re-throw with clear message
         const normalizedMessage = normalizeSendBTCError(error);
         const enhancedError = new Error(normalizedMessage);
         throw enhancedError;
       }
     },
-    onSuccess: (requestId) => {
+    onSuccess: ({ requestId, transferRequest }) => {
       // Always invalidate balance and history to show updated state
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
-      
-      // If we got a requestId, show success and invalidate transfer request
-      if (requestId !== null) {
+      queryClient.invalidateQueries({ queryKey: ['transferRequest', requestId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
+
+      // Show appropriate toast based on status
+      if (transferRequest?.status === 'FAILED') {
+        const failureMessage = transferRequest.failureReason 
+          ? transferRequest.failureReason 
+          : 'The transaction was not posted to the Bitcoin blockchain.';
+        toast.error(
+          `Transfer request created but broadcast failed. ${failureMessage} Your credits have been restored.`
+        );
+      } else if (transferRequest?.blockchainTxId) {
+        toast.success(`Transfer request created and broadcast to Bitcoin network! Request ID: ${requestId.toString()}`);
+      } else {
         toast.success(`Transfer request created! Request ID: ${requestId.toString()}`);
-        queryClient.invalidateQueries({ queryKey: ['transferRequest', requestId.toString()] });
       }
     },
     onError: (error: Error) => {
       // Error message is already normalized in mutationFn
       toast.error(error.message);
-      
+
       // Invalidate balance to show restored credits
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
@@ -366,6 +408,7 @@ export function useConfirmOnChain() {
     onSuccess: (confirmed, requestId) => {
       queryClient.invalidateQueries({ queryKey: ['transferRequest', requestId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
       if (confirmed) {
         toast.success('Transfer confirmed as completed on-chain');
       } else {
@@ -394,6 +437,41 @@ export function useAdjustCredits() {
     },
     onError: (error: Error) => {
       toast.error(`Adjustment failed: ${error.message}`);
+    },
+  });
+}
+
+export function useGetReserveStatus() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<ReserveStatus>({
+    queryKey: ['reserveStatus'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getReserveStatus();
+    },
+    enabled: !!actor && !actorFetching,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function useManageReserve() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (action: ReserveManagementAction) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.manageReserve(action);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      toast.success('Reserve updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Reserve management failed: ${error.message}`);
     },
   });
 }

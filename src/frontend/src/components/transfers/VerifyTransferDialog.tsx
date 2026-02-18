@@ -198,11 +198,32 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                 </div>
               )}
 
-              {isFailed && (
+              {isFailed && transferRequest.failureReason && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {statusInfo?.description}
+                    <strong>Transfer Failed:</strong>
+                    <br />
+                    <span className="text-sm mt-1 block">
+                      {transferRequest.failureReason}
+                    </span>
+                    <br />
+                    <span className="text-sm font-semibold">
+                      The transaction was not posted to the Bitcoin blockchain. Your credits have been restored.
+                    </span>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isFailed && !transferRequest.failureReason && (
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Transfer Failed</strong>
+                    <br />
+                    <span className="text-sm mt-1 block">
+                      {statusInfo?.description}
+                    </span>
                   </AlertDescription>
                 </Alert>
               )}

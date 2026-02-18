@@ -10,17 +10,27 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type BitcoinAmount = bigint;
 export interface BitcoinWallet { 'publicKey' : Uint8Array, 'address' : string }
+export type ReserveManagementAction = { 'withdraw' : BitcoinAmount } |
+  { 'deposit' : BitcoinAmount } |
+  { 'correction' : BitcoinAmount };
+export interface ReserveStatus {
+  'reserveBtcBalance' : BitcoinAmount,
+  'outstandingIssuedCredits' : BitcoinAmount,
+  'coverageRatio' : [] | [number],
+}
 export interface SendBTCRequest {
   'id' : bigint,
   'status' : TransferStatus,
+  'failureReason' : [] | [string],
   'owner' : Principal,
   'destinationAddress' : string,
-  'totalCost' : bigint,
-  'networkFee' : bigint,
+  'totalCost' : BitcoinAmount,
+  'networkFee' : BitcoinAmount,
   'timestamp' : Time,
   'blockchainTxId' : [] | [string],
-  'amount' : bigint,
+  'amount' : BitcoinAmount,
 }
 export type Time = bigint;
 export interface Transaction {
@@ -28,7 +38,7 @@ export interface Transaction {
   'transactionType' : TransactionType,
   'user' : Principal,
   'timestamp' : Time,
-  'amount' : bigint,
+  'amount' : BitcoinAmount,
 }
 export type TransactionType = { 'adjustment' : null } |
   { 'creditPurchase' : null } |
@@ -61,27 +71,44 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'adjustCredits' : ActorMethod<[Principal, bigint, string], undefined>,
+  'adjustCredits' : ActorMethod<[Principal, BitcoinAmount, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignInitialAdminCredits' : ActorMethod<[], undefined>,
   'confirmOnChain' : ActorMethod<[bigint], boolean>,
   'createCallerBitcoinWallet' : ActorMethod<[], undefined>,
-  'getCallerBalance' : ActorMethod<[], bigint>,
+  'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
   'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getEstimatedNetworkFee' : ActorMethod<[string, bigint], bigint>,
+  'getEstimatedNetworkFee' : ActorMethod<
+    [string, BitcoinAmount],
+    BitcoinAmount
+  >,
+  'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getTransferRequest' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
+  'getTransferRequestDiagnostics' : ActorMethod<
+    [bigint],
+    [] | [
+      {
+        'status' : TransferStatus,
+        'failureReason' : [] | [string],
+        'owner' : Principal,
+        'failureCode' : [] | [string],
+      }
+    ]
+  >,
   'getTransferStatus' : ActorMethod<[bigint], [] | [TransferStatus]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getVerificationEndpoint' : ActorMethod<[string], string>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'makeTestOutcall' : ActorMethod<[string], string>,
-  'purchaseCredits' : ActorMethod<[string, bigint], undefined>,
+  'manageReserve' : ActorMethod<[ReserveManagementAction], undefined>,
+  'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'sendBTC' : ActorMethod<[string, bigint], bigint>,
-  'transferCreditsToUser' : ActorMethod<[Principal, bigint], undefined>,
+  'sendBTC' : ActorMethod<[string, BitcoinAmount], bigint>,
+  'toggleApiDiagnostics' : ActorMethod<[], boolean>,
+  'transferCreditsToUser' : ActorMethod<[Principal, BitcoinAmount], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'verifyBTCTransfer' : ActorMethod<[bigint, string], undefined>,
 }

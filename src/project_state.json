@@ -1,17 +1,23 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 57,
-  "summary": "App to sell credits on a website (1 credit = 1 BTC) and enable sending BTC directly on-chain to mainnet wallets, with blockchain API-based transaction authentication/verification and network fees deducted from user credits.",
+  "projectStateVersion": 63,
+  "summary": "Expand scope to include a 1:1 BTC reserve backing model: app credits represent mainnet BTC held in reserve, and a bot-driven flow can initiate on-chain transfers to external mainnet wallets; credit value tracks BTC market price in USD terms.",
   "architectural_notes": [
     "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits).",
     "Admins receive and can access an initial 500-credit balance and can distribute credits via an admin page that auto-populates immediately after signing in with their Internet Identity principal.",
     "Post–Internet Identity login flow: determine admin status for the authenticated principal, then auto-redirect admin users to the Admin page (/admin).",
     "Admin auto-redirect/admin flow should only occur after the initial Internet Identity sign-in completes; then verify the authenticated principal’s admin status before applying any admin-specific navigation.",
-    "Support per-user app-managed (custodial) wallet behavior tied to the user profile (\"anonymous wallet\") for initiating on-chain mainnet broadcasts via blockchain APIs, funded/limited by the user’s credit balance."
+    "Support per-user app-managed (custodial) wallet behavior tied to the user profile (\"anonymous wallet\") for initiating on-chain mainnet broadcasts via blockchain APIs, funded/limited by the user’s credit balance.",
+    "Use BlockCypher API for Bitcoin mainnet transaction broadcast (and any required supporting calls such as balance/UTXO lookups).",
+    "Implement secure key management for a custodial wallet (generate/store keys, signing happens server-side; protect private keys via encryption/HSM/secret manager).",
+    "Expose a Telegram bot command interface (e.g., /send <address> <amount>) that calls into the agent’s transaction functions.",
+    "Add pre-send validation: recipient address format validation and sufficient balance checks before signing/broadcasting.",
+    "Credits are intended to be 1:1 backed by mainnet BTC held in reserve; define and track reserve BTC balances vs. outstanding issued credits (auditability/coverage)."
   ],
   "known_issues": [
     "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
-    "User reports a Send BTC / credit-to-wallet transfer did not post on the Bitcoin blockchain; on-chain broadcast/processing may be failing or not being triggered, needs investigation and fix."
+    "User reports a Send BTC / credit-to-wallet transfer did not post on the Bitcoin blockchain; on-chain broadcast/processing may be failing or not being triggered, needs investigation and fix.",
+    "Send BTC / transfer-to-mainnet is not being broadcast or posted on-chain; receiver wallets are not receiving BTC (needs troubleshooting of broadcast/outcall + Bitcoin API integration)."
   ],
   "isFixRequest": false,
   "existing_features": [
@@ -414,6 +420,54 @@
         "REQ-76"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-send-btc-and-admin-send-btc-flows-to-display-the-actual-broadcast-outcome-based-on-the-persisted-transfer-request-status-txid-failure-reason-and-provide-an-obvious-path-to-view-the-request-details-after-submission",
+      "title": "Update the frontend Send BTC and Admin Send BTC flows to display the actual broadcast outcome based on the persisted transfer request (status/txid/failure reason), and provide an obvious path to view the request details after submission.",
+      "reqIds": [
+        "REQ-81"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-hooks-usequeries-ts-usesendbtc-error-success-handling-to-match-the-new-backend-behavior-where-a-request-id-can-be-returned-even-when-broadcast-fails-avoiding-misleading-no-request-created-messaging",
+      "title": "Update `frontend/src/hooks/useQueries.ts` (`useSendBTC`) error/success handling to match the new backend behavior where a request ID can be returned even when broadcast fails, avoiding misleading 'no request created' messaging.",
+      "reqIds": [
+        "REQ-82"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-lightweight-diagnostics-development-only-to-help-confirm-why-on-chain-posting-is-failing-including-surfacing-broadcast-attempt-results-and-reasons-without-exposing-secrets",
+      "title": "Add lightweight diagnostics (development-only) to help confirm why on-chain posting is failing, including surfacing broadcast attempt results and reasons without exposing secrets.",
+      "reqIds": [
+        "REQ-83"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-send-btc-experience-to-surface-the-new-backend-safety-check-and-broadcast-outcomes-in-clear-english-invalid-address-insufficient-on-chain-funds-broadcast-failed-with-reason-broadcast-succeeded-with-txid-reusing-the-existing-flow-that-fetches-the-created-transfer-request-after-sendbtc-so-the-ui-reflects-the-persisted-request-status-txid-failurereason",
+      "title": "Update the frontend Send BTC experience to surface the new backend safety-check and broadcast outcomes in clear English (invalid address, insufficient on-chain funds, broadcast failed with reason, broadcast succeeded with txid), reusing the existing flow that fetches the created transfer request after `sendBTC` so the UI reflects the persisted request status/txid/failureReason.",
+      "reqIds": [
+        "REQ-87"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-admin-visible-reserve-section-in-the-existing-admin-page-that-displays-reserve-btc-balance-outstanding-credits-and-reserve-coverage-ratio-and-includes-a-simple-admin-only-control-to-adjust-the-tracked-reserve-balance-with-a-required-english-reason",
+      "title": "Add an admin-visible Reserve section in the existing Admin page that displays reserve BTC balance, outstanding credits, and reserve coverage ratio, and includes a simple admin-only control to adjust the tracked reserve balance with a required English reason.",
+      "reqIds": [
+        "REQ-91"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-user-facing-copy-in-the-signed-in-experience-to-clearly-state-that-credits-are-btc-denominated-represent-1-1-backing-by-btc-held-in-reserve-and-that-the-usd-market-value-fluctuates-with-the-bitcoin-market-price",
+      "title": "Update user-facing copy in the signed-in experience to clearly state that credits are BTC-denominated, represent 1:1 backing by BTC held in reserve, and that the USD market value fluctuates with the Bitcoin market price.",
+      "reqIds": [
+        "REQ-92"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -678,6 +732,128 @@
       "summary": "Add a backend capability to confirm a transfer’s completion on Bitcoin mainnet and update the saved `SendBTCRequest.status` accordingly, so the app can show a reliable completion state (e.g., move from `IN_PROGRESS` to `COMPLETED` once confirmed).",
       "reqIds": [
         "REQ-75"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Implement real Bitcoin mainnet broadcast attempts in the backend `sendBTC(destination, amount)` flow instead of always returning `BTC_API_DISABLED` from `broadcastTransactionToBlockchain(...)`.",
+      "reqIds": [
+        "REQ-77"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "Fix backend failure/rollback semantics so users are not charged for an unposted on-chain transfer while still keeping an auditable transfer record.",
+      "reqIds": [
+        "REQ-78"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "Change backend `sendBTC(...)` to return a usable request identifier even when the on-chain broadcast fails, so the frontend can show the user the created request and its failure reason/status instead of losing the request context due to trapping.",
+      "reqIds": [
+        "REQ-79"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-51",
+      "summary": "Add backend persistence for a user-readable broadcast failure reason per transfer request (in English) so troubleshooting is possible from the app UI.",
+      "reqIds": [
+        "REQ-80"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-52",
+      "summary": "Build a Python-based AI agent using LangChain/Eliza to handle Bitcoin transaction workflows.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-53",
+      "summary": "Implement send_btc(recipient_address, amount_btc) in Python to sign and broadcast Bitcoin mainnet transactions using the BlockCypher API.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-54",
+      "summary": "Integrate secure wallet key management for generating a public address and signing transaction outputs (private key protection).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-55",
+      "summary": "Develop a Telegram bot interface (e.g., /send <address> <amount>) to initiate transactions via the AI agent.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-56",
+      "summary": "Add safety checks: validate Bitcoin address format and check wallet balance before sending funds.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-57",
+      "summary": "Implement real Bitcoin mainnet transaction broadcast using the BlockCypher API (https://www.blockcypher.com/) by replacing the current backend stub that returns `BTC_API_DISABLED` in `broadcastTransactionToBlockchain(...)`, so that `sendBTC(destination, amount)` attempts an on-chain broadcast and persists the resulting on-chain transaction id (txid) on success.",
+      "reqIds": [
+        "REQ-84"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-58",
+      "summary": "Add backend safety checks before attempting BlockCypher broadcast: (1) validate Bitcoin mainnet destination address format and (2) check that the app-controlled on-chain sending wallet has sufficient on-chain BTC balance for the requested send, so the system fails safely with a clear English failure reason instead of attempting an invalid/insufficient-funds broadcast.",
+      "reqIds": [
+        "REQ-85"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-59",
+      "summary": "Replace the mocked per-user wallet address generation (`\"MOCKED_ADDRESS_\" # caller.toText()`) with a real wallet/address provisioning flow compatible with BlockCypher, and ensure the backend continues to expose a persistent caller wallet identity via the existing `createCallerBitcoinWallet()` and `getCallerBitcoinWallet()` APIs.",
+      "reqIds": [
+        "REQ-86"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-60",
+      "summary": "Implement a 1:1 BTC reserve backing model where total issued credits are backed by mainnet BTC held in reserve, and define how reserve balances are tracked/audited against outstanding credits.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-61",
+      "summary": "Add reserve management capabilities (at least admin-visible): display reserve BTC balance, outstanding credits, and reserve coverage ratio to support the 1:1 backing claim.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-62",
+      "summary": "Implement a backend BTC reserve-tracking model so that issued credits are represented as being backed 1:1 by mainnet BTC held in reserve, and expose a backend query that returns reserve status including: reserve BTC balance, total outstanding issued credits, and a reserve coverage ratio.",
+      "reqIds": [
+        "REQ-88"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-63",
+      "summary": "Update backend accounting so reserve status updates automatically during credit lifecycle events: (1) when a credit purchase is successfully verified and credits are issued, increase tracked reserve by the issued amount; (2) when an on-chain BTC transfer is successfully broadcast, decrease tracked reserve by the on-chain spend amount (receiver amount plus network fee); (3) when an on-chain broadcast fails and the transfer request is marked FAILED and credits are restored, do not decrement reserve.",
+      "reqIds": [
+        "REQ-89"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-64",
+      "summary": "Add backend enforcement for the 1:1 reserve claim by preventing issuance of new credits if it would cause outstanding credits to exceed tracked reserve coverage, unless an admin explicitly overrides via an admin-only reserve management action.",
+      "reqIds": [
+        "REQ-90"
       ],
       "status": "pending"
     }

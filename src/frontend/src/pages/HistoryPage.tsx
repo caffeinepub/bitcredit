@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useGetTransactionHistory } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import TransferHistoryTable from '../components/transfers/TransferHistoryTable';
@@ -6,6 +7,22 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 export default function HistoryPage() {
   const { data: transactions, isLoading } = useGetTransactionHistory();
+  const [initialRequestId, setInitialRequestId] = useState<bigint | null>(null);
+
+  useEffect(() => {
+    // Check if we should auto-open a specific transfer request
+    const storedRequestId = sessionStorage.getItem('openTransferRequestId');
+    if (storedRequestId) {
+      try {
+        setInitialRequestId(BigInt(storedRequestId));
+        // Clear it immediately so it doesn't re-open on subsequent visits
+        sessionStorage.removeItem('openTransferRequestId');
+      } catch (error) {
+        console.error('Invalid stored request ID:', error);
+        sessionStorage.removeItem('openTransferRequestId');
+      }
+    }
+  }, []);
 
   const credits = transactions?.filter(
     (tx) => tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment'
@@ -88,7 +105,7 @@ export default function HistoryPage() {
               ))}
             </div>
           ) : (
-            <TransferHistoryTable transactions={transactions || []} />
+            <TransferHistoryTable transactions={transactions || []} initialRequestId={initialRequestId} />
           )}
         </CardContent>
       </Card>

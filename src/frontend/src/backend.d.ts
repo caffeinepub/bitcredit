@@ -7,6 +7,22 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
+}
+export type Time = bigint;
+export type ReserveManagementAction = {
+    __kind__: "withdraw";
+    withdraw: BitcoinAmount;
+} | {
+    __kind__: "deposit";
+    deposit: BitcoinAmount;
+} | {
+    __kind__: "correction";
+    correction: BitcoinAmount;
+};
 export interface http_header {
     value: string;
     name: string;
@@ -21,17 +37,7 @@ export interface Transaction {
     transactionType: TransactionType;
     user: Principal;
     timestamp: Time;
-    amount: bigint;
-}
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
-export type Time = bigint;
-export interface BitcoinWallet {
-    publicKey: Uint8Array;
-    address: string;
+    amount: BitcoinAmount;
 }
 export interface TransformationInput {
     context: Uint8Array;
@@ -40,17 +46,28 @@ export interface TransformationInput {
 export interface SendBTCRequest {
     id: bigint;
     status: TransferStatus;
+    failureReason?: string;
     owner: Principal;
     destinationAddress: string;
-    totalCost: bigint;
-    networkFee: bigint;
+    totalCost: BitcoinAmount;
+    networkFee: BitcoinAmount;
     timestamp: Time;
     blockchainTxId?: string;
-    amount: bigint;
+    amount: BitcoinAmount;
 }
+export interface ReserveStatus {
+    reserveBtcBalance: BitcoinAmount;
+    outstandingIssuedCredits: BitcoinAmount;
+    coverageRatio?: number;
+}
+export type BitcoinAmount = bigint;
 export interface UserProfile {
     bitcoinWallet?: BitcoinWallet;
     name: string;
+}
+export interface BitcoinWallet {
+    publicKey: Uint8Array;
+    address: string;
 }
 export enum TransactionType {
     adjustment = "adjustment",
@@ -69,27 +86,36 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
-    adjustCredits(user: Principal, amount: bigint, reason: string): Promise<void>;
+    adjustCredits(user: Principal, amount: BitcoinAmount, reason: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignInitialAdminCredits(): Promise<void>;
     confirmOnChain(requestId: bigint): Promise<boolean>;
     createCallerBitcoinWallet(): Promise<void>;
-    getCallerBalance(): Promise<bigint>;
+    getCallerBalance(): Promise<BitcoinAmount>;
     getCallerBitcoinWallet(): Promise<BitcoinWallet | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getEstimatedNetworkFee(_destination: string, _amount: bigint): Promise<bigint>;
+    getEstimatedNetworkFee(_destination: string, _amount: BitcoinAmount): Promise<BitcoinAmount>;
+    getReserveStatus(): Promise<ReserveStatus>;
     getTransactionHistory(): Promise<Array<Transaction>>;
     getTransferRequest(requestId: bigint): Promise<SendBTCRequest | null>;
+    getTransferRequestDiagnostics(requestId: bigint): Promise<{
+        status: TransferStatus;
+        failureReason?: string;
+        owner: Principal;
+        failureCode?: string;
+    } | null>;
     getTransferStatus(requestId: bigint): Promise<TransferStatus | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVerificationEndpoint(_txId: string): Promise<string>;
     isCallerAdmin(): Promise<boolean>;
     makeTestOutcall(_endpoint: string): Promise<string>;
-    purchaseCredits(transactionId: string, amount: bigint): Promise<void>;
+    manageReserve(action: ReserveManagementAction): Promise<void>;
+    purchaseCredits(transactionId: string, amount: BitcoinAmount): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    sendBTC(destination: string, amount: bigint): Promise<bigint>;
-    transferCreditsToUser(user: Principal, amount: bigint): Promise<void>;
+    sendBTC(destination: string, amount: BitcoinAmount): Promise<bigint>;
+    toggleApiDiagnostics(): Promise<boolean>;
+    transferCreditsToUser(user: Principal, amount: BitcoinAmount): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     verifyBTCTransfer(requestId: bigint, blockchainTxId: string): Promise<void>;
 }

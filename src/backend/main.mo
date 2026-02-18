@@ -1,31 +1,42 @@
 import Map "mo:core/Map";
 import Time "mo:core/Time";
 import List "mo:core/List";
-import Int "mo:core/Int";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
-import Principal "mo:core/Principal";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
+import Principal "mo:core/Principal";
+import Int "mo:core/Int";
 import Blob "mo:core/Blob";
 import Array "mo:core/Array";
-import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
 import OutCall "http-outcalls/outcall";
-import Migration "migration";
+import Text "mo:core/Text";
 
-(with migration = Migration.run)
 actor {
-  let currentNetworkFee = 10;
+  var reserveBtcBalance : Nat = 0;
+  var outstandingIssuedCredits : Nat = 0;
+  let transactionFeeRate : Nat = 50_000; // Satoshis per gigabyte
+
+  type BitcoinAmount = Nat; // 1 Satoshi
+
+  let currentNetworkFee = 10 : BitcoinAmount;
   let balances = Map.empty<Principal, CreditBalance>();
   let transactions = List.empty<Transaction>();
   let userProfiles = Map.empty<Principal, UserProfile>();
   let transferRequests = Map.empty<Nat, SendBTCRequest>();
   let adminInitialCreditsIssued = Map.empty<Principal, Bool>();
-  var requestIdCounter = 0;
+  var requestIdCounter : Nat = 0;
+  var btcApiDiagnosticsEnabled = false;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+
+  public type ReserveStatus = {
+    reserveBtcBalance : BitcoinAmount;
+    outstandingIssuedCredits : BitcoinAmount;
+    coverageRatio : ?Float;
+  };
 
   public type UserProfile = {
     name : Text;
@@ -41,29 +52,30 @@ actor {
     id : Nat;
     owner : Principal;
     destinationAddress : Text;
-    amount : Nat;
-    networkFee : Nat;
-    totalCost : Nat;
+    amount : BitcoinAmount;
+    networkFee : BitcoinAmount;
+    totalCost : BitcoinAmount;
     status : TransferStatus;
     timestamp : Time.Time;
     blockchainTxId : ?Text;
+    failureReason : ?Text;
   };
 
   public type CreditAdjustment = {
-    amount : Nat;
+    amount : BitcoinAmount;
     reason : Text;
     timestamp : Time.Time;
   };
 
   public type CreditBalance = {
-    balance : Nat;
+    balance : BitcoinAmount;
     adjustments : [CreditAdjustment];
   };
 
   public type Transaction = {
     id : Text;
     user : Principal;
-    amount : Nat;
+    amount : BitcoinAmount;
     timestamp : Time.Time;
     transactionType : TransactionType;
   };
@@ -84,7 +96,7 @@ actor {
   public type BlockchainVerificationRequest = {
     transactionId : Text;
     destination : Text;
-    amount : Nat;
+    amount : BitcoinAmount;
   };
 
   public type BlockchainVerificationResponse = {
@@ -99,9 +111,28 @@ actor {
   };
 
   public type BlockchainAPIResponse = {
-    amount : Nat;
+    amount : BitcoinAmount;
     destinationAddress : Text;
     timestamp : Time.Time;
+  };
+
+  public type ReserveManagementAction = {
+    #deposit : BitcoinAmount;
+    #withdraw : BitcoinAmount;
+    #correction : BitcoinAmount;
+  };
+
+  public type ReserveChangeReason = {
+    #deposit;
+    #withdrawal;
+    #adjustment;
+  };
+
+  public type ReserveAdjustment = {
+    amount : BitcoinAmount;
+    reason : ReserveChangeReason;
+    timestamp : Time.Time;
+    performedBy : Principal;
   };
 
   module Transaction {
@@ -180,7 +211,7 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  public query ({ caller }) func getCallerBalance() : async Nat {
+  public shared ({ caller }) func getCallerBalance() : async BitcoinAmount {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view balance");
     };
@@ -190,7 +221,7 @@ actor {
     };
   };
 
-  public shared ({ caller }) func purchaseCredits(transactionId : Text, amount : Nat) : async () {
+  public shared ({ caller }) func purchaseCredits(transactionId : Text, amount : BitcoinAmount) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can purchase credits");
     };
@@ -200,18 +231,18 @@ actor {
       Runtime.trap("Verification failed. Cannot issue credits");
     };
 
-    let currentBalance = switch (balances.get(caller)) {
-      case (null) { 0 };
-      case (?balance) { balance.balance };
+    // Check reserve before issuing new credits
+    if (outstandingIssuedCredits + amount > reserveBtcBalance) {
+      Runtime.trap("Insufficient reserve coverage. Cannot issue new credits.");
     };
 
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
-      case (?balance) { balance.adjustments };
+      case (?_creditBalance) { [] };
     };
 
     let newBalance = {
-      balance = currentBalance + amount;
+      balance = amount;
       adjustments = currentAdjustments;
     };
 
@@ -225,9 +256,13 @@ actor {
       transactionType = #creditPurchase;
     };
     transactions.add(transaction);
+
+    // Update outstanding issued credits and reserve balance
+    outstandingIssuedCredits += amount;
+    reserveBtcBalance += amount;
   };
 
-  func verifyBlockchainDeposit(_transactionId : Text, _amount : Nat) : async BlockchainVerificationResponse {
+  func verifyBlockchainDeposit(_transactionId : Text, _amount : BitcoinAmount) : async BlockchainVerificationResponse {
     {
       success = true;
       matchingDeposit = true;
@@ -241,10 +276,11 @@ actor {
     "BTC_API_DISABLED";
   };
 
-  public query ({ caller }) func getEstimatedNetworkFee(_destination : Text, _amount : Nat) : async Nat {
+  public query ({ caller }) func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can retrieve network fee");
     };
+
     currentNetworkFee;
   };
 
@@ -252,7 +288,7 @@ actor {
     OutCall.transform(input);
   };
 
-  public shared ({ caller }) func sendBTC(destination : Text, amount : Nat) : async Nat {
+  public shared ({ caller }) func sendBTC(destination : Text, amount : BitcoinAmount) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send BTC");
     };
@@ -272,7 +308,7 @@ actor {
       case (?balance) { balance.adjustments };
     };
 
-    let checkedBalance = (currentBalance - totalCost : Nat);
+    let checkedBalance = (currentBalance - totalCost : BitcoinAmount);
 
     let newBalance = {
       balance = checkedBalance;
@@ -281,7 +317,7 @@ actor {
 
     balances.add(caller, newBalance);
 
-    let requestId = requestIdCounter;
+    let requestId : Nat = requestIdCounter;
     requestIdCounter += 1;
 
     let newRequest : SendBTCRequest = {
@@ -294,6 +330,7 @@ actor {
       status = #IN_PROGRESS;
       timestamp = Time.now();
       blockchainTxId = null;
+      failureReason = null;
     };
 
     transferRequests.add(requestId, newRequest);
@@ -310,14 +347,14 @@ actor {
 
     let submitResult = await broadcastTransactionToBlockchain(requestId, destination, amount);
 
-    if (submitResult.success == false) {
+    if (not submitResult.success) {
       let requestOpt = transferRequests.get(requestId);
       switch (requestOpt) {
         case (null) { Runtime.trap("Request not found") };
         case (?request) { assert(request.owner == caller) };
       };
 
-      updateRequestOnFailure(requestId, caller, totalCost);
+      updateRequestOnFailure(requestId, caller, totalCost, submitResult.error);
     };
 
     switch (submitResult.txid) {
@@ -342,7 +379,7 @@ actor {
     requestId;
   };
 
-  func broadcastTransactionToBlockchain(transactionId : Nat, _destination : Text, _amount : Nat) : async BroadcastResponse {
+  func broadcastTransactionToBlockchain(transactionId : Nat, _destination : Text, _amount : BitcoinAmount) : async BroadcastResponse {
     switch (transferRequests.get(transactionId)) {
       case (null) {
         {
@@ -361,7 +398,7 @@ actor {
     };
   };
 
-  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : Nat) {
+  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : BitcoinAmount, failureReason : ?Text) {
     let requestOpt = transferRequests.get(requestId);
 
     if (requestOpt == null) {
@@ -378,13 +415,15 @@ actor {
     let failedRequest : SendBTCRequest = {
       existingRequest with
       status = #FAILED;
+      failureReason;
     };
 
     transferRequests.add(requestId, failedRequest);
     restoreUserBalance(owner, totalCost);
+    // Do not decrement reserve when transfer fails
   };
 
-  func restoreUserBalance(user : Principal, amount : Nat) {
+  func restoreUserBalance(user : Principal, amount : BitcoinAmount) {
     let currentBalance = switch (balances.get(user)) {
       case (null) { 0 };
       case (?balance) { balance.balance };
@@ -408,6 +447,10 @@ actor {
       Runtime.trap("Unauthorized: Only users can view transfer requests");
     };
 
+    getTransferRequestInternal(caller, requestId);
+  };
+
+  func getTransferRequestInternal(caller : Principal, requestId : Nat) : ?SendBTCRequest {
     switch (transferRequests.get(requestId)) {
       case (null) { null };
       case (?request) {
@@ -451,11 +494,11 @@ actor {
     };
   };
 
-  func verifyBlockchainTransfer(_transactionId : Text, _destination : Text, _amount : Nat) : async Bool {
+  func verifyBlockchainTransfer(_transactionId : Text, _destination : Text, _amount : BitcoinAmount) : async Bool {
     true;
   };
 
-  public shared ({ caller }) func adjustCredits(user : Principal, amount : Nat, reason : Text) : async () {
+  public shared ({ caller }) func adjustCredits(user : Principal, amount : BitcoinAmount, reason : Text) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can adjust credits");
     };
@@ -535,6 +578,28 @@ actor {
     "BTC_API_DISABLED";
   };
 
+  public query ({ caller }) func getTransferRequestDiagnostics(requestId : Nat) : async ?{
+    owner : Principal;
+    status : TransferStatus;
+    failureReason : ?Text;
+    failureCode : ?Text;
+  } {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can access diagnostics");
+    };
+    switch (transferRequests.get(requestId)) {
+      case (null) { null };
+      case (?request) {
+        ?{
+          owner = request.owner;
+          status = request.status;
+          failureReason = request.failureReason;
+          failureCode = request.failureReason;
+        };
+      };
+    };
+  };
+
   public shared ({ caller }) func assignInitialAdminCredits() : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can assign initial credits");
@@ -581,7 +646,7 @@ actor {
     adminInitialCreditsIssued.add(caller, true);
   };
 
-  public shared ({ caller }) func transferCreditsToUser(user : Principal, amount : Nat) : async () {
+  public shared ({ caller }) func transferCreditsToUser(user : Principal, amount : BitcoinAmount) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can transfer credits");
     };
@@ -600,7 +665,7 @@ actor {
       case (?balance) { balance.adjustments };
     };
 
-    let checkedAdminBalance = (adminCurrentBalance - amount : Nat);
+    let checkedAdminBalance = (adminCurrentBalance - amount : BitcoinAmount);
 
     let adminNewBalance = {
       balance = checkedAdminBalance;
@@ -669,17 +734,87 @@ actor {
       case (?request) { request };
     };
 
+    if (existingRequest.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only confirm your own transfer requests");
+    };
+
     switch (existingRequest.status) {
       case (#IN_PROGRESS or #VERIFIED) {
         let confirmedRequest : SendBTCRequest = {
           existingRequest with status = #COMPLETED;
         };
         transferRequests.add(requestId, confirmedRequest);
+
+        // Decrement reserve when transfer is successfully completed
+        if (existingRequest.totalCost <= reserveBtcBalance) {
+          reserveBtcBalance -= existingRequest.totalCost;
+        };
+
         true;
       };
       case (#COMPLETED) { true };
       case (#FAILED) { false };
     };
   };
-};
 
+  public shared ({ caller }) func toggleApiDiagnostics() : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can toggle API diagnostics");
+    };
+    btcApiDiagnosticsEnabled := not btcApiDiagnosticsEnabled;
+    btcApiDiagnosticsEnabled;
+  };
+
+  public shared ({ caller }) func manageReserve(action : ReserveManagementAction) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can manage reserves");
+    };
+
+    let adjustment : ReserveAdjustment = {
+      amount = switch (action) {
+        case (#deposit(amount)) { amount };
+        case (#withdraw(amount)) { amount };
+        case (#correction(amount)) { amount };
+      };
+      reason = switch (action) {
+        case (#deposit(_)) { #deposit };
+        case (#withdraw(_)) { #withdrawal };
+        case (#correction(_)) { #adjustment };
+      };
+      timestamp = Time.now();
+      performedBy = caller;
+    };
+
+    switch (action) {
+      case (#deposit(amount)) {
+        reserveBtcBalance += amount;
+      };
+      case (#withdraw(amount)) {
+        if (amount > reserveBtcBalance) {
+          Runtime.trap("Insufficient reserve balance for withdrawal");
+        };
+        reserveBtcBalance -= amount;
+      };
+      case (#correction(amount)) {
+        reserveBtcBalance := amount;
+      };
+    };
+  };
+
+  public query ({ caller }) func getReserveStatus() : async ReserveStatus {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view reserve status");
+    };
+
+    {
+      reserveBtcBalance;
+      outstandingIssuedCredits;
+      coverageRatio = if (reserveBtcBalance > 0) {
+        ?(
+          outstandingIssuedCredits.toInt().toFloat()
+          / reserveBtcBalance.toInt().toFloat()
+        );
+      } else { null };
+    };
+  };
+};

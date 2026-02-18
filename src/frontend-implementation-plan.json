@@ -1,32 +1,43 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Send BTC transfer details: confirm on-chain completion and display latest status/txid",
+  "title": "Admin Reserve Monitoring UI + Signed-in Copy Updates",
   "requirements": [
     {
-      "id": "REQ-76",
-      "summary": "Let a signed-in user re-check a Send BTC transfer’s on-chain completion from transfer details, and display refreshed status and txid (copyable)",
+      "id": "REQ-91",
+      "summary": "Add an admin-only Reserve section on /admin that displays reserve status and allows admins to adjust tracked reserve with a required reason.",
       "acceptanceCriteria": [
-        "In the transfer details UI (e.g., the existing dialog that loads `getTransferRequest`), the user has a clear action to re-check/confirm on-chain completion when the request is not yet `COMPLETED` or `FAILED`.",
-        "After the user triggers the confirm action, the UI refreshes the transfer request and shows updated status text in English, including a distinct `Completed` state when applicable.",
-        "When `blockchainTxId` is present, it is displayed as “On-chain Transaction ID (txid)” and is copyable.",
-        "The Send BTC success experience continues to show the created request id and provides a clear path to view/confirm status in History."
+        "Admins can see reserve BTC balance, outstanding credits, and coverage ratio on `/admin`.",
+        "Admins can submit a reserve adjustment amount and a required reason; on success, the reserve status display updates.",
+        "Non-admin users cannot access the reserve management UI (it should not render for them).",
+        "All user-facing text in this section is in English."
       ],
       "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add a React Query mutation hook (e.g., `useConfirmOnChain`) that calls the backend confirm capability for a given `requestId`, handles loading/error states, and invalidates the relevant cached queries (transfer request + transaction history) so the UI can refresh to the latest `SendBTCRequest.status` and txid."
+          "description": "Add React Query hooks for reserve admin features: a query hook that calls backend getReserveStatus() and a mutation hook that calls backend manageReserve(...) and invalidates the reserve-status query on success/failure. Ensure errors are shown in clear English via existing toast patterns. (Use the selected \"authorization\" component patterns via existing admin checks as needed; verify the component's usage instructions before implementing.)"
         },
         {
-          "path": "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+          "path": "frontend/src/pages/AdminPage.tsx",
           "operation": "modify",
-          "description": "Extend the Transfer Details dialog to include a clear “Confirm on-chain completion” / “Re-check status” action when the request status is not `COMPLETED` or `FAILED`. Wire the action to the new `useConfirmOnChain` hook, show user-friendly English status text/description after refresh, and keep txid display labeled exactly “On-chain Transaction ID (txid)” with existing copy-to-clipboard behavior."
-        },
+          "description": "Add a new \"Reserve\" section within the existing Admin dashboard UI. Display reserve BTC balance, outstanding issued credits, and coverage ratio (including an explicit English fallback such as \"Not available\" when coverageRatio is absent). Add an admin-only form to adjust tracked reserve with: adjustment type (deposit/withdraw/correction), amount, and required English reason; call the new mutation hook and refresh the displayed status after success. Guard the entire Reserve section so it does not render unless admin status is confirmed (use existing admin-gating patterns from the selected \"authorization\" component; verify the component's usage instructions before implementing)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-92",
+      "summary": "Update signed-in dashboard copy to clearly explain BTC denomination, 1:1 reserve backing, and USD value fluctuation without changing theme.",
+      "acceptanceCriteria": [
+        "Dashboard (or another signed-in screen) includes English text that states: 1 credit = 1 BTC, credits are backed 1:1 by BTC held in reserve, and USD value fluctuates with market price.",
+        "No existing copy contradicts the 1:1 reserve statement.",
+        "No blue/purple theme changes are introduced as part of this request (copy-only change is acceptable)."
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/pages/SendBtcPage.tsx",
+          "path": "frontend/src/pages/DashboardPage.tsx",
           "operation": "modify",
-          "description": "Ensure the Send BTC success panel continues to show the created request id and provides an obvious path to confirm status in History (keep/clarify the existing History navigation action text to emphasize viewing/confirming status)."
+          "description": "Add an English informational copy block in the signed-in Dashboard view stating: \"1 credit = 1 BTC\", credits are backed 1:1 by BTC held in reserve, and the USD market value fluctuates with the Bitcoin market price. Review and adjust any nearby dashboard copy to ensure nothing contradicts the 1:1 reserve statement, while keeping styling/theme unchanged (copy-only change)."
         }
       ]
     }
