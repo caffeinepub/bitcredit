@@ -15,19 +15,14 @@ export function normalizeSendBTCError(error: Error): string {
     return 'Insufficient Bitcoin in the app wallet. The app does not have enough BTC on-chain to complete this transfer.';
   }
   
-  // Check for broadcast disabled/unavailable
-  if (message.includes('btc_api_disabled')) {
-    return 'The Bitcoin broadcast service is currently unavailable. Please try again later.';
-  }
-  
-  // Check for broadcast-related failures
-  if (message.includes('broadcast') && (message.includes('disabled') || message.includes('unavailable'))) {
-    return 'The Bitcoin broadcast service is currently unavailable. Please try again later.';
-  }
-  
   // Check for BlockCypher or provider-specific errors
   if (message.includes('blockcypher') || message.includes('provider')) {
     return `Bitcoin network provider error: ${error.message}`;
+  }
+  
+  // Check for broadcast or network connection failures
+  if (message.includes('broadcast') || message.includes('unable to connect')) {
+    return 'Unable to broadcast transaction to the Bitcoin network. The blockchain API may be temporarily unavailable. Please try again later.';
   }
   
   // Check for on-chain submission failure with rollback
@@ -45,9 +40,9 @@ export function normalizeSendBTCError(error: Error): string {
     return 'Insufficient balance to complete this transfer.';
   }
   
-  // Check for generic broadcast/network errors
-  if (message.includes('broadcast') || message.includes('network')) {
-    return 'Unable to broadcast transaction to the Bitcoin network. Please try again.';
+  // Check for generic network errors
+  if (message.includes('network')) {
+    return 'Network error occurred while processing the transaction. Please try again.';
   }
   
   // Default: return original message with context

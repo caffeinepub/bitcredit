@@ -1,87 +1,52 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T04:07:46.391Z",
+  "generatedAt": "2026-02-18T08:19:46.259Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 6,
+    "total": 2,
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-101",
-        "summary": "Fix backend on-chain broadcast so Send BTC / “flash bitcoin” withdrawals are actually posted to Bitcoin mainnet instead of always failing with `BTC_API_DISABLED`, and persist the resulting on-chain txid when broadcast succeeds.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-102",
-        "summary": "Ensure backend failure semantics are safe and auditable when an on-chain broadcast fails: the transfer request must remain saved, be marked `FAILED`, store an English `failureReason`, and the user’s deducted credits (full `totalCost`) must be restored so users are not charged for transfers that were not posted on-chain.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-103",
-        "summary": "Update reserve accounting so reserve BTC tracking is consistent with real on-chain outcomes: do not decrement reserve on failed broadcasts, and decrement reserve only when a broadcast succeeds (or when a transfer is later confirmed on-chain, if confirmation is the point at which reserve should be reduced).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-104",
-        "summary": "Add backend-side troubleshooting diagnostics (admin-only or development-only) to help identify why broadcasts are failing, without exposing secrets: capture and surface a structured error/failure reason from the broadcast attempt that can be shown in English in the UI.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-105",
-        "summary": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
+        "id": "REQ-146",
+        "summary": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/components/transfers/TransferHistoryTable.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
+          "frontend/src/components/transfers/TransferHistoryTable.tsx"
         ]
       },
       {
-        "id": "REQ-106",
-        "summary": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
+        "id": "REQ-147",
+        "summary": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/components/transfers/TransferHistoryTable.tsx"
+          "frontend/src/pages/AiLotteryPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/AppHeader.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/components/transfers/TransferHistoryTable.tsx"
+          "frontend/src/pages/AiLotteryPage.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/AppHeader.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/components/layout/AppHeader.tsx",
     "frontend/src/components/transfers/TransferHistoryTable.tsx",
-    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/utils/urlParams.ts",
+    "frontend/src/pages/AiLotteryPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

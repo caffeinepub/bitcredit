@@ -8,11 +8,61 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const TransferStatus = IDL.Variant({
+  'COMPLETED' : IDL.Null,
+  'VERIFIED' : IDL.Null,
+  'IN_PROGRESS' : IDL.Null,
+  'FAILED' : IDL.Null,
+  'PENDING' : IDL.Null,
+  'EVICTED' : IDL.Null,
+});
 export const BitcoinAmount = IDL.Nat;
+export const FeeRateSufficiency = IDL.Variant({
+  'BORDERLINE' : IDL.Null,
+  'SUFFICIENT' : IDL.Null,
+  'INSUFFICIENT' : IDL.Null,
+});
+export const Time = IDL.Int;
+export const MempoolAnalysisResult = IDL.Record({
+  'mempoolDepthBytes' : IDL.Opt(BitcoinAmount),
+  'recommendedFeeRate' : BitcoinAmount,
+  'diagnosticData' : IDL.Opt(IDL.Text),
+  'feeDescription' : IDL.Text,
+  'txid' : IDL.Text,
+  'feeRateSufficiency' : FeeRateSufficiency,
+  'timestamp' : Time,
+  'recommendedNextBlockFeeRate' : IDL.Opt(BitcoinAmount),
+  'mempoolFeeRate' : BitcoinAmount,
+});
+export const ConfirmationAnalysisResult = IDL.Record({
+  'confirmations' : IDL.Opt(IDL.Nat),
+  'status' : TransferStatus,
+  'diagnosticData' : IDL.Opt(IDL.Text),
+  'forceFreshCheck' : IDL.Opt(IDL.Bool),
+  'expectedFee' : IDL.Opt(BitcoinAmount),
+  'suggestedFee' : IDL.Opt(BitcoinAmount),
+  'feeDecryptorAnalysis' : IDL.Opt(MempoolAnalysisResult),
+  'statusTimestamp' : Time,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const WithdrawalStatus = IDL.Variant({
+  'REJECTED' : IDL.Null,
+  'PAID' : IDL.Null,
+  'PENDING' : IDL.Null,
+});
+export const WithdrawalRequest = IDL.Record({
+  'id' : IDL.Nat,
+  'status' : WithdrawalStatus,
+  'method' : IDL.Text,
+  'failureReason' : IDL.Opt(IDL.Text),
+  'owner' : IDL.Principal,
+  'account' : IDL.Opt(IDL.Text),
+  'timestamp' : Time,
+  'amount' : BitcoinAmount,
 });
 export const BitcoinWallet = IDL.Record({
   'publicKey' : IDL.Vec(IDL.Nat8),
@@ -29,22 +79,18 @@ export const ReserveStatus = IDL.Record({
 });
 export const TransactionType = IDL.Variant({
   'adjustment' : IDL.Null,
+  'withdrawalRejected' : IDL.Null,
+  'withdrawalPaid' : IDL.Null,
+  'withdrawalRequested' : IDL.Null,
   'creditPurchase' : IDL.Null,
   'debit' : IDL.Null,
 });
-export const Time = IDL.Int;
 export const Transaction = IDL.Record({
   'id' : IDL.Text,
   'transactionType' : TransactionType,
   'user' : IDL.Principal,
   'timestamp' : Time,
   'amount' : BitcoinAmount,
-});
-export const TransferStatus = IDL.Variant({
-  'COMPLETED' : IDL.Null,
-  'VERIFIED' : IDL.Null,
-  'IN_PROGRESS' : IDL.Null,
-  'FAILED' : IDL.Null,
 });
 export const SendBTCRequest = IDL.Record({
   'id' : IDL.Nat,
@@ -53,11 +99,14 @@ export const SendBTCRequest = IDL.Record({
   'diagnosticData' : IDL.Opt(IDL.Text),
   'owner' : IDL.Principal,
   'destinationAddress' : IDL.Text,
+  'confirmedBlockheight' : IDL.Opt(IDL.Nat),
   'totalCost' : BitcoinAmount,
   'networkFee' : BitcoinAmount,
+  'evictedDetectedTimestamp' : IDL.Opt(Time),
   'timestamp' : Time,
   'blockchainTxId' : IDL.Opt(IDL.Text),
   'amount' : BitcoinAmount,
+  'lastStatusCheckTimestamp' : IDL.Opt(Time),
 });
 export const ReserveManagementAction = IDL.Variant({
   'withdraw' : BitcoinAmount,
@@ -85,11 +134,18 @@ export const TransformationOutput = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'adjustCredits' : IDL.Func([IDL.Principal, BitcoinAmount, IDL.Text], [], []),
+  'analyzeSendBTCRequestConfirmation' : IDL.Func(
+      [IDL.Nat, IDL.Opt(IDL.Bool)],
+      [ConfirmationAnalysisResult],
+      [],
+    ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'assignInitialAdminCredits' : IDL.Func([], [], []),
-  'confirmOnChain' : IDL.Func([IDL.Nat], [IDL.Bool], []),
   'createCallerBitcoinWallet' : IDL.Func([], [], []),
+  'getAllWithdrawalRequests' : IDL.Func(
+      [],
+      [IDL.Vec(WithdrawalRequest)],
+      ['query'],
+    ),
   'getCallerBalance' : IDL.Func([], [BitcoinAmount], []),
   'getCallerBitcoinWallet' : IDL.Func([], [IDL.Opt(BitcoinWallet)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
@@ -100,16 +156,6 @@ export const idlService = IDL.Service({
       [BitcoinAmount],
       ['query'],
     ),
-  'getPuzzleRewardsOverview' : IDL.Func(
-      [],
-      [
-        IDL.Record({
-          'totalPuzzles' : IDL.Nat,
-          'availablePuzzles' : IDL.Vec(IDL.Tuple(IDL.Text, BitcoinAmount)),
-        }),
-      ],
-      ['query'],
-    ),
   'getReserveStatus' : IDL.Func([], [ReserveStatus], ['query']),
   'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
   'getTransferRequest' : IDL.Func(
@@ -117,68 +163,105 @@ export const idlService = IDL.Service({
       [IDL.Opt(SendBTCRequest)],
       ['query'],
     ),
-  'getTransferRequestDiagnostics' : IDL.Func(
-      [IDL.Nat],
-      [
-        IDL.Opt(
-          IDL.Record({
-            'status' : TransferStatus,
-            'failureReason' : IDL.Opt(IDL.Text),
-            'diagnosticData' : IDL.Opt(IDL.Text),
-            'owner' : IDL.Principal,
-            'failureCode' : IDL.Opt(IDL.Text),
-          })
-        ),
-      ],
-      ['query'],
-    ),
-  'getTransferStatus' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Opt(TransferStatus)],
-      ['query'],
-    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'getVerificationEndpoint' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+  'getUserWithdrawalRequests' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(WithdrawalRequest)],
+      ['query'],
+    ),
+  'getWithdrawalRequest' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Opt(WithdrawalRequest)],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'makeTestOutcall' : IDL.Func([IDL.Text], [IDL.Text], []),
   'manageReserve' : IDL.Func([ReserveManagementAction], [], []),
+  'markWithdrawalPaid' : IDL.Func([IDL.Nat], [], []),
   'purchaseCredits' : IDL.Func([IDL.Text, BitcoinAmount], [], []),
   'refreshBtcPrice' : IDL.Func([], [IDL.Opt(IDL.Float64)], []),
+  'refreshTransferRequestStatus' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Opt(SendBTCRequest)],
+      [],
+    ),
+  'rejectWithdrawalRequest' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendBTC' : IDL.Func([IDL.Text, BitcoinAmount], [IDL.Nat], []),
-  'submitPuzzleSolution' : IDL.Func(
-      [IDL.Text, IDL.Text],
-      [
-        IDL.Record({
-          'rewardAmount' : BitcoinAmount,
-          'newBalance' : BitcoinAmount,
-        }),
-      ],
+  'submitWithdrawalRequest' : IDL.Func(
+      [BitcoinAmount, IDL.Text, IDL.Opt(IDL.Text)],
+      [IDL.Nat],
       [],
     ),
   'toggleApiDiagnostics' : IDL.Func([], [IDL.Bool], []),
-  'transferCreditsToUser' : IDL.Func([IDL.Principal, BitcoinAmount], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
       ['query'],
     ),
-  'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
-  'verifyPuzzleReward' : IDL.Func([IDL.Text], [IDL.Bool], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const TransferStatus = IDL.Variant({
+    'COMPLETED' : IDL.Null,
+    'VERIFIED' : IDL.Null,
+    'IN_PROGRESS' : IDL.Null,
+    'FAILED' : IDL.Null,
+    'PENDING' : IDL.Null,
+    'EVICTED' : IDL.Null,
+  });
   const BitcoinAmount = IDL.Nat;
+  const FeeRateSufficiency = IDL.Variant({
+    'BORDERLINE' : IDL.Null,
+    'SUFFICIENT' : IDL.Null,
+    'INSUFFICIENT' : IDL.Null,
+  });
+  const Time = IDL.Int;
+  const MempoolAnalysisResult = IDL.Record({
+    'mempoolDepthBytes' : IDL.Opt(BitcoinAmount),
+    'recommendedFeeRate' : BitcoinAmount,
+    'diagnosticData' : IDL.Opt(IDL.Text),
+    'feeDescription' : IDL.Text,
+    'txid' : IDL.Text,
+    'feeRateSufficiency' : FeeRateSufficiency,
+    'timestamp' : Time,
+    'recommendedNextBlockFeeRate' : IDL.Opt(BitcoinAmount),
+    'mempoolFeeRate' : BitcoinAmount,
+  });
+  const ConfirmationAnalysisResult = IDL.Record({
+    'confirmations' : IDL.Opt(IDL.Nat),
+    'status' : TransferStatus,
+    'diagnosticData' : IDL.Opt(IDL.Text),
+    'forceFreshCheck' : IDL.Opt(IDL.Bool),
+    'expectedFee' : IDL.Opt(BitcoinAmount),
+    'suggestedFee' : IDL.Opt(BitcoinAmount),
+    'feeDecryptorAnalysis' : IDL.Opt(MempoolAnalysisResult),
+    'statusTimestamp' : Time,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const WithdrawalStatus = IDL.Variant({
+    'REJECTED' : IDL.Null,
+    'PAID' : IDL.Null,
+    'PENDING' : IDL.Null,
+  });
+  const WithdrawalRequest = IDL.Record({
+    'id' : IDL.Nat,
+    'status' : WithdrawalStatus,
+    'method' : IDL.Text,
+    'failureReason' : IDL.Opt(IDL.Text),
+    'owner' : IDL.Principal,
+    'account' : IDL.Opt(IDL.Text),
+    'timestamp' : Time,
+    'amount' : BitcoinAmount,
   });
   const BitcoinWallet = IDL.Record({
     'publicKey' : IDL.Vec(IDL.Nat8),
@@ -195,22 +278,18 @@ export const idlFactory = ({ IDL }) => {
   });
   const TransactionType = IDL.Variant({
     'adjustment' : IDL.Null,
+    'withdrawalRejected' : IDL.Null,
+    'withdrawalPaid' : IDL.Null,
+    'withdrawalRequested' : IDL.Null,
     'creditPurchase' : IDL.Null,
     'debit' : IDL.Null,
   });
-  const Time = IDL.Int;
   const Transaction = IDL.Record({
     'id' : IDL.Text,
     'transactionType' : TransactionType,
     'user' : IDL.Principal,
     'timestamp' : Time,
     'amount' : BitcoinAmount,
-  });
-  const TransferStatus = IDL.Variant({
-    'COMPLETED' : IDL.Null,
-    'VERIFIED' : IDL.Null,
-    'IN_PROGRESS' : IDL.Null,
-    'FAILED' : IDL.Null,
   });
   const SendBTCRequest = IDL.Record({
     'id' : IDL.Nat,
@@ -219,11 +298,14 @@ export const idlFactory = ({ IDL }) => {
     'diagnosticData' : IDL.Opt(IDL.Text),
     'owner' : IDL.Principal,
     'destinationAddress' : IDL.Text,
+    'confirmedBlockheight' : IDL.Opt(IDL.Nat),
     'totalCost' : BitcoinAmount,
     'networkFee' : BitcoinAmount,
+    'evictedDetectedTimestamp' : IDL.Opt(Time),
     'timestamp' : Time,
     'blockchainTxId' : IDL.Opt(IDL.Text),
     'amount' : BitcoinAmount,
+    'lastStatusCheckTimestamp' : IDL.Opt(Time),
   });
   const ReserveManagementAction = IDL.Variant({
     'withdraw' : BitcoinAmount,
@@ -248,15 +330,18 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'adjustCredits' : IDL.Func(
-        [IDL.Principal, BitcoinAmount, IDL.Text],
-        [],
+    'analyzeSendBTCRequestConfirmation' : IDL.Func(
+        [IDL.Nat, IDL.Opt(IDL.Bool)],
+        [ConfirmationAnalysisResult],
         [],
       ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'assignInitialAdminCredits' : IDL.Func([], [], []),
-    'confirmOnChain' : IDL.Func([IDL.Nat], [IDL.Bool], []),
     'createCallerBitcoinWallet' : IDL.Func([], [], []),
+    'getAllWithdrawalRequests' : IDL.Func(
+        [],
+        [IDL.Vec(WithdrawalRequest)],
+        ['query'],
+      ),
     'getCallerBalance' : IDL.Func([], [BitcoinAmount], []),
     'getCallerBitcoinWallet' : IDL.Func(
         [],
@@ -271,16 +356,6 @@ export const idlFactory = ({ IDL }) => {
         [BitcoinAmount],
         ['query'],
       ),
-    'getPuzzleRewardsOverview' : IDL.Func(
-        [],
-        [
-          IDL.Record({
-            'totalPuzzles' : IDL.Nat,
-            'availablePuzzles' : IDL.Vec(IDL.Tuple(IDL.Text, BitcoinAmount)),
-          }),
-        ],
-        ['query'],
-      ),
     'getReserveStatus' : IDL.Func([], [ReserveStatus], ['query']),
     'getTransactionHistory' : IDL.Func([], [IDL.Vec(Transaction)], ['query']),
     'getTransferRequest' : IDL.Func(
@@ -288,58 +363,45 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(SendBTCRequest)],
         ['query'],
       ),
-    'getTransferRequestDiagnostics' : IDL.Func(
-        [IDL.Nat],
-        [
-          IDL.Opt(
-            IDL.Record({
-              'status' : TransferStatus,
-              'failureReason' : IDL.Opt(IDL.Text),
-              'diagnosticData' : IDL.Opt(IDL.Text),
-              'owner' : IDL.Principal,
-              'failureCode' : IDL.Opt(IDL.Text),
-            })
-          ),
-        ],
-        ['query'],
-      ),
-    'getTransferStatus' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Opt(TransferStatus)],
-        ['query'],
-      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'getVerificationEndpoint' : IDL.Func([IDL.Text], [IDL.Text], ['query']),
+    'getUserWithdrawalRequests' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(WithdrawalRequest)],
+        ['query'],
+      ),
+    'getWithdrawalRequest' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(WithdrawalRequest)],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'makeTestOutcall' : IDL.Func([IDL.Text], [IDL.Text], []),
     'manageReserve' : IDL.Func([ReserveManagementAction], [], []),
+    'markWithdrawalPaid' : IDL.Func([IDL.Nat], [], []),
     'purchaseCredits' : IDL.Func([IDL.Text, BitcoinAmount], [], []),
     'refreshBtcPrice' : IDL.Func([], [IDL.Opt(IDL.Float64)], []),
+    'refreshTransferRequestStatus' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Opt(SendBTCRequest)],
+        [],
+      ),
+    'rejectWithdrawalRequest' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendBTC' : IDL.Func([IDL.Text, BitcoinAmount], [IDL.Nat], []),
-    'submitPuzzleSolution' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [
-          IDL.Record({
-            'rewardAmount' : BitcoinAmount,
-            'newBalance' : BitcoinAmount,
-          }),
-        ],
+    'submitWithdrawalRequest' : IDL.Func(
+        [BitcoinAmount, IDL.Text, IDL.Opt(IDL.Text)],
+        [IDL.Nat],
         [],
       ),
     'toggleApiDiagnostics' : IDL.Func([], [IDL.Bool], []),
-    'transferCreditsToUser' : IDL.Func([IDL.Principal, BitcoinAmount], [], []),
     'transform' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
         ['query'],
       ),
-    'verifyBTCTransfer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
-    'verifyPuzzleReward' : IDL.Func([IDL.Text], [IDL.Bool], []),
   });
 };
 

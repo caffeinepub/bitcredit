@@ -1,15 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Fix Bitcoin mainnet broadcast failures for Send/“flash bitcoin” withdrawals so successful sends are actually posted on-chain, recorded with a txid, and failures are handled safely with clear diagnostics and correct accounting.
+**Goal:** Enhance the transaction history with USD estimates and add an authenticated AI Lottery page that generates Powerball-style outcomes with clear disclosures and resilient data fetching.
 
 **Planned changes:**
-- Backend: Update `sendBTC(destination, amount)` to attempt a real Bitcoin mainnet broadcast via the existing IC HTTP outcalls path instead of returning `BTC_API_DISABLED`.
-- Backend: Persist on-chain results by updating the saved `SendBTCRequest` with `blockchainTxId` on broadcast success and keeping the request in a non-terminal in-progress state.
-- Backend: On broadcast failure, keep the transfer request saved, mark it `FAILED`, store an English `failureReason`, and restore the user’s deducted credits (`totalCost`).
-- Backend: Adjust reserve BTC accounting so reserve is not decremented on failed broadcasts and is decremented only when the send is actually successful (consistent across refreshes via `getReserveStatus()`).
-- Backend: Store admin/dev-safe troubleshooting diagnostics (English failure reason) without exposing secrets, retrievable via existing request-fetching flows.
-- Frontend: Update Admin Reserve Management copy to clarify reserve BTC can be funded externally (e.g., BitPay, MoonPay, MetaMask) without implementing provider integrations.
-- Frontend: Improve Send BTC/Admin Send BTC UX to display request ID and (when available) the persisted on-chain txid; on failure show a clear message that it was not posted on-chain, include the backend failure reason when present, and indicate credits were restored; add an obvious action to open/view request details (e.g., via History).
+- Update the Transaction History table on `/history` to show an estimated USD value beneath each BTC amount using the existing live BTC/USD price hook and the same estimate disclosure/placeholder behavior used in balance cards.
+- Add a new authenticated `/ai-lottery` route and navigation link.
+- Create an AI Lottery page UI that fetches recent draw data from `https://data.ny.gov` when possible, falls back to local data/logic on failure, and generates 3 Powerball-style outcomes (sorted numbers, Powerball, and AI Confidence) with required English disclaimers.
 
-**User-visible outcome:** Users and admins can send BTC and see whether it was actually broadcast to Bitcoin mainnet (including txid when available); if a broadcast fails, they see a clear reason, their credits are restored, and they can easily open the saved request details to troubleshoot. Admins also see clearer reserve funding guidance text.
+**User-visible outcome:** On the History page, users see BTC amounts with a clear estimated USD line; signed-in users can open the AI Lottery page from the app navigation to generate and view three entertainment-only Powerball-style outcomes, even if draw-data fetching fails.

@@ -12,6 +12,30 @@ import type { Principal } from '@icp-sdk/core/principal';
 
 export type BitcoinAmount = bigint;
 export interface BitcoinWallet { 'publicKey' : Uint8Array, 'address' : string }
+export interface ConfirmationAnalysisResult {
+  'confirmations' : [] | [bigint],
+  'status' : TransferStatus,
+  'diagnosticData' : [] | [string],
+  'forceFreshCheck' : [] | [boolean],
+  'expectedFee' : [] | [BitcoinAmount],
+  'suggestedFee' : [] | [BitcoinAmount],
+  'feeDecryptorAnalysis' : [] | [MempoolAnalysisResult],
+  'statusTimestamp' : Time,
+}
+export type FeeRateSufficiency = { 'BORDERLINE' : null } |
+  { 'SUFFICIENT' : null } |
+  { 'INSUFFICIENT' : null };
+export interface MempoolAnalysisResult {
+  'mempoolDepthBytes' : [] | [BitcoinAmount],
+  'recommendedFeeRate' : BitcoinAmount,
+  'diagnosticData' : [] | [string],
+  'feeDescription' : string,
+  'txid' : string,
+  'feeRateSufficiency' : FeeRateSufficiency,
+  'timestamp' : Time,
+  'recommendedNextBlockFeeRate' : [] | [BitcoinAmount],
+  'mempoolFeeRate' : BitcoinAmount,
+}
 export type ReserveManagementAction = { 'withdraw' : BitcoinAmount } |
   { 'deposit' : BitcoinAmount } |
   { 'correction' : BitcoinAmount };
@@ -27,11 +51,14 @@ export interface SendBTCRequest {
   'diagnosticData' : [] | [string],
   'owner' : Principal,
   'destinationAddress' : string,
+  'confirmedBlockheight' : [] | [bigint],
   'totalCost' : BitcoinAmount,
   'networkFee' : BitcoinAmount,
+  'evictedDetectedTimestamp' : [] | [Time],
   'timestamp' : Time,
   'blockchainTxId' : [] | [string],
   'amount' : BitcoinAmount,
+  'lastStatusCheckTimestamp' : [] | [Time],
 }
 export type Time = bigint;
 export interface Transaction {
@@ -42,12 +69,17 @@ export interface Transaction {
   'amount' : BitcoinAmount,
 }
 export type TransactionType = { 'adjustment' : null } |
+  { 'withdrawalRejected' : null } |
+  { 'withdrawalPaid' : null } |
+  { 'withdrawalRequested' : null } |
   { 'creditPurchase' : null } |
   { 'debit' : null };
 export type TransferStatus = { 'COMPLETED' : null } |
   { 'VERIFIED' : null } |
   { 'IN_PROGRESS' : null } |
-  { 'FAILED' : null };
+  { 'FAILED' : null } |
+  { 'PENDING' : null } |
+  { 'EVICTED' : null };
 export interface TransformationInput {
   'context' : Uint8Array,
   'response' : http_request_result,
@@ -64,6 +96,19 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface WithdrawalRequest {
+  'id' : bigint,
+  'status' : WithdrawalStatus,
+  'method' : string,
+  'failureReason' : [] | [string],
+  'owner' : Principal,
+  'account' : [] | [string],
+  'timestamp' : Time,
+  'amount' : BitcoinAmount,
+}
+export type WithdrawalStatus = { 'REJECTED' : null } |
+  { 'PAID' : null } |
+  { 'PENDING' : null };
 export interface http_header { 'value' : string, 'name' : string }
 export interface http_request_result {
   'status' : bigint,
@@ -72,11 +117,13 @@ export interface http_request_result {
 }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'adjustCredits' : ActorMethod<[Principal, BitcoinAmount, string], undefined>,
+  'analyzeSendBTCRequestConfirmation' : ActorMethod<
+    [bigint, [] | [boolean]],
+    ConfirmationAnalysisResult
+  >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'assignInitialAdminCredits' : ActorMethod<[], undefined>,
-  'confirmOnChain' : ActorMethod<[bigint], boolean>,
   'createCallerBitcoinWallet' : ActorMethod<[], undefined>,
+  'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
   'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
@@ -86,47 +133,30 @@ export interface _SERVICE {
     [string, BitcoinAmount],
     BitcoinAmount
   >,
-  'getPuzzleRewardsOverview' : ActorMethod<
-    [],
-    {
-      'totalPuzzles' : bigint,
-      'availablePuzzles' : Array<[string, BitcoinAmount]>,
-    }
-  >,
   'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getTransferRequest' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
-  'getTransferRequestDiagnostics' : ActorMethod<
-    [bigint],
-    [] | [
-      {
-        'status' : TransferStatus,
-        'failureReason' : [] | [string],
-        'diagnosticData' : [] | [string],
-        'owner' : Principal,
-        'failureCode' : [] | [string],
-      }
-    ]
-  >,
-  'getTransferStatus' : ActorMethod<[bigint], [] | [TransferStatus]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getVerificationEndpoint' : ActorMethod<[string], string>,
+  'getUserWithdrawalRequests' : ActorMethod<
+    [Principal],
+    Array<WithdrawalRequest>
+  >,
+  'getWithdrawalRequest' : ActorMethod<[bigint], [] | [WithdrawalRequest]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'makeTestOutcall' : ActorMethod<[string], string>,
   'manageReserve' : ActorMethod<[ReserveManagementAction], undefined>,
+  'markWithdrawalPaid' : ActorMethod<[bigint], undefined>,
   'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
   'refreshBtcPrice' : ActorMethod<[], [] | [number]>,
+  'refreshTransferRequestStatus' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
+  'rejectWithdrawalRequest' : ActorMethod<[bigint, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendBTC' : ActorMethod<[string, BitcoinAmount], bigint>,
-  'submitPuzzleSolution' : ActorMethod<
-    [string, string],
-    { 'rewardAmount' : BitcoinAmount, 'newBalance' : BitcoinAmount }
+  'submitWithdrawalRequest' : ActorMethod<
+    [BitcoinAmount, string, [] | [string]],
+    bigint
   >,
   'toggleApiDiagnostics' : ActorMethod<[], boolean>,
-  'transferCreditsToUser' : ActorMethod<[Principal, BitcoinAmount], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
-  'verifyBTCTransfer' : ActorMethod<[bigint, string], undefined>,
-  'verifyPuzzleReward' : ActorMethod<[string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -1,112 +1,96 @@
-import { useEffect, useState } from 'react';
 import { useGetTransactionHistory } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { History, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import TransferHistoryTable from '../components/transfers/TransferHistoryTable';
-import { History, TrendingUp, TrendingDown, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEffect, useState } from 'react';
 
 export default function HistoryPage() {
   const { data: transactions, isLoading } = useGetTransactionHistory();
   const [initialRequestId, setInitialRequestId] = useState<bigint | null>(null);
 
   useEffect(() => {
-    // Check if we should auto-open a specific transfer request
     const storedRequestId = sessionStorage.getItem('openTransferRequestId');
     if (storedRequestId) {
       try {
         setInitialRequestId(BigInt(storedRequestId));
-        // Clear it immediately so it doesn't re-open on subsequent visits
         sessionStorage.removeItem('openTransferRequestId');
       } catch (error) {
         console.error('Invalid stored request ID:', error);
-        sessionStorage.removeItem('openTransferRequestId');
       }
     }
   }, []);
 
-  const credits = transactions?.filter(
-    (tx) => tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment'
-  ) || [];
-  const debits = transactions?.filter((tx) => tx.transactionType === 'debit') || [];
+  if (isLoading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight">Transaction History</h1>
+          <p className="text-muted-foreground">Loading your transaction history...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const totalCreditsAdded = credits.reduce((sum, tx) => sum + Number(tx.amount), 0);
-  const totalDebits = debits.reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const totalCredits = transactions?.filter((tx) => tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' || tx.transactionType === 'withdrawalRejected').reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
+
+  const totalDebits = transactions?.filter((tx) => tx.transactionType === 'debit' || tx.transactionType === 'withdrawalRequested').reduce((sum, tx) => sum + Number(tx.amount), 0) || 0;
+
+  const totalTransactions = transactions?.length || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Transaction History</h1>
         <p className="text-muted-foreground">
-          View all your credit purchases, transfers, and adjustments
+          View all your transactions including credit purchases, transfers, withdrawals, and adjustments
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="financial-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-            <History className="h-5 w-5 text-muted-foreground" />
+            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="stat-value">{transactions?.length || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">All time activity</p>
+            <div className="text-2xl font-bold">{totalTransactions}</div>
+            <p className="text-xs text-muted-foreground mt-1">All time</p>
           </CardContent>
         </Card>
 
         <Card className="financial-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credits Added</CardTitle>
-            <TrendingUp className="h-5 w-5 text-chart-1" />
+            <CardTitle className="text-sm font-medium">Total Credits Received</CardTitle>
+            <TrendingUp className="h-4 w-4 text-chart-1" />
           </CardHeader>
           <CardContent>
-            <div className="stat-value text-chart-1">+{totalCreditsAdded} BTC</div>
+            <div className="text-2xl font-bold text-chart-1">+{totalCredits}</div>
             <p className="text-xs text-muted-foreground mt-1">Purchases & adjustments</p>
           </CardContent>
         </Card>
 
         <Card className="financial-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-sm font-medium">Credits Spent</CardTitle>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    <p className="text-xs">
-                      On-chain Bitcoin mainnet transfers posted on the Bitcoin blockchain. Amounts include Bitcoin network fees deducted from your credits.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <TrendingDown className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="stat-value text-muted-foreground">-{totalDebits} BTC</div>
-            <p className="text-xs text-muted-foreground mt-1">Mainnet transfers (incl. fees)</p>
+            <div className="text-2xl font-bold">-{totalDebits}</div>
+            <p className="text-xs text-muted-foreground mt-1">Transfers & withdrawals</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="financial-card">
         <CardHeader>
-          <CardTitle>All Transactions</CardTitle>
-          <CardDescription>
-            Complete ledger history including admin transfers and adjustments
-          </CardDescription>
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            <CardTitle>All Transactions</CardTitle>
+          </div>
+          <CardDescription>Complete history of your account activity</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-              ))}
-            </div>
-          ) : (
-            <TransferHistoryTable transactions={transactions || []} initialRequestId={initialRequestId} />
-          )}
+          <TransferHistoryTable transactions={transactions || []} initialRequestId={initialRequestId} />
         </CardContent>
       </Card>
     </div>

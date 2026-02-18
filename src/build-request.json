@@ -1,133 +1,77 @@
 {
   "kind": "build_request",
-  "title": "Troubleshoot and fix failing Bitcoin mainnet broadcasts for Send/Flash withdrawals",
-  "projectName": "ReserveBTC Wallet",
-  "priority": "high",
+  "title": "Add USD estimates to transaction history and create AI-driven Lottery page",
+  "projectName": "BTC Credits",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-101",
-      "text": "Fix backend on-chain broadcast so Send BTC / “flash bitcoin” withdrawals are actually posted to Bitcoin mainnet instead of always failing with `BTC_API_DISABLED`, and persist the resulting on-chain txid when broadcast succeeds.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
-        ]
-      },
-      "acceptanceCriteria": [
-        "When `sendBTC(destination, amount)` is called, the backend attempts a real on-chain broadcast via the existing IC HTTP outcalls path (`http-outcalls/outcall`) rather than returning `BTC_API_DISABLED`.",
-        "On broadcast success, the saved `SendBTCRequest` is updated with `blockchainTxId = ?<txid>` and `status` remains a non-terminal “in progress” state (e.g., `#IN_PROGRESS`).",
-        "The frontend (which fetches `getTransferRequest` after `sendBTC`) can display a txid for successful broadcasts (i.e., `blockchainTxId` is not null)."
-      ]
-    },
-    {
-      "id": "REQ-102",
-      "text": "Ensure backend failure semantics are safe and auditable when an on-chain broadcast fails: the transfer request must remain saved, be marked `FAILED`, store an English `failureReason`, and the user’s deducted credits (full `totalCost`) must be restored so users are not charged for transfers that were not posted on-chain.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
-        ]
-      },
-      "acceptanceCriteria": [
-        "If broadcast fails for any reason, the existing `SendBTCRequest` is updated to `status = #FAILED` and `failureReason` is set to a clear English message suitable for display in the UI.",
-        "After a failed broadcast, the caller’s balance is restored by `totalCost` (amount + network fee) and does not remain reduced.",
-        "A failed broadcast does not remove the transfer request record; `getTransferRequest(requestId)` still returns it for the owner/admin."
-      ]
-    },
-    {
-      "id": "REQ-103",
-      "text": "Update reserve accounting so reserve BTC tracking is consistent with real on-chain outcomes: do not decrement reserve on failed broadcasts, and decrement reserve only when a broadcast succeeds (or when a transfer is later confirmed on-chain, if confirmation is the point at which reserve should be reduced).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Reserve btc from app has flash bitcoin option to send transferable withdrawalable bitcoin to mainnet wallet. Transactions sent aren’t showing on mainnet and failing please troubleshoot"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Reserve balance tracking is not reduced for `SendBTCRequest` entries that end in `FAILED`.",
-        "Reserve balance tracking is reduced in a way that corresponds to actual on-chain spending for successful transfers (at minimum: receiver amount + network fee).",
-        "`getReserveStatus()` reflects the updated reserve after successful sends in a way that is consistent across refreshes."
-      ]
-    },
-    {
-      "id": "REQ-104",
-      "text": "Add backend-side troubleshooting diagnostics (admin-only or development-only) to help identify why broadcasts are failing, without exposing secrets: capture and surface a structured error/failure reason from the broadcast attempt that can be shown in English in the UI.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-3"
-        ],
-        "quotes": [
-          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
-        ]
-      },
-      "acceptanceCriteria": [
-        "When a broadcast attempt fails, the backend stores an English `failureReason` on the transfer request that explains the failure at a user-comprehensible level (e.g., invalid destination address, insufficient on-chain funds, provider rejected request, outcall error).",
-        "Diagnostics do not leak private keys, admin secrets, or raw sensitive provider credentials in the UI-facing failure message.",
-        "Admins can retrieve failure information for a request via existing request-fetching flows (e.g., `getTransferRequest` / existing diagnostics query methods)."
-      ]
-    },
-    {
-      "id": "REQ-105",
-      "text": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
+      "id": "REQ-146",
+      "text": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "Reservebtc is purchased with credits from BitPay, moonpay or MetaMask."
+          "Yes add to transaction history"
         ]
       },
       "acceptanceCriteria": [
-        "Admin Reserve Management section includes clear English explanatory text stating that reserve BTC may be funded externally (e.g., “Reserve BTC can be funded via external providers such as BitPay, MoonPay, or MetaMask, then recorded here.”).",
-        "No direct MetaMask/BitPay/MoonPay API integration is required for this change; it is strictly copy/UX clarification.",
-        "All new/updated text in this area is English and consistent with existing tone."
+        "On `/history`, each transaction row (in `frontend/src/components/transfers/TransferHistoryTable.tsx`) shows the BTC-denominated amount and, directly beneath it, an estimated USD value line when BTC/USD price data is available.",
+        "When BTC/USD price data is unavailable or still loading, the UI shows an English placeholder consistent with `frontend/src/components/balance/UsdEstimateLine.tsx` behavior (e.g., loading skeleton and/or “USD value unavailable”).",
+        "The USD estimate copy includes the existing English disclosure that it is an estimate and can fluctuate (same wording as `UsdEstimateLine`).",
+        "The implementation uses the existing `useGetCurrentBtcPriceUsd()` hook from `frontend/src/hooks/useQueries.ts` (no new price-fetching mechanism).",
+        "User-facing text added/changed for this requirement is in clear English."
       ]
     },
     {
-      "id": "REQ-106",
-      "text": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
+      "id": "REQ-147",
+      "text": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-4"
         ],
         "quotes": [
-          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
+          "Add ai driven lottery page with this code",
+          "url = \"https://data.ny.gov\"",
+          "def ai_spin_filtered_by_errors():"
         ]
       },
       "acceptanceCriteria": [
-        "After submitting Send BTC, the UI shows the created request ID and, when available, the on-chain txid pulled from the persisted `SendBTCRequest.blockchainTxId`.",
-        "If a send fails (request status `FAILED`), the UI shows a clear English message that the transaction was not posted to the Bitcoin blockchain, includes the backend-provided failure reason when present, and indicates credits were restored.",
-        "The UI provides an obvious action to view the request details (e.g., navigates to History and opens the request details) so users can troubleshoot why it did not appear on mainnet."
+        "A new route is added in `frontend/src/App.tsx` for the Lottery page (for example: `/ai-lottery`) and it is accessible to signed-in users under the existing `AuthGate` flow.",
+        "The main app navigation is updated to include a link to the Lottery page (update `frontend/src/components/layout/AppHeader.tsx` nav links list).",
+        "A new page component is created (e.g., `frontend/src/pages/AiLotteryPage.tsx`) that renders: (1) a page title, (2) a short English explanation of what the page does, (3) a primary action to generate outcomes (e.g., “Generate AI Spins”), and (4) a results area that displays 3 outcomes with: Spin number, 5 sorted main numbers (1–69), Powerball (1–26), and an “AI Confidence” percentage (70%–95%).",
+        "The page attempts to fetch recent draw data from the user-provided URL `https://data.ny.gov` and uses the fetched data when possible; if the fetch fails or the data is not usable as expected, the UI must show a clear English error state and still allow the user to generate outcomes using a local fallback dataset/logic so the page remains usable.",
+        "The UI includes an explicit English disclosure that lottery outcomes are for entertainment only, do not improve odds, and do not guarantee winnings.",
+        "The UI includes an explicit English disclosure that the app is not running Python/scikit-learn code in the browser or backend, and that the displayed results are generated in-app using a simplified, Powerball-style randomization approach inspired by the provided pseudocode.",
+        "All user-facing text added for this page is in clear English."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo`; do not introduce additional canisters/services.",
-    "Only generate `backend/migration.mo` if a state upgrade is required by any state shape changes.",
-    "Do not edit frontend files under `frontend/src/components/ui` or other `frontend.immutablePaths`; compose existing UI components instead.",
-    "Use English for all user-facing text.",
-    "Do not implement third-party wallet authentication/integration (e.g., MetaMask wallet connect) as part of this troubleshooting fix; focus on on-chain broadcast reliability and app-side diagnostics."
+    "Do not modify any files under `frontend/src/components/ui` (Shadcn UI components are read-only in this project).",
+    "Do not edit files listed in `frontend.immutablePaths` in SYSTEM_CONTEXT (compose them instead).",
+    "Do not introduce Python, scikit-learn, LangChain, or any external AI/LLM integrations; implement the Lottery logic in the existing React + TypeScript frontend stack only.",
+    "Keep all user-facing text in clear English."
   ],
   "nonGoals": [
-    "Building a full BitPay/MoonPay/MetaMask purchase pipeline or SDK integrations.",
-    "Adding third-party authentication providers beyond Internet Identity.",
-    "Implementing external databases or non-Motoko backend services.",
-    "Implementing Telegram bot, Python agents, LangChain/Eliza, or any non-supported backend runtime."
+    "Do not add any backend canister endpoints specifically for the Lottery page (no new Motoko APIs required for this request).",
+    "Do not store Lottery results in the credit ledger or transaction history (only display on the Lottery page).",
+    "Do not integrate any real-money lottery purchasing, ticket submission, or payment flows."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

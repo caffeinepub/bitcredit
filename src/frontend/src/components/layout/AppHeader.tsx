@@ -1,145 +1,129 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Menu, X, Coins } from 'lucide-react';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu, Coins, Send, History, Gift, ArrowDownToLine, Sparkles } from 'lucide-react';
 import LoginButton from '../auth/LoginButton';
-import { useGetCallerUserProfile, useIsCallerAdmin } from '../../hooks/useQueries';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { useQuery } from '@tanstack/react-query';
+import { useActor } from '../../hooks/useActor';
+import { useState } from 'react';
 
 export default function AppHeader() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: userProfile } = useGetCallerUserProfile();
-  const { data: isAdmin, isFetched: adminFetched, isLoading: adminLoading } = useIsCallerAdmin();
   const { identity } = useInternetIdentity();
+  const { actor, isFetching: actorFetching } = useActor();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const principalId = identity?.getPrincipal().toString();
+
+  const { data: isAdmin, isFetching: adminFetching, isFetched: adminFetched } = useQuery<boolean>({
+    queryKey: ['isAdmin', principalId],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !actorFetching && !!principalId,
+    retry: false,
+  });
+
+  const { data: userProfile } = useQuery({
+    queryKey: ['currentUserProfile'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getCallerUserProfile();
+    },
+    enabled: !!actor && !actorFetching && !!identity,
+    retry: false,
+  });
 
   const isAuthenticated = !!identity;
+  const showAdminLink = adminFetched && isAdmin === true;
+  const showCheckingIndicator = isAuthenticated && !adminFetched && adminFetching;
 
   const navLinks = [
-    { to: '/', label: 'Dashboard' },
-    { to: '/buy-credits', label: 'Buy Credits' },
-    { to: '/send-btc', label: 'Send BTC' },
-    { to: '/puzzle-rewards', label: 'Puzzle Rewards' },
-    { to: '/history', label: 'History' },
+    { to: '/buy-credits', label: 'Buy Credits', icon: Coins },
+    { to: '/send-btc', label: 'Send BTC', icon: Send },
+    { to: '/history', label: 'History', icon: History },
+    { to: '/puzzle-rewards', label: 'Puzzle Rewards', icon: Gift },
+    { to: '/withdraw', label: 'Withdraw', icon: ArrowDownToLine },
+    { to: '/ai-lottery', label: 'AI Lottery', icon: Sparkles },
   ];
 
-  // Only show Admin link when admin status is fetched and confirmed
-  const showAdminLink = isAuthenticated && adminFetched && isAdmin;
+  const handleNavClick = (to: string) => {
+    setMobileMenuOpen(false);
+    navigate({ to });
+  };
 
   return (
-    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <button
-            onClick={() => navigate({ to: '/' })}
-            className="flex items-center gap-2 font-bold text-xl hover:opacity-80 transition-opacity"
-          >
-            <Coins className="h-6 w-6 text-primary" />
-            <span className="hidden sm:inline">BTC Credit Transfer</span>
-            <span className="sm:hidden">BTC</span>
-          </button>
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center gap-6">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src="/assets/generated/btc-credit-logo.dim_512x512.png" alt="BTC Credits" className="h-8 w-8" />
+            <span className="font-bold text-xl">BTC Credits</span>
+          </Link>
 
-          {/* Desktop Navigation */}
           {isAuthenticated && (
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  activeProps={{
-                    className: 'text-foreground',
-                  }}
-                >
-                  {link.label}
-                </Link>
+                <Button key={link.to} variant="ghost" size="sm" asChild>
+                  <Link to={link.to} className="gap-2">
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </Link>
+                </Button>
               ))}
               {showAdminLink && (
-                <Link
-                  to="/admin"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  activeProps={{
-                    className: 'text-foreground',
-                  }}
-                >
-                  Admin
-                </Link>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/admin">Admin</Link>
+                </Button>
               )}
-              {!adminFetched && adminLoading && (
-                <span className="text-xs text-muted-foreground italic">
-                  Checking access...
-                </span>
+              {showCheckingIndicator && (
+                <span className="text-xs text-muted-foreground ml-2">Checking access...</span>
               )}
             </nav>
           )}
-
-          {/* User Profile & Login */}
-          <div className="flex items-center gap-4">
-            {isAuthenticated && userProfile && (
-              <div className="hidden sm:block text-sm text-muted-foreground">
-                {userProfile.name}
-              </div>
-            )}
-            <LoginButton />
-
-            {/* Mobile Menu Button */}
-            {isAuthenticated && (
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 hover:bg-accent rounded-lg transition-colors"
-              >
-                {mobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
-              </button>
-            )}
-          </div>
         </div>
 
-        {/* Mobile Navigation */}
-        {isAuthenticated && mobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-border">
-            <div className="flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                  activeProps={{
-                    className: 'text-foreground bg-accent',
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              {showAdminLink && (
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                  activeProps={{
-                    className: 'text-foreground bg-accent',
-                  }}
-                >
-                  Admin
-                </Link>
-              )}
-              {!adminFetched && adminLoading && (
-                <div className="px-4 py-2 text-xs text-muted-foreground italic">
-                  Checking admin access...
-                </div>
-              )}
-              {userProfile && (
-                <div className="px-4 py-2 text-sm text-muted-foreground border-t border-border mt-2">
-                  Signed in as {userProfile.name}
-                </div>
-              )}
+        <div className="flex items-center gap-4">
+          {isAuthenticated && userProfile && (
+            <div className="hidden sm:flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Welcome,</span>
+              <span className="font-semibold">{userProfile.name}</span>
             </div>
-          </nav>
-        )}
+          )}
+          <LoginButton />
+
+          {isAuthenticated && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <nav className="flex flex-col gap-4 mt-8">
+                  {navLinks.map((link) => (
+                    <Button
+                      key={link.to}
+                      variant="ghost"
+                      className="justify-start gap-2"
+                      onClick={() => handleNavClick(link.to)}
+                    >
+                      <link.icon className="h-4 w-4" />
+                      {link.label}
+                    </Button>
+                  ))}
+                  {showAdminLink && (
+                    <Button variant="ghost" className="justify-start" onClick={() => handleNavClick('/admin')}>
+                      Admin
+                    </Button>
+                  )}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
       </div>
     </header>
   );

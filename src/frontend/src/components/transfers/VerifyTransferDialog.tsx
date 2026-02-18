@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useVerifyBTCTransfer, useGetTransferRequest, useConfirmOnChain } from '../../hooks/useQueries';
+import { useEffect, useState } from 'react';
+import { useGetTransferRequest } from '../../hooks/useQueries';
+import { useNavigate } from '@tanstack/react-router';
 import {
   Dialog,
   DialogContent,
@@ -8,12 +9,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface VerifyTransferDialogProps {
@@ -23,36 +22,22 @@ interface VerifyTransferDialogProps {
 }
 
 export default function VerifyTransferDialog({ open, onOpenChange, requestId }: VerifyTransferDialogProps) {
-  const [blockchainTxId, setBlockchainTxId] = useState('');
   const [copiedTxId, setCopiedTxId] = useState(false);
-  const { mutate: verifyTransfer, isPending: isVerifying } = useVerifyBTCTransfer();
-  const { mutate: confirmOnChain, isPending: isConfirming } = useConfirmOnChain();
-  const { data: transferRequest, refetch: refetchRequest, isLoading: requestLoading } = useGetTransferRequest(requestId);
+  const navigate = useNavigate();
+  
+  // Enable live refresh when dialog is open
+  const { 
+    data: transferRequest, 
+    refetch: refetchRequest, 
+    isLoading: requestLoading,
+    isFetching: requestFetching 
+  } = useGetTransferRequest(requestId, open);
 
   useEffect(() => {
     if (open) {
       refetchRequest();
     }
   }, [open, refetchRequest]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (blockchainTxId.trim()) {
-      verifyTransfer(
-        { requestId, blockchainTxId: blockchainTxId.trim() },
-        {
-          onSuccess: () => {
-            setBlockchainTxId('');
-            onOpenChange(false);
-          },
-        }
-      );
-    }
-  };
-
-  const handleConfirmOnChain = () => {
-    confirmOnChain(requestId);
-  };
 
   const handleCopyTxId = async (txid: string) => {
     try {
@@ -63,6 +48,19 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
     } catch (error) {
       toast.error('Failed to copy transaction ID');
     }
+  };
+
+  const handleManualRefresh = () => {
+    refetchRequest();
+    toast.info('Refreshing transfer status...');
+  };
+
+  const handleTroubleshoot = () => {
+    onOpenChange(false);
+    navigate({ 
+      to: '/transfer/$requestId/troubleshoot',
+      params: { requestId: requestId.toString() }
+    });
   };
 
   const getStatusInfo = () => {
@@ -119,9 +117,8 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
   };
 
   const statusInfo = getStatusInfo();
-  const isCompleted = transferRequest?.status === 'COMPLETED';
   const isFailed = transferRequest?.status === 'FAILED';
-  const canConfirm = transferRequest?.status === 'IN_PROGRESS' || transferRequest?.status === 'VERIFIED';
+  const isInProgress = transferRequest?.status === 'IN_PROGRESS';
   const hasTxId = transferRequest?.blockchainTxId !== undefined && transferRequest?.blockchainTxId !== null;
 
   return (
@@ -130,7 +127,7 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
         <DialogHeader>
           <DialogTitle>Transfer Request Details</DialogTitle>
           <DialogDescription>
-            View transfer status, on-chain transaction ID, and troubleshoot issues
+            View transfer status and on-chain transaction ID
           </DialogDescription>
         </DialogHeader>
 
@@ -142,6 +139,19 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
             </div>
             {statusInfo?.badge}
           </div>
+
+          {isInProgress && (
+            <Alert className="border-chart-1 bg-chart-1/10">
+              <Loader2 className="h-4 w-4 animate-spin text-chart-1" />
+              <AlertDescription className="text-chart-1">
+                <strong>Auto-updating</strong>
+                <br />
+                <span className="text-sm">
+                  This transfer is in progress. Status updates automatically every 3 seconds.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {requestLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -161,180 +171,91 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                     <span className="font-semibold">{transferRequest.networkFee.toString()} BTC</span>
                   </div>
                   <div className="pt-1.5 border-t flex justify-between">
-                    <span className="font-semibold">Total deducted:</span>
+                    <span className="font-semibold">Total cost:</span>
                     <span className="font-bold">{transferRequest.totalCost.toString()} BTC</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                <h4 className="font-semibold text-sm">Status</h4>
-                <p className="text-sm text-muted-foreground">{statusInfo?.description}</p>
-              </div>
-
               {hasTxId && (
-                <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm">On-chain Transaction ID (txid)</h4>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">On-Chain Transaction ID</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-muted p-2 rounded font-mono break-all">
+                      {transferRequest.blockchainTxId}
+                    </code>
                     <Button
-                      variant="ghost"
-                      size="icon"
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleCopyTxId(transferRequest.blockchainTxId!)}
-                      className="h-6 w-6"
                     >
-                      {copiedTxId ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
+                      {copiedTxId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
-                  <p className="text-xs font-mono bg-background p-2 rounded border break-all">
-                    {transferRequest.blockchainTxId}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    This transaction has been posted to the Bitcoin blockchain
-                  </p>
                 </div>
               )}
 
-              {isFailed && transferRequest.failureReason && (
+              {isFailed && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertDescription>
                     <strong>Transfer Failed</strong>
                     <br />
-                    <span className="text-sm mt-1 block font-semibold">
-                      This transaction was not posted to the Bitcoin blockchain.
+                    <span className="text-sm">
+                      {transferRequest.failureReason || 'The transaction could not be broadcast to the Bitcoin blockchain.'}
                     </span>
-                    <span className="text-sm mt-1 block">
-                      {transferRequest.failureReason}
-                    </span>
-                    <br />
-                    <span className="text-sm font-semibold">
-                      Your credits have been restored.
-                    </span>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {isFailed && !transferRequest.failureReason && (
-                <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Transfer Failed</strong>
-                    <br />
-                    <span className="text-sm mt-1 block font-semibold">
-                      This transaction was not posted to the Bitcoin blockchain.
-                    </span>
-                    <span className="text-sm mt-1 block">
-                      Your credits have been restored.
-                    </span>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {canConfirm && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    You can re-check the on-chain status to confirm if this transfer has been completed on the Bitcoin blockchain.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {!isCompleted && !isFailed && !hasTxId && (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      If you have a Bitcoin transaction ID for this transfer, you can submit it here to verify the transaction on the blockchain.
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="blockchainTxId">Blockchain Transaction ID (optional)</Label>
-                    <Input
-                      id="blockchainTxId"
-                      type="text"
-                      placeholder="Enter Bitcoin transaction ID"
-                      value={blockchainTxId}
-                      onChange={(e) => setBlockchainTxId(e.target.value)}
-                      className="font-mono text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      The txid from the Bitcoin blockchain explorer
-                    </p>
-                  </div>
-
-                  <DialogFooter className="gap-2">
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                      Close
-                    </Button>
-                    {canConfirm && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleConfirmOnChain}
-                        disabled={isConfirming}
-                      >
-                        {isConfirming ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2" />
-                            Confirm On-Chain
-                          </>
-                        )}
-                      </Button>
+                    {!hasTxId && (
+                      <>
+                        <br />
+                        <br />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleTroubleshoot}
+                        >
+                          <Wrench className="h-3.5 w-3.5 mr-1" />
+                          Troubleshoot & Retry
+                        </Button>
+                      </>
                     )}
-                    <Button type="submit" disabled={isVerifying || !blockchainTxId.trim()}>
-                      {isVerifying ? 'Verifying...' : 'Verify Transfer'}
-                    </Button>
-                  </DialogFooter>
-                </form>
+                  </AlertDescription>
+                </Alert>
               )}
 
-              {(isCompleted || isFailed || (hasTxId && !canConfirm)) && (
-                <DialogFooter className="gap-2">
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                    Close
-                  </Button>
-                  {canConfirm && (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={handleConfirmOnChain}
-                      disabled={isConfirming}
-                    >
-                      {isConfirming ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Checking...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Confirm On-Chain
-                        </>
-                      )}
-                    </Button>
-                  )}
-                </DialogFooter>
+              {transferRequest.diagnosticData && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Diagnostic Data</p>
+                  <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono">
+                    {transferRequest.diagnosticData}
+                  </p>
+                </div>
               )}
             </>
           ) : (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Unable to load transfer request details.
+                Unable to load transfer request details. Please try again.
               </AlertDescription>
             </Alert>
           )}
         </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            onClick={handleManualRefresh}
+            disabled={requestFetching}
+            className="w-full sm:w-auto"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${requestFetching ? 'animate-spin' : ''}`} />
+            Refresh Status
+          </Button>
+          <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

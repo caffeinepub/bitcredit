@@ -1,47 +1,53 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "ReserveBTC Wallet — Frontend UX/copy updates for on-chain send outcomes and reserve funding clarification",
+  "title": "USD estimates in transaction history + authenticated AI Lottery page",
   "requirements": [
     {
-      "id": "REQ-105",
-      "summary": "Clarify Admin Reserve Management copy to state reserve BTC can be funded externally (BitPay, MoonPay, MetaMask) without adding any provider integrations.",
+      "id": "REQ-146",
+      "summary": "Show per-transaction estimated USD value lines in Transaction History using existing BTC/USD price query and existing disclosure copy.",
       "acceptanceCriteria": [
-        "Admin Reserve Management section includes clear English explanatory text stating that reserve BTC may be funded externally (e.g., “Reserve BTC can be funded via external providers such as BitPay, MoonPay, or MetaMask, then recorded here.”).",
-        "No direct MetaMask/BitPay/MoonPay API integration is required for this change; it is strictly copy/UX clarification.",
-        "All new/updated text in this area is English and consistent with existing tone."
+        "On `/history`, each transaction row (in `frontend/src/components/transfers/TransferHistoryTable.tsx`) shows the BTC-denominated amount and, directly beneath it, an estimated USD value line when BTC/USD price data is available.",
+        "When BTC/USD price data is unavailable or still loading, the UI shows an English placeholder consistent with `frontend/src/components/balance/UsdEstimateLine.tsx` behavior (e.g., loading skeleton and/or “USD value unavailable”).",
+        "The USD estimate copy includes the existing English disclosure that it is an estimate and can fluctuate (same wording as `UsdEstimateLine`).",
+        "The implementation uses the existing `useGetCurrentBtcPriceUsd()` hook from `frontend/src/hooks/useQueries.ts` (no new price-fetching mechanism).",
+        "User-facing text added/changed for this requirement is in clear English."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminPage.tsx",
+          "path": "frontend/src/components/transfers/TransferHistoryTable.tsx",
           "operation": "modify",
-          "description": "Update the Reserve Management section UI copy (e.g., CardDescription and/or an inline Alert under the section header) to explain that reserve BTC can be funded externally via providers such as BitPay, MoonPay, or MetaMask, then recorded/adjusted here; keep wording clear English and avoid adding any provider connection flows."
+          "description": "Integrate the existing price query via `useGetCurrentBtcPriceUsd()` and render `UsdEstimateLine` directly beneath each transaction’s BTC amount in the Amount column (including the existing English estimate disclosure and placeholder behavior). Ensure the primary amount is clearly BTC-denominated. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-106",
-      "summary": "Make Send BTC and Admin Send BTC flows clearly show request ID, txid (when available), failure reason (when FAILED), and an obvious path to open request details in History.",
+      "id": "REQ-147",
+      "summary": "Add a new authenticated AI Lottery page with in-app Powerball-style outcome generation, robust draw-data fetch attempt, fallbacks, disclosures, routing, and navigation.",
       "acceptanceCriteria": [
-        "After submitting Send BTC, the UI shows the created request ID and, when available, the on-chain txid pulled from the persisted `SendBTCRequest.blockchainTxId`.",
-        "If a send fails (request status `FAILED`), the UI shows a clear English message that the transaction was not posted to the Bitcoin blockchain, includes the backend-provided failure reason when present, and indicates credits were restored.",
-        "The UI provides an obvious action to view the request details (e.g., navigates to History and opens the request details) so users can troubleshoot why it did not appear on mainnet."
+        "A new route is added in `frontend/src/App.tsx` for the Lottery page (for example: `/ai-lottery`) and it is accessible to signed-in users under the existing `AuthGate` flow.",
+        "The main app navigation is updated to include a link to the Lottery page (update `frontend/src/components/layout/AppHeader.tsx` nav links list).",
+        "A new page component is created (e.g., `frontend/src/pages/AiLotteryPage.tsx`) that renders: (1) a page title, (2) a short English explanation of what the page does, (3) a primary action to generate outcomes (e.g., “Generate AI Spins”), and (4) a results area that displays 3 outcomes with: Spin number, 5 sorted main numbers (1–69), Powerball (1–26), and an “AI Confidence” percentage (70%–95%).",
+        "The page attempts to fetch recent draw data from the user-provided URL `https://data.ny.gov` and uses the fetched data when possible; if the fetch fails or the data is not usable as expected, the UI must show a clear English error state and still allow the user to generate outcomes using a local fallback dataset/logic so the page remains usable.",
+        "The UI includes an explicit English disclosure that lottery outcomes are for entertainment only, do not improve odds, and do not guarantee winnings.",
+        "The UI includes an explicit English disclosure that the app is not running Python/scikit-learn code in the browser or backend, and that the displayed results are generated in-app using a simplified, Powerball-style randomization approach inspired by the provided pseudocode.",
+        "All user-facing text added for this page is in clear English."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/SendBtcPage.tsx",
-          "operation": "modify",
-          "description": "Refine the post-submit outcome alert messaging and labels to consistently communicate: (1) request ID always, (2) txid when `transferRequest.blockchainTxId` is present, (3) for `FAILED`, explicitly state it was not posted to the Bitcoin blockchain, show `failureReason` when available, and state credits were restored; ensure the existing CTA to open History details remains prominent."
+          "path": "frontend/src/pages/AiLotteryPage.tsx",
+          "operation": "create",
+          "description": "Create the authenticated AI Lottery page UI (title, short English explanation, primary “Generate AI Spins” action, and results area for 3 outcomes). Implement in-app Powerball-style generation (5 unique sorted main numbers 1–69 + 1 Powerball 1–26 + AI Confidence 70–95) inspired by the provided pseudocode, with explicit English disclosures (entertainment-only; not running Python/scikit-learn/LLMs). Attempt to fetch recent draw data from `https://data.ny.gov`, use it when usable, and show a clear English error state while still enabling generation via a local fallback dataset/logic."
         },
         {
-          "path": "frontend/src/pages/AdminPage.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Align the Admin 'Send BTC to Mainnet Wallet' outcome UI with the Send BTC page: after submit, display request ID; show txid when `SendBTCRequest.blockchainTxId` is present; if status is `FAILED`, show a clear English 'not posted to the Bitcoin blockchain' message including backend-provided `failureReason` when present and note credits were restored; include an obvious action that navigates to History and auto-opens the request details using the existing sessionStorage `openTransferRequestId` pattern."
+          "description": "Wire the new `/ai-lottery` route into the TanStack Router route tree under the existing `AuthGate` (signed-in users only) flow. Use the existing authorization/authentication setup to keep the page authenticated. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/transfers/TransferHistoryTable.tsx",
+          "path": "frontend/src/components/layout/AppHeader.tsx",
           "operation": "modify",
-          "description": "Make the History 'Details' affordance more explicit for troubleshooting failed/unknown mainnet posting (e.g., adjust button label and/or add a short helper text/tooltip for debit rows indicating it opens the transfer request details including status/txid/failure reason), without changing the underlying navigation behavior."
+          "description": "Add an “AI Lottery” navigation item that links to the new `/ai-lottery` route in both desktop and mobile navigation for authenticated users. Ensure it follows the existing authenticated navigation pattern. Verify the component's usage instructions before implementing."
         }
       ]
     }

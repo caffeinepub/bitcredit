@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Send, AlertCircle, Wallet, Loader2, XCircle, CheckCircle } from 'lucide-react';
+import { Send, AlertCircle, Wallet, Loader2, XCircle, CheckCircle, Wrench, ShieldAlert } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import type { SendBTCRequest } from '../backend';
+import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
 
 export default function SendBtcPage() {
   const [destination, setDestination] = useState('');
@@ -32,9 +33,6 @@ export default function SendBtcPage() {
   const networkFee = estimatedFee ? Number(estimatedFee) : 0;
   const totalDeducted = receiverAmount + networkFee;
   const insufficientFunds = totalDeducted > availableBalance;
-
-  // Check if broadcast is unavailable based on fee error
-  const broadcastUnavailable = feeError && feeError.message.toLowerCase().includes('btc_api_disabled');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +66,15 @@ export default function SendBtcPage() {
     }
   };
 
+  const handleTroubleshoot = () => {
+    if (transferOutcome?.requestId) {
+      navigate({ 
+        to: '/transfer/$requestId/troubleshoot',
+        params: { requestId: transferOutcome.requestId.toString() }
+      });
+    }
+  };
+
   const getOutcomeAlert = () => {
     if (!transferOutcome || !transferOutcome.request) return null;
 
@@ -76,10 +83,10 @@ export default function SendBtcPage() {
     const hasTxId = !!request.blockchainTxId;
 
     if (isFailed) {
-      // Display clear English failure reason
+      // Display clear English failure reason from persisted request
       const failureMessage = request.failureReason 
         ? request.failureReason 
-        : 'The transaction could not be broadcast.';
+        : 'The transaction could not be broadcast to the Bitcoin blockchain.';
       
       return (
         <Alert className="border-destructive bg-destructive/10">
@@ -98,13 +105,24 @@ export default function SendBtcPage() {
             <br />
             <span className="text-sm font-semibold">Your credits have been restored.</span>
             <br />
-            <Button
-              variant="link"
-              className="h-auto p-0 text-destructive underline mt-1"
-              onClick={handleViewDetails}
-            >
-              View request details in History to troubleshoot →
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-destructive hover:bg-destructive/90"
+                onClick={handleTroubleshoot}
+              >
+                <Wrench className="h-3.5 w-3.5 mr-1" />
+                Troubleshoot & Retry
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewDetails}
+              >
+                View in History
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       );
@@ -123,7 +141,9 @@ export default function SendBtcPage() {
               Transaction ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{request.blockchainTxId}</code>
             </span>
             <br />
-            <span className="text-sm font-semibold">This transaction has been posted to the Bitcoin blockchain.</span>
+            <span className="text-sm font-semibold">
+              This transaction has been posted to the Bitcoin blockchain. The recipient will receive BTC once the transaction is broadcast and confirmed on the Bitcoin mainnet.
+            </span>
             <br />
             <Button
               variant="link"
@@ -168,6 +188,13 @@ export default function SendBtcPage() {
         </p>
       </div>
 
+      <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+        <ShieldAlert className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-900 dark:text-amber-100">
+          <strong>App-Managed Custodial Broadcasting:</strong> This app uses an app-managed custodial reserve model to broadcast Bitcoin transactions on-chain. You do not need to provide private keys—the app handles signing and broadcasting using its reserve. <strong className="block mt-1">Never paste private keys (WIF format), seed phrases, or API secrets into this app.</strong> Any Python or Node.js signing examples shown in documentation must be run externally on your own secure systems.
+        </AlertDescription>
+      </Alert>
+
       <Card className="financial-card">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -186,11 +213,13 @@ export default function SendBtcPage() {
 
       {transferOutcome && getOutcomeAlert()}
 
+      <BroadcastingDetailsNote />
+
       <Card className="financial-card">
         <CardHeader>
           <CardTitle>Create Transfer Request</CardTitle>
           <CardDescription>
-            Send Bitcoin to any mainnet wallet — posted on the Bitcoin blockchain
+            Send Bitcoin to any mainnet wallet address
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,18 +227,9 @@ export default function SendBtcPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                All transactions are posted on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
+                <strong>On-Chain Bitcoin Mainnet Transaction:</strong> This transfer creates a Bitcoin mainnet transaction using the app's custodial reserve. The recipient receives BTC only when the transaction is broadcast and confirmed on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
               </AlertDescription>
             </Alert>
-
-            {broadcastUnavailable && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Broadcast service unavailable:</strong> The Bitcoin broadcast service is currently disabled. Transactions cannot be posted to the blockchain at this time. Any transfer attempts will fail and your credits will be automatically restored.
-                </AlertDescription>
-              </Alert>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="destination">Destination Bitcoin Address</Label>
@@ -231,53 +251,45 @@ export default function SendBtcPage() {
               <Input
                 id="amount"
                 type="number"
-                min="1"
-                step="1"
-                placeholder="Enter amount to send"
+                placeholder="0.00000000"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                step="0.00000001"
+                min="0"
               />
-              <div className="flex items-center justify-between text-xs">
-                <p className="text-muted-foreground">
-                  Amount receiver will get (1 credit = 1 BTC)
-                </p>
-                <p className="text-muted-foreground">
-                  Available: {balance?.toString() || '0'} BTC
-                </p>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Amount to send to the recipient (in BTC)
+              </p>
             </div>
 
-            {destination.trim() && requestedAmount > BigInt(0) && (
-              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
-                <h4 className="font-semibold text-sm">Transaction Summary</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Receiver gets:</span>
-                    <span className="font-semibold">{receiverAmount} BTC</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Estimated network fee:</span>
-                    {feeLoading ? (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Loading...
-                      </span>
-                    ) : feeError ? (
-                      <span className="text-destructive text-xs">Fee unavailable</span>
-                    ) : (
-                      <span className="font-semibold">{networkFee} BTC</span>
-                    )}
-                  </div>
-                  <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="font-semibold">Total deducted from credits:</span>
-                    <span className="font-bold text-lg">{totalDeducted} BTC</span>
-                  </div>
+            {feeError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Unable to estimate network fee. Please check the destination address.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!feeError && estimatedFee !== undefined && (
+              <div className="p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Recipient receives:</span>
+                  <span className="font-semibold">{receiverAmount} BTC</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Network fee:</span>
+                  <span className="font-semibold">{networkFee} BTC</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between">
+                  <span className="font-semibold">Total deducted from balance:</span>
+                  <span className="font-bold text-primary">{totalDeducted} BTC</span>
                 </div>
                 {insufficientFunds && (
                   <Alert variant="destructive" className="mt-2">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC available.
+                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -286,9 +298,9 @@ export default function SendBtcPage() {
 
             {isError && error && (
               <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {error.message}
+                  {error instanceof Error ? error.message : 'Failed to send BTC'}
                 </AlertDescription>
               </Alert>
             )}
@@ -296,10 +308,28 @@ export default function SendBtcPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isPending || insufficientFunds || !destination.trim() || !amount || feeLoading || !!feeError}
+              size="lg"
+              disabled={
+                isPending ||
+                !destination.trim() ||
+                !amount ||
+                Number(amount) <= 0 ||
+                insufficientFunds ||
+                feeLoading ||
+                !!feeError
+              }
             >
-              <Send className="h-4 w-4 mr-2" />
-              {isPending ? 'Creating Request...' : 'Create Transfer Request'}
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Broadcasting Transaction...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Bitcoin
+                </>
+              )}
             </Button>
           </form>
         </CardContent>

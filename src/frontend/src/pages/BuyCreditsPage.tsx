@@ -1,17 +1,19 @@
 import { useState } from 'react';
-import { usePurchaseCredits, useGetCallerBalance } from '../hooks/useQueries';
+import { usePurchaseCredits, useGetCallerBalance, useGetCurrentBtcPriceUsd } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Coins, AlertCircle, CheckCircle2 } from 'lucide-react';
+import UsdEstimateLine from '../components/balance/UsdEstimateLine';
 
 export default function BuyCreditsPage() {
   const [transactionId, setTransactionId] = useState('');
   const [amount, setAmount] = useState('');
   const { mutate: purchaseCredits, isPending, isSuccess } = usePurchaseCredits();
   const { data: balance } = useGetCallerBalance();
+  const { data: btcPriceUsd, isLoading: priceLoading } = useGetCurrentBtcPriceUsd();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +51,11 @@ export default function BuyCreditsPage() {
         </CardHeader>
         <CardContent>
           <div className="stat-value text-primary">{balance?.toString() || '0'} BTC</div>
-          <p className="text-sm text-muted-foreground mt-1">1 credit = 1 Bitcoin</p>
+          <UsdEstimateLine 
+            btcAmount={balance || BigInt(0)} 
+            btcPriceUsd={btcPriceUsd} 
+            isLoading={priceLoading}
+          />
         </CardContent>
       </Card>
 
@@ -65,7 +71,7 @@ export default function BuyCreditsPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Your transaction will be verified via blockchain API. Only confirmed mainnet transactions will be accepted.
+                <strong>Blockchain Verification:</strong> Credits are issued after blockchain verification. Your transaction will be verified on the Bitcoin blockchain, and credits represent BTC-denominated app balance backed 1:1 by the app's reserve.
               </AlertDescription>
             </Alert>
 
@@ -125,6 +131,9 @@ export default function BuyCreditsPage() {
               <li>We verify the transaction on the Bitcoin blockchain</li>
               <li>Credits are added to your account after verification</li>
             </ol>
+            <p className="text-xs text-muted-foreground mt-3 pt-3 border-t">
+              <strong>Note:</strong> Credits represent BTC-denominated app balance backed 1:1 by the app's reserve. The app does not purchase BTC on your behalf via an exchange at the time of credit purchase.
+            </p>
           </div>
         </CardContent>
       </Card>

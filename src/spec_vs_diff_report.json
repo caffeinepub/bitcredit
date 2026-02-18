@@ -1,70 +1,58 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T04:07:46.386Z",
-  "summary": "Frontend UX for Send BTC/History appears updated to surface request IDs, statuses, txids, failure messaging, and a details flow. Backend state shape was changed (added diagnosticData) with a migration. However, the diff summary is truncated for backend/main.mo and does not show the actual sendBTC broadcast logic, failure rollback semantics, or reserve accounting changes, so those backend requirements cannot be confirmed from the provided evidence. Admin Reserve Management copy about external funding sources is also not evidenced in the shown AdminPage excerpt.",
+  "generatedAt": "2026-02-18T08:19:46.251Z",
+  "summary": "REQ-146 appears implemented by wiring the existing BTC/USD price query into TransferHistoryTable and importing/using the existing UsdEstimateLine under each transaction amount. REQ-147 adds an AiLotteryPage, links it in AppHeader, and imports it in App.tsx, but the Lottery page does not appear to actually use fetched draw data when available (it intentionally throws on successful fetch), and required English disclosures/results rendering can’t be confirmed from the truncated diff.",
   "missing_requirements": [
     {
-      "id": "REQ-101",
-      "requirement": "Fix backend on-chain broadcast so Send BTC withdrawals are posted to Bitcoin mainnet via existing IC HTTP outcalls path and persist txid on success.",
-      "reason": "backend/main.mo changes are truncated and do not show sendBTC implementation or any replacement of BTC_API_DISABLED with a real OutCall-based broadcast, nor the persistence update of blockchainTxId on success.",
+      "id": "REQ-147",
+      "requirement": "The page attempts to fetch recent draw data from https://data.ny.gov and uses the fetched data when possible.",
+      "reason": "In AiLotteryPage, even when the fetch succeeds (response.ok), the code explicitly throws 'Data parsing not implemented' and falls back to local numbers, so it never uses live fetched data.",
       "evidence": [
-        "backend/main.mo (truncated; shows OutCall import and type additions but not sendBTC logic)"
+        "frontend/src/pages/AiLotteryPage.tsx"
       ]
     },
     {
-      "id": "REQ-102",
-      "requirement": "On broadcast failure, mark request FAILED, store English failureReason, and restore deducted credits (totalCost) while keeping the request record retrievable.",
-      "reason": "The diff shows failureReason fields/types and UI messaging, but does not show backend logic that (a) updates status to FAILED, (b) sets failureReason, and (c) restores caller balance/credits on broadcast failure.",
+      "id": "REQ-147",
+      "requirement": "The UI includes an explicit English disclosure that lottery outcomes are for entertainment only, do not improve odds, and do not guarantee winnings.",
+      "reason": "The provided/truncated AiLotteryPage snippet shows error messaging and generation logic but no evidence of the required entertainment-only disclosure text being rendered.",
       "evidence": [
-        "backend/main.mo (truncated; SendBTCRequest type includes failureReason but no failure handling logic shown)"
+        "frontend/src/pages/AiLotteryPage.tsx"
       ]
     },
     {
-      "id": "REQ-103",
-      "requirement": "Reserve accounting should not decrement on failed broadcasts and should decrement only on successful on-chain outcomes.",
-      "reason": "No reserve accounting logic changes related to successful vs failed broadcasts are visible in the diff summary; only type/state definitions are shown.",
+      "id": "REQ-147",
+      "requirement": "The UI includes an explicit English disclosure that the app is not running Python/scikit-learn code in the browser or backend, and that results are generated in-app using a simplified Powerball-style randomization approach inspired by the provided pseudocode.",
+      "reason": "The provided/truncated AiLotteryPage snippet does not show any rendered disclosure about not using Python/scikit-learn or describing the simplified in-app approach; cannot verify it was implemented.",
       "evidence": [
-        "backend/main.mo (truncated; reserveBtcBalance var shown, but no corresponding send/reserve update logic shown)"
+        "frontend/src/pages/AiLotteryPage.tsx"
       ]
     },
     {
-      "id": "REQ-104",
-      "requirement": "Add backend-side diagnostics for broadcast failures without leaking secrets; store a structured/English failure reason retrievable via getTransferRequest.",
-      "reason": "A new diagnosticData field/type is added and migration sets it to null, but the diff summary does not show backend code that populates diagnosticData/failureReason from actual broadcast attempt errors, nor any admin/dev-only gating semantics.",
+      "id": "REQ-147",
+      "requirement": "A results area that displays 3 outcomes with: Spin number, 5 sorted main numbers (1–69), Powerball (1–26), and an “AI Confidence” percentage (70%–95%).",
+      "reason": "While the generation logic and outcome interface are present, the diff is truncated before the component’s render/output of the results area, so there is no visible evidence that the UI actually displays the 3 outcomes in the required format.",
       "evidence": [
-        "backend/main.mo (truncated; SendBTCRequest adds diagnosticData and BroadcastResponse adds diagnosticData but no usage shown)",
-        "backend/migration.mo (adds diagnosticData field with null default)"
+        "frontend/src/pages/AiLotteryPage.tsx"
       ]
     },
     {
-      "id": "REQ-105",
-      "requirement": "Update Admin Reserve Management UX copy to state reserve BTC can be funded externally (BitPay, MoonPay, MetaMask) without implementing integrations.",
-      "reason": "AdminPage is truncated and the provided excerpt does not show the reserve management explanatory copy requested; no other shown diff section contains the specified text.",
+      "id": "REQ-147",
+      "requirement": "A new route is added in frontend/src/App.tsx for the Lottery page (e.g., /ai-lottery) and it is accessible to signed-in users under the existing AuthGate flow.",
+      "reason": "AiLotteryPage is imported in App.tsx, but the routing section where the /ai-lottery route is defined and wrapped by AuthGate is not shown in the truncated diff snippet, so this cannot be verified from the provided evidence alone.",
       "evidence": [
-        "frontend/src/pages/AdminPage.tsx (truncated; reserve management state present but no external-funding copy shown)"
+        "frontend/src/App.tsx"
       ]
     }
   ],
-  "hallucinated_features": [
-    {
-      "description": "Added general-purpose URL/sessionStorage parameter utilities (getUrlParameter, getPersistedUrlParameter, clearSessionParameter, etc.).",
-      "reason": "Not requested by any listed requirements (REQ-101 through REQ-106) which focus on BTC broadcast reliability, diagnostics, reserve accounting, and specific UX copy/transfer outcome visibility.",
-      "evidence": [
-        "frontend/src/utils/urlParams.ts"
-      ]
-    }
-  ],
-  "confidence": 0.56,
+  "hallucinated_features": [],
+  "confidence": 0.62,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
+    "frontend/src/components/layout/AppHeader.tsx",
     "frontend/src/components/transfers/TransferHistoryTable.tsx",
-    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/utils/urlParams.ts",
+    "frontend/src/pages/AiLotteryPage.tsx",
     "project_state.json"
   ]
 }

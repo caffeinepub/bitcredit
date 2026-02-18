@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { FileText, Clock, Info } from 'lucide-react';
 import VerifyTransferDialog from './VerifyTransferDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import UsdEstimateLine from '../balance/UsdEstimateLine';
+import { useGetCurrentBtcPriceUsd } from '../../hooks/useQueries';
 
 interface TransferHistoryTableProps {
   transactions: Transaction[];
@@ -15,6 +17,7 @@ interface TransferHistoryTableProps {
 export default function TransferHistoryTable({ transactions, initialRequestId }: TransferHistoryTableProps) {
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<bigint | null>(null);
+  const { data: btcPriceUsd, isLoading: priceLoading } = useGetCurrentBtcPriceUsd();
 
   useEffect(() => {
     // Auto-open dialog if initialRequestId is provided
@@ -43,6 +46,12 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
         return 'Bitcoin Mainnet Transfer';
       case 'adjustment':
         return 'Adjustment';
+      case 'withdrawalRequested':
+        return 'Withdrawal Requested';
+      case 'withdrawalPaid':
+        return 'Withdrawal Paid';
+      case 'withdrawalRejected':
+        return 'Withdrawal Rejected';
       default:
         return type;
     }
@@ -55,6 +64,10 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
       case 'debit':
         return 'secondary';
       case 'adjustment':
+        return 'outline';
+      case 'withdrawalRequested':
+      case 'withdrawalPaid':
+      case 'withdrawalRejected':
         return 'outline';
       default:
         return 'outline';
@@ -78,7 +91,7 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
         </div>
         <h3 className="text-lg font-semibold mb-2">No transactions yet</h3>
         <p className="text-muted-foreground text-sm">
-          Your transaction history will appear here once you purchase credits or create transfers
+          Your transaction history will appear here once you purchase credits, create transfers, or request withdrawals
         </p>
       </div>
     );
@@ -128,24 +141,31 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
                   {tx.id}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <img
-                      src="/assets/generated/credit-coin-icon.dim_128x128.png"
-                      alt="Credit"
-                      className="h-4 w-4"
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <img
+                        src="/assets/generated/credit-coin-icon.dim_128x128.png"
+                        alt="Credit"
+                        className="h-4 w-4"
+                      />
+                      <span
+                        className={`font-semibold ${
+                          tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' || tx.transactionType === 'withdrawalRejected'
+                            ? 'text-chart-1'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' || tx.transactionType === 'withdrawalRejected'
+                          ? '+'
+                          : '-'}
+                        {tx.amount.toString()}
+                      </span>
+                    </div>
+                    <UsdEstimateLine 
+                      btcAmount={tx.amount} 
+                      btcPriceUsd={btcPriceUsd} 
+                      isLoading={priceLoading}
                     />
-                    <span
-                      className={`font-semibold ${
-                        tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment'
-                          ? 'text-chart-1'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment'
-                        ? '+'
-                        : '-'}
-                      {tx.amount.toString()}
-                    </span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">

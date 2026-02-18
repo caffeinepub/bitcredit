@@ -206,21 +206,3 @@ export function getSecretFromHash(paramName: string): string | null {
 export function getSecretParameter(paramName: string): string | null {
     return getSecretFromHash(paramName);
 }
-
-/**
- * Gets the admin token from URL hash or sessionStorage
- * This is a convenience wrapper around getSecretParameter for the admin token
- *
- * @returns The admin token if found, null otherwise
- */
-export function getAdminToken(): string | null {
-    return getSecretParameter('caffeineAdminToken');
-}
-
-/**
- * Clears the admin token from sessionStorage
- * Used during logout to ensure the token is removed
- */
-export function clearAdminToken(): void {
-    clearSessionParameter('caffeineAdminToken');
-}

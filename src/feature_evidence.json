@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-admin-reserve-management-ux-copy-to-reflect-that-reserve-btc-can-be-funded-via-third-party-providers-bitpay-moonpay-metamask-without-implementing-direct-provider-integrations-ensure-all-user-facing-text-is-clear-english",
-      "featureTitle": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
+      "featureId": "feature-display-an-estimated-usd-value-for-each-transaction-amount-in-the-transaction-history-ui-using-the-existing-live-btc-usd-price-query-and-the-same-clear-english-estimate-disclosure-already-used-in-balance-cards",
+      "featureTitle": "Display an estimated USD value for each transaction amount in the Transaction History UI, using the existing live BTC/USD price query and the same clear English estimate disclosure already used in balance cards.",
       "files": [
-        "frontend/src/pages/AdminPage.tsx"
+        "frontend/src/components/transfers/TransferHistoryTable.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -17,17 +17,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-105"
+        "REQ-146"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-ensure-the-send-btc-admin-send-btc-user-experience-clearly-reflects-the-real-on-chain-posting-outcome-for-the-created-request-and-makes-it-easy-to-view-the-request-details-when-a-transfer-fails-to-appear-on-mainnet",
-      "featureTitle": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
+      "featureId": "feature-add-a-new-authenticated-ai-lottery-page-that-generates-powerball-style-number-outcomes-based-on-the-user-provided-algorithm-concept-recent-draw-data-filtered-selection-and-make-it-reachable-via-routing-and-navigation",
+      "featureTitle": "Add a new authenticated “AI Lottery” page that generates Powerball-style number outcomes based on the user-provided algorithm concept (recent draw data + filtered selection), and make it reachable via routing and navigation.",
       "files": [
-        "frontend/src/components/transfers/TransferHistoryTable.tsx",
-        "frontend/src/pages/AdminPage.tsx",
-        "frontend/src/pages/SendBtcPage.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/layout/AppHeader.tsx",
+        "frontend/src/pages/AiLotteryPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -39,7 +39,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-106"
+        "REQ-147"
       ],
       "confidence": "high"
     }
