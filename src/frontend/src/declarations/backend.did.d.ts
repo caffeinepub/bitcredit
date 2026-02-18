@@ -24,6 +24,7 @@ export interface SendBTCRequest {
   'id' : bigint,
   'status' : TransferStatus,
   'failureReason' : [] | [string],
+  'diagnosticData' : [] | [string],
   'owner' : Principal,
   'destinationAddress' : string,
   'totalCost' : BitcoinAmount,
@@ -80,9 +81,17 @@ export interface _SERVICE {
   'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCurrentBtcPriceUsd' : ActorMethod<[], [] | [number]>,
   'getEstimatedNetworkFee' : ActorMethod<
     [string, BitcoinAmount],
     BitcoinAmount
+  >,
+  'getPuzzleRewardsOverview' : ActorMethod<
+    [],
+    {
+      'totalPuzzles' : bigint,
+      'availablePuzzles' : Array<[string, BitcoinAmount]>,
+    }
   >,
   'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
@@ -93,6 +102,7 @@ export interface _SERVICE {
       {
         'status' : TransferStatus,
         'failureReason' : [] | [string],
+        'diagnosticData' : [] | [string],
         'owner' : Principal,
         'failureCode' : [] | [string],
       }
@@ -105,12 +115,18 @@ export interface _SERVICE {
   'makeTestOutcall' : ActorMethod<[string], string>,
   'manageReserve' : ActorMethod<[ReserveManagementAction], undefined>,
   'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
+  'refreshBtcPrice' : ActorMethod<[], [] | [number]>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendBTC' : ActorMethod<[string, BitcoinAmount], bigint>,
+  'submitPuzzleSolution' : ActorMethod<
+    [string, string],
+    { 'rewardAmount' : BitcoinAmount, 'newBalance' : BitcoinAmount }
+  >,
   'toggleApiDiagnostics' : ActorMethod<[], boolean>,
   'transferCreditsToUser' : ActorMethod<[Principal, BitcoinAmount], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
   'verifyBTCTransfer' : ActorMethod<[bigint, string], undefined>,
+  'verifyPuzzleReward' : ActorMethod<[string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

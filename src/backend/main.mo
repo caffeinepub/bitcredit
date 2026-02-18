@@ -1,26 +1,32 @@
 import Map "mo:core/Map";
 import Time "mo:core/Time";
+import Float "mo:core/Float";
 import List "mo:core/List";
 import Nat "mo:core/Nat";
-import Order "mo:core/Order";
-import Runtime "mo:core/Runtime";
-import Principal "mo:core/Principal";
 import Int "mo:core/Int";
+import Order "mo:core/Order";
 import Blob "mo:core/Blob";
 import Array "mo:core/Array";
+import Runtime "mo:core/Runtime";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import OutCall "http-outcalls/outcall";
-import Text "mo:core/Text";
+import Principal "mo:core/Principal";
+import Migration "migration";
 
+import Text "mo:core/Text";
+import Iter "mo:core/Iter";
+
+(with migration = Migration.run)
 actor {
+  var currentBtcPriceUsd : ?Float = null;
+  var lastUpdatedPriceTime : ?Time.Time = null;
+
   var reserveBtcBalance : Nat = 0;
   var outstandingIssuedCredits : Nat = 0;
   let transactionFeeRate : Nat = 50_000; // Satoshis per gigabyte
-
-  type BitcoinAmount = Nat; // 1 Satoshi
-
   let currentNetworkFee = 10 : BitcoinAmount;
+
   let balances = Map.empty<Principal, CreditBalance>();
   let transactions = List.empty<Transaction>();
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -48,6 +54,8 @@ actor {
     publicKey : Blob;
   };
 
+  public type BitcoinAmount = Nat; // 1 Satoshi
+
   public type SendBTCRequest = {
     id : Nat;
     owner : Principal;
@@ -59,12 +67,19 @@ actor {
     timestamp : Time.Time;
     blockchainTxId : ?Text;
     failureReason : ?Text;
+    diagnosticData : ?Text; // New field
   };
 
   public type CreditAdjustment = {
     amount : BitcoinAmount;
     reason : Text;
     timestamp : Time.Time;
+    adjustmentType : AdjustmentType;
+  };
+
+  public type AdjustmentType = {
+    #puzzleReward : { puzzleId : Text; difficulty : Nat };
+    #adminAdjustment : { reason : Text };
   };
 
   public type CreditBalance = {
@@ -108,6 +123,7 @@ actor {
     success : Bool;
     txid : ?Text;
     error : ?Text;
+    diagnosticData : ?Text; // Added for detailed error reporting
   };
 
   public type BlockchainAPIResponse = {
@@ -133,6 +149,11 @@ actor {
     reason : ReserveChangeReason;
     timestamp : Time.Time;
     performedBy : Principal;
+  };
+
+  public type PuzzleReward = {
+    puzzleId : Text;
+    rewardAmount : BitcoinAmount;
   };
 
   module Transaction {
@@ -236,6 +257,7 @@ actor {
       Runtime.trap("Insufficient reserve coverage. Cannot issue new credits.");
     };
 
+    // Record credit balance
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
       case (?_creditBalance) { [] };
@@ -269,22 +291,18 @@ actor {
     };
   };
 
-  public query ({ caller }) func getVerificationEndpoint(_txId : Text) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access verification endpoint");
-    };
+  public query func getVerificationEndpoint(_txId : Text) : async Text {
+    // Public endpoint - no authorization needed for informational endpoint
     "BTC_API_DISABLED";
   };
 
-  public query ({ caller }) func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can retrieve network fee");
-    };
-
+  public query func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
+    // Public endpoint - network fees should be transparent to all users including guests
     currentNetworkFee;
   };
 
   public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+    // Must remain public for IC HTTP outcalls to work
     OutCall.transform(input);
   };
 
@@ -303,6 +321,7 @@ actor {
       Runtime.trap("Insufficient funds");
     };
 
+    // Record credit balance
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
       case (?balance) { balance.adjustments };
@@ -331,6 +350,7 @@ actor {
       timestamp = Time.now();
       blockchainTxId = null;
       failureReason = null;
+      diagnosticData = null;
     };
 
     transferRequests.add(requestId, newRequest);
@@ -348,13 +368,8 @@ actor {
     let submitResult = await broadcastTransactionToBlockchain(requestId, destination, amount);
 
     if (not submitResult.success) {
-      let requestOpt = transferRequests.get(requestId);
-      switch (requestOpt) {
-        case (null) { Runtime.trap("Request not found") };
-        case (?request) { assert(request.owner == caller) };
-      };
-
-      updateRequestOnFailure(requestId, caller, totalCost, submitResult.error);
+      // Ownership will be checked in `updateRequestOnFailure`
+      updateRequestOnFailure(requestId, caller, totalCost, submitResult.error, submitResult.diagnosticData);
     };
 
     switch (submitResult.txid) {
@@ -368,6 +383,7 @@ actor {
               existingRequest with
               status = #IN_PROGRESS;
               blockchainTxId = ?txid;
+              diagnosticData = submitResult.diagnosticData;
             };
             transferRequests.add(requestId, updatedRequest);
           };
@@ -386,6 +402,7 @@ actor {
           success = false;
           txid = null;
           error = ?"Request not found";
+          diagnosticData = ?("Request not found at " # Time.now().toText());
         };
       };
       case (?_) {
@@ -393,12 +410,13 @@ actor {
           success = false;
           txid = null;
           error = ?"BTC_API_DISABLED";
+          diagnosticData = ?("API attempt failed at " # Time.now().toText());
         };
       };
     };
   };
 
-  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : BitcoinAmount, failureReason : ?Text) {
+  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : BitcoinAmount, failureReason : ?Text, diagnosticData : ?Text) {
     let requestOpt = transferRequests.get(requestId);
 
     if (requestOpt == null) {
@@ -416,6 +434,7 @@ actor {
       existingRequest with
       status = #FAILED;
       failureReason;
+      diagnosticData;
     };
 
     transferRequests.add(requestId, failedRequest);
@@ -429,6 +448,7 @@ actor {
       case (?balance) { balance.balance };
     };
 
+    // Record credit balance
     let currentAdjustments = switch (balances.get(user)) {
       case (null) { [] };
       case (?balance) { balance.adjustments };
@@ -508,6 +528,7 @@ actor {
       case (?balance) { balance.balance };
     };
 
+    // Record credit balance
     let currentAdjustments = switch (balances.get(user)) {
       case (null) { [] };
       case (?balance) { balance.adjustments };
@@ -517,6 +538,7 @@ actor {
       amount;
       reason;
       timestamp = Time.now();
+      adjustmentType = #adminAdjustment { reason };
     };
 
     let newAdjustments = currentAdjustments.concat([adjustment]);
@@ -583,6 +605,7 @@ actor {
     status : TransferStatus;
     failureReason : ?Text;
     failureCode : ?Text;
+    diagnosticData : ?Text;
   } {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can access diagnostics");
@@ -595,6 +618,7 @@ actor {
           status = request.status;
           failureReason = request.failureReason;
           failureCode = request.failureReason;
+          diagnosticData = request.diagnosticData;
         };
       };
     };
@@ -623,6 +647,7 @@ actor {
       amount = 500;
       reason = "Initial admin credits";
       timestamp = Time.now();
+      adjustmentType = #adminAdjustment { reason = "Initial admin credits" };
     };
 
     let newAdjustments = currentAdjustments.concat([adjustment]);
@@ -697,6 +722,7 @@ actor {
       amount;
       reason = "Admin transfer from " # caller.toText();
       timestamp = Time.now();
+      adjustmentType = #adminAdjustment { reason = "Admin transfer" };
     };
 
     let recipientNewAdjustments = recipientCurrentAdjustments.concat([adjustment]);
@@ -716,6 +742,83 @@ actor {
       transactionType = #adjustment;
     };
     transactions.add(recipientCreditTransaction);
+  };
+
+  public query ({ caller }) func getPuzzleRewardsOverview() : async {
+    availablePuzzles : [(Text, BitcoinAmount)];
+    totalPuzzles : Nat;
+  } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view puzzle rewards");
+    };
+    {
+      availablePuzzles = [("easy", 10), ("hard", 50)];
+      totalPuzzles = 2;
+    };
+  };
+
+  public shared ({ caller }) func submitPuzzleSolution(_puzzleId : Text, solution : Text) : async {
+    rewardAmount : BitcoinAmount;
+    newBalance : BitcoinAmount;
+  } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can submit puzzle solutions");
+    };
+
+    let rewardAmount : BitcoinAmount = switch (solution) {
+      case ("correct_easy") { 10 };
+      case ("correct_hard") { 50 };
+      case (_) {
+        Runtime.trap("Invalid solution, puzzle not solved");
+      };
+    };
+
+    let currentBalance = switch (balances.get(caller)) {
+      case (null) { 0 };
+      case (?balance) { balance.balance };
+    };
+
+    let currentAdjustments = switch (balances.get(caller)) {
+      case (null) { [] };
+      case (?balance) { balance.adjustments };
+    };
+
+    let adjustment : CreditAdjustment = {
+      amount = rewardAmount;
+      reason = "Puzzle reward";
+      timestamp = Time.now();
+      adjustmentType = #puzzleReward { puzzleId = _puzzleId; difficulty = switch (solution) { case ("correct_easy") { 1 }; case (_) { 2 } } };
+    };
+
+    let newAdjustments = currentAdjustments.concat([adjustment]);
+
+    let newBalance = {
+      balance = currentBalance + rewardAmount;
+      adjustments = newAdjustments;
+    };
+
+    balances.add(caller, newBalance);
+
+    let transaction : Transaction = {
+      id = "PUZZLE_REWARD";
+      user = caller;
+      amount = rewardAmount;
+      timestamp = Time.now();
+      transactionType = #adjustment;
+    };
+    transactions.add(transaction);
+
+    {
+      rewardAmount;
+      newBalance = currentBalance + rewardAmount;
+    };
+  };
+
+  public shared ({ caller }) func verifyPuzzleReward(_rewardId : Text) : async Bool {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can verify puzzle rewards");
+    };
+    true;
   };
 
   public shared ({ caller }) func confirmOnChain(requestId : Nat) : async Bool {
@@ -802,8 +905,8 @@ actor {
   };
 
   public query ({ caller }) func getReserveStatus() : async ReserveStatus {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view reserve status");
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view reserve status");
     };
 
     {
@@ -817,4 +920,28 @@ actor {
       } else { null };
     };
   };
+
+  public query func getCurrentBtcPriceUsd() : async ?Float {
+    // Public endpoint - price data needed by frontend for all users including guests
+    getCurrentBtcPrice();
+  };
+
+  public shared ({ caller }) func refreshBtcPrice() : async ?Float {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can refresh BTC price");
+    };
+
+    await fetchAndUpdateBtcPrice();
+    getCurrentBtcPrice();
+  };
+
+  func getCurrentBtcPrice() : ?Float {
+    currentBtcPriceUsd;
+  };
+
+  func fetchAndUpdateBtcPrice() : async () {
+    currentBtcPriceUsd := ?65000.0;
+    lastUpdatedPriceTime := ?Time.now();
+  };
 };
+

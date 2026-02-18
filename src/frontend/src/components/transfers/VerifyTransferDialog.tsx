@@ -128,9 +128,9 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Transfer Details</DialogTitle>
+          <DialogTitle>Transfer Request Details</DialogTitle>
           <DialogDescription>
-            View transfer status and blockchain transaction information
+            View transfer status, on-chain transaction ID, and troubleshoot issues
           </DialogDescription>
         </DialogHeader>
 
@@ -202,14 +202,17 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Transfer Failed:</strong>
+                    <strong>Transfer Failed</strong>
                     <br />
+                    <span className="text-sm mt-1 block font-semibold">
+                      This transaction was not posted to the Bitcoin blockchain.
+                    </span>
                     <span className="text-sm mt-1 block">
                       {transferRequest.failureReason}
                     </span>
                     <br />
                     <span className="text-sm font-semibold">
-                      The transaction was not posted to the Bitcoin blockchain. Your credits have been restored.
+                      Your credits have been restored.
                     </span>
                   </AlertDescription>
                 </Alert>
@@ -221,8 +224,11 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                   <AlertDescription>
                     <strong>Transfer Failed</strong>
                     <br />
+                    <span className="text-sm mt-1 block font-semibold">
+                      This transaction was not posted to the Bitcoin blockchain.
+                    </span>
                     <span className="text-sm mt-1 block">
-                      {statusInfo?.description}
+                      Your credits have been restored.
                     </span>
                   </AlertDescription>
                 </Alert>

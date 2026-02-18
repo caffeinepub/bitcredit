@@ -1,6 +1,6 @@
-import { useGetCallerBalance, useGetTransactionHistory, useGetCallerBitcoinWallet } from '../hooks/useQueries';
+import { useGetCallerBalance, useGetTransactionHistory, useGetCallerBitcoinWallet, useGetCurrentBtcPriceUsd } from '../hooks/useQueries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Coins, TrendingUp, History, ArrowRight, Wallet, Copy, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Coins, TrendingUp, History, ArrowRight, Wallet, Copy, CheckCircle, AlertCircle, Info, DollarSign } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -11,276 +11,305 @@ export default function DashboardPage() {
   const { data: balance, isLoading: balanceLoading } = useGetCallerBalance();
   const { data: transactions, isLoading: historyLoading } = useGetTransactionHistory();
   const { data: wallet, isLoading: walletLoading, isError: walletError, isFetched: walletFetched } = useGetCallerBitcoinWallet();
+  const { data: btcPriceUsd, isLoading: priceLoading } = useGetCurrentBtcPriceUsd();
   const [copied, setCopied] = useState(false);
 
   const recentTransactions = transactions?.slice(0, 5) || [];
+  const balanceInBTC = balance ? Number(balance) / 100_000_000 : 0;
 
-  const formatTimestamp = (timestamp: bigint) => {
-    const date = new Date(Number(timestamp) / 1_000_000);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  // Calculate estimated USD value for total balance
+  const estimatedUsdValue = btcPriceUsd && balance 
+    ? (Number(balance) / 100_000_000) * btcPriceUsd 
+    : null;
 
-  const getTransactionTypeLabel = (type: string) => {
-    switch (type) {
-      case 'creditPurchase':
-        return 'Credit Purchase';
-      case 'debit':
-        return 'Bitcoin Mainnet Transfer';
-      case 'adjustment':
-        return 'Adjustment';
-      default:
-        return type;
-    }
-  };
+  // Calculate per-credit USD value (1 credit = 1 satoshi)
+  const perCreditUsdValue = btcPriceUsd 
+    ? btcPriceUsd / 100_000_000 
+    : null;
 
-  const handleCopyWallet = async () => {
+  const handleCopyAddress = () => {
     if (wallet?.address) {
-      try {
-        await navigator.clipboard.writeText(wallet.address);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy wallet address:', err);
-      }
+      navigator.clipboard.writeText(wallet.address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Manage your Bitcoin credits and track your transactions
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your Bitcoin-backed credits and transfers
         </p>
       </div>
 
-      <Alert className="border-primary/20 bg-primary/5">
-        <Info className="h-4 w-4 text-primary" />
-        <AlertDescription className="text-sm space-y-1">
-          <p className="font-medium">1 credit = 1 BTC</p>
-          <p>
-            All credits are backed 1:1 by Bitcoin held in reserve. The USD market value of your credits fluctuates with the Bitcoin market price.
-          </p>
+      {/* Important Information Alert */}
+      <Alert className="border-amber-500/50 bg-amber-500/10">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-sm">
+          <strong>Important:</strong> Your credits are denominated in BTC and backed 1:1 by Bitcoin reserves held by the platform. 
+          The USD value shown is an estimate based on current Bitcoin market prices and will fluctuate with the market. 
+          Credits can be used for Bitcoin mainnet transfers subject to reserve availability and Bitcoin network fees.
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="financial-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Available Credits</CardTitle>
-            <Coins className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            {balanceLoading ? (
-              <div className="h-8 w-24 bg-muted animate-pulse rounded" />
-            ) : (
-              <div className="stat-value text-primary">{balance?.toString() || '0'} BTC</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">1 credit = 1 BTC</p>
-          </CardContent>
-        </Card>
-
-        <Card className="financial-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-            <TrendingUp className="h-5 w-5 text-chart-2" />
-          </CardHeader>
-          <CardContent>
-            {historyLoading ? (
-              <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-            ) : (
-              <div className="stat-value">{transactions?.length || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">All time activity</p>
-          </CardContent>
-        </Card>
-
-        <Card className="financial-card md:col-span-2 lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link to="/buy-credits">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <Coins className="h-4 w-4 mr-2" />
-                Buy Credits
-              </Button>
-            </Link>
-            <Link to="/send-btc">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <ArrowRight className="h-4 w-4 mr-2" />
-                Send BTC
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="financial-card">
+      {/* Balance Card */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" />
-            <CardTitle>Your Anonymous Wallet</CardTitle>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Coins className="h-5 w-5 text-primary" />
+            Your Balance
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              This is your app-managed custodial wallet identity tied to your account. The app manages this wallet on your behalf — you do not control private keys.
-            </AlertDescription>
-          </Alert>
-
-          {walletLoading && (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          )}
-
-          {walletError && walletFetched && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Failed to load wallet identity. Please try refreshing the page.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {wallet && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Wallet Identity</label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 bg-muted rounded-lg border border-border">
-                  <code className="text-sm font-mono break-all">{wallet.address}</code>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyWallet}
-                  className="shrink-0"
-                  title="Copy wallet address"
-                >
-                  {copied ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
+        <CardContent>
+          {balanceLoading ? (
+            <Skeleton className="h-12 w-48" />
+          ) : (
+            <div className="space-y-3">
+              <div className="text-4xl font-bold tracking-tight">
+                {balanceInBTC.toFixed(8)} BTC
               </div>
-              {copied && (
-                <p className="text-xs text-green-600 dark:text-green-400">Copied to clipboard!</p>
-              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <DollarSign className="h-4 w-4" />
+                {priceLoading ? (
+                  <span>Loading USD estimate...</span>
+                ) : estimatedUsdValue !== null ? (
+                  <span>
+                    Estimated USD value: ${estimatedUsdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="ml-1 text-xs italic">(fluctuates with Bitcoin market price)</span>
+                  </span>
+                ) : (
+                  <span>Estimated USD value: unavailable</span>
+                )}
+              </div>
+              <div className="pt-2 border-t border-primary/10">
+                <p className="text-xs text-muted-foreground">
+                  {priceLoading ? (
+                    <span>Loading per-credit value...</span>
+                  ) : perCreditUsdValue !== null ? (
+                    <span>
+                      1 Credit (BTC) ≈ ${perCreditUsdValue.toFixed(8)} USD
+                    </span>
+                  ) : (
+                    <span>Per-credit USD value: unavailable</span>
+                  )}
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="financial-card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Recent Activity
-              </CardTitle>
-              <Link to="/history">
-                <Button variant="ghost" size="sm">
-                  View All
-                </Button>
-              </Link>
+      {/* Wallet Identity Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wallet className="h-5 w-5" />
+            Your Wallet Identity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {walletLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : walletError || (walletFetched && !wallet) ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <span>No wallet found. Create one to receive Bitcoin.</span>
             </div>
+          ) : wallet ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-3 py-2 bg-muted rounded-lg text-sm font-mono break-all">
+                  {wallet.address}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyAddress}
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This is your unique Bitcoin wallet address for receiving transfers
+              </p>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="hover:border-primary/50 transition-colors">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              Buy Credits
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {historyLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-muted animate-pulse rounded" />
-                ))}
-              </div>
-            ) : recentTransactions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No transactions yet</p>
-                <p className="text-sm mt-1">Start by purchasing credits</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{getTransactionTypeLabel(tx.transactionType)}</p>
-                      <p className="text-xs text-muted-foreground">{formatTimestamp(tx.timestamp)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-semibold ${
-                        tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment'
-                          ? 'text-chart-1'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' ? '+' : '-'}
-                        {tx.amount.toString()} BTC
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-sm text-muted-foreground mb-4">
+              Purchase BTC credits by verifying a Bitcoin transaction
+            </p>
+            <Link to="/buy-credits">
+              <Button className="w-full">
+                Buy Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
 
-        <Card className="financial-card">
+        <Card className="hover:border-primary/50 transition-colors">
           <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Coins className="h-5 w-5 text-amber-600" />
+              Send BTC
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                  1
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">Purchase Credits</p>
-                  <p className="text-sm text-muted-foreground">
-                    Buy BTC-denominated credits to fund your wallet
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                  2
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">Send Bitcoin</p>
-                  <p className="text-sm text-muted-foreground">
-                    Transfer BTC to any mainnet address using your credits
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                  3
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">Track Transactions</p>
-                  <p className="text-sm text-muted-foreground">
-                    Monitor all your activity in the transaction history
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <img
-                src="/assets/generated/btc-ledger-hero.dim_1600x900.png"
-                alt="Bitcoin Ledger"
-                className="w-full rounded-lg border border-border"
-              />
-            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Transfer your credits to any Bitcoin mainnet address
+            </p>
+            <Link to="/send-btc">
+              <Button className="w-full" variant="outline">
+                Send Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:border-primary/50 transition-colors">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              View all your transactions and transfer requests
+            </p>
+            <Link to="/history">
+              <Button className="w-full" variant="outline">
+                View History
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Recent Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historyLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : recentTransactions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No transactions yet</p>
+              <p className="text-sm">Start by buying credits or sending BTC</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      tx.transactionType === 'creditPurchase' ? 'bg-green-500/10' :
+                      tx.transactionType === 'debit' ? 'bg-red-500/10' :
+                      'bg-blue-500/10'
+                    }`}>
+                      {tx.transactionType === 'creditPurchase' ? (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      ) : tx.transactionType === 'debit' ? (
+                        <ArrowRight className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <Coins className="h-4 w-4 text-blue-600" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {tx.transactionType === 'creditPurchase' ? 'Credit Purchase' :
+                         tx.transactionType === 'debit' ? 'BTC Transfer' :
+                         'Credit Adjustment'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(Number(tx.timestamp) / 1_000_000).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`font-semibold ${
+                    tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    {tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' ? '+' : '-'}
+                    {(Number(tx.amount) / 100_000_000).toFixed(8)} BTC
+                  </div>
+                </div>
+              ))}
+              <Link to="/history">
+                <Button variant="ghost" className="w-full mt-2">
+                  View All Transactions
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Onboarding Guide */}
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="text-lg">Getting Started</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-2 text-sm">
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-primary">1.</span>
+              <span>Purchase BTC credits by verifying a Bitcoin transaction on the Buy Credits page</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-primary">2.</span>
+              <span>Send your credits to any Bitcoin mainnet address using the Send BTC page</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-semibold text-primary">3.</span>
+              <span>Track all your transactions and transfer requests in the History page</span>
+            </li>
+          </ol>
+        </CardContent>
+      </Card>
     </div>
   );
 }

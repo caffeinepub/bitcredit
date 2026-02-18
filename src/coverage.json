@@ -1,75 +1,86 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T03:08:49.021Z",
+  "generatedAt": "2026-02-18T04:07:46.391Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
+    "total": 6,
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-88",
-        "summary": "Implement a backend BTC reserve-tracking model so that issued credits are represented as being backed 1:1 by mainnet BTC held in reserve, and expose a backend query that returns reserve status including: reserve BTC balance, total outstanding issued credits, and a reserve coverage ratio.",
+        "id": "REQ-101",
+        "summary": "Fix backend on-chain broadcast so Send BTC / “flash bitcoin” withdrawals are actually posted to Bitcoin mainnet instead of always failing with `BTC_API_DISABLED`, and persist the resulting on-chain txid when broadcast succeeds.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-89",
-        "summary": "Update backend accounting so reserve status updates automatically during credit lifecycle events: (1) when a credit purchase is successfully verified and credits are issued, increase tracked reserve by the issued amount; (2) when an on-chain BTC transfer is successfully broadcast, decrease tracked reserve by the on-chain spend amount (receiver amount plus network fee); (3) when an on-chain broadcast fails and the transfer request is marked FAILED and credits are restored, do not decrement reserve.",
+        "id": "REQ-102",
+        "summary": "Ensure backend failure semantics are safe and auditable when an on-chain broadcast fails: the transfer request must remain saved, be marked `FAILED`, store an English `failureReason`, and the user’s deducted credits (full `totalCost`) must be restored so users are not charged for transfers that were not posted on-chain.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-90",
-        "summary": "Add backend enforcement for the 1:1 reserve claim by preventing issuance of new credits if it would cause outstanding credits to exceed tracked reserve coverage, unless an admin explicitly overrides via an admin-only reserve management action.",
+        "id": "REQ-103",
+        "summary": "Update reserve accounting so reserve BTC tracking is consistent with real on-chain outcomes: do not decrement reserve on failed broadcasts, and decrement reserve only when a broadcast succeeds (or when a transfer is later confirmed on-chain, if confirmation is the point at which reserve should be reduced).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-91",
-        "summary": "Add an admin-visible Reserve section in the existing Admin page that displays reserve BTC balance, outstanding credits, and reserve coverage ratio, and includes a simple admin-only control to adjust the tracked reserve balance with a required English reason.",
+        "id": "REQ-104",
+        "summary": "Add backend-side troubleshooting diagnostics (admin-only or development-only) to help identify why broadcasts are failing, without exposing secrets: capture and surface a structured error/failure reason from the broadcast attempt that can be shown in English in the UI.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-105",
+        "summary": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
           "frontend/src/pages/AdminPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
           "frontend/src/pages/AdminPage.tsx"
         ]
       },
       {
-        "id": "REQ-92",
-        "summary": "Update user-facing copy in the signed-in experience to clearly state that credits are BTC-denominated, represent 1:1 backing by BTC held in reserve, and that the USD market value fluctuates with the Bitcoin market price.",
+        "id": "REQ-106",
+        "summary": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/components/transfers/TransferHistoryTable.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/DashboardPage.tsx"
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/components/transfers/TransferHistoryTable.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/transfers/TransferHistoryTable.tsx",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
     "frontend/src/utils/urlParams.ts",
     "project_state.json",
     "scratch/component-selection.json",

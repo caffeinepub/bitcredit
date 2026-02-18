@@ -1,13 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Add a 1:1 BTC reserve backing model with admin monitoring/management, and clarify user-facing messaging that credits are BTC-denominated and market-priced.
+**Goal:** Fix Bitcoin mainnet broadcast failures for Send/“flash bitcoin” withdrawals so successful sends are actually posted on-chain, recorded with a txid, and failures are handled safely with clear diagnostics and correct accounting.
 
 **Planned changes:**
-- Add backend reserve-tracking state and a backend query to return reserve BTC balance, total outstanding issued credits (computed from backend state), and a reserve coverage ratio.
-- Update backend accounting so reserve balance adjusts automatically on key lifecycle events: increase on verified credit issuance; decrease on successful on-chain BTC broadcast by (receiver amount + network fee); no decrease on broadcast failure when credits are restored; ensure no double-counting across retries/refreshes.
-- Enforce 1:1 reserve coverage by blocking new credit issuance when it would cause outstanding credits to exceed tracked reserve, with a clear English error message; add an admin-only backend action to adjust tracked reserve with a required English reason and queryable audit history.
-- Update `/admin` to include a Reserve section (admin-only) showing reserve balance, outstanding credits, and coverage ratio, plus a control to submit reserve adjustments with a required reason and refresh the displayed status.
-- Update signed-in UI copy to state that 1 credit = 1 BTC, credits are backed 1:1 by BTC held in reserve, and USD value fluctuates with Bitcoin market price; ensure no existing copy contradicts this.
+- Backend: Update `sendBTC(destination, amount)` to attempt a real Bitcoin mainnet broadcast via the existing IC HTTP outcalls path instead of returning `BTC_API_DISABLED`.
+- Backend: Persist on-chain results by updating the saved `SendBTCRequest` with `blockchainTxId` on broadcast success and keeping the request in a non-terminal in-progress state.
+- Backend: On broadcast failure, keep the transfer request saved, mark it `FAILED`, store an English `failureReason`, and restore the user’s deducted credits (`totalCost`).
+- Backend: Adjust reserve BTC accounting so reserve is not decremented on failed broadcasts and is decremented only when the send is actually successful (consistent across refreshes via `getReserveStatus()`).
+- Backend: Store admin/dev-safe troubleshooting diagnostics (English failure reason) without exposing secrets, retrievable via existing request-fetching flows.
+- Frontend: Update Admin Reserve Management copy to clarify reserve BTC can be funded externally (e.g., BitPay, MoonPay, MetaMask) without implementing provider integrations.
+- Frontend: Improve Send BTC/Admin Send BTC UX to display request ID and (when available) the persisted on-chain txid; on failure show a clear message that it was not posted on-chain, include the backend failure reason when present, and indicate credits were restored; add an obvious action to open/view request details (e.g., via History).
 
-**User-visible outcome:** Admins can view reserve status and adjust tracked reserve (with a reason) from `/admin`, while signed-in users see clear English messaging that credits are BTC-denominated, 1:1 reserve-backed, and USD value fluctuates with BTC price; credit issuance is prevented if it would break 1:1 coverage unless overridden via admin reserve adjustment.
+**User-visible outcome:** Users and admins can send BTC and see whether it was actually broadcast to Bitcoin mainnet (including txid when available); if a broadcast fails, they see a clear reason, their credits are restored, and they can easily open the saved request details to troubleshoot. Admins also see clearer reserve funding guidance text.

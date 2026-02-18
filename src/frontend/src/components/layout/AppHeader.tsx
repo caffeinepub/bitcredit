@@ -18,6 +18,7 @@ export default function AppHeader() {
     { to: '/', label: 'Dashboard' },
     { to: '/buy-credits', label: 'Buy Credits' },
     { to: '/send-btc', label: 'Send BTC' },
+    { to: '/puzzle-rewards', label: 'Puzzle Rewards' },
     { to: '/history', label: 'History' },
   ];
 

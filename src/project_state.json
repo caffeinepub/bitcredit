@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 63,
-  "summary": "Expand scope to include a 1:1 BTC reserve backing model: app credits represent mainnet BTC held in reserve, and a bot-driven flow can initiate on-chain transfers to external mainnet wallets; credit value tracks BTC market price in USD terms.",
+  "projectStateVersion": 69,
+  "summary": "Expand scope to include a 1:1 BTC reserve backing model where reserve BTC can be acquired via third-party providers (BitPay, MoonPay, MetaMask), and the app offers a “flash bitcoin” option to send/withdraw transferable BTC to external mainnet wallets; credit value tracks BTC market price in USD terms.",
   "architectural_notes": [
     "Send transactions should be executed as direct on-chain BTC transfers to the receiver address, with blockchain network fees paid by deducting from the sender’s credits (fees taken out of credits).",
     "Admins receive and can access an initial 500-credit balance and can distribute credits via an admin page that auto-populates immediately after signing in with their Internet Identity principal.",
@@ -17,9 +17,10 @@
   "known_issues": [
     "Admin principal/creator verification (admin-status detection) is slow after sign-in, causing a long delay before the admin flow completes; needs performance/latency improvement (e.g., caching, faster query, or better loading UX).",
     "User reports a Send BTC / credit-to-wallet transfer did not post on the Bitcoin blockchain; on-chain broadcast/processing may be failing or not being triggered, needs investigation and fix.",
-    "Send BTC / transfer-to-mainnet is not being broadcast or posted on-chain; receiver wallets are not receiving BTC (needs troubleshooting of broadcast/outcall + Bitcoin API integration)."
+    "Send BTC / transfer-to-mainnet is not being broadcast or posted on-chain; receiver wallets are not receiving BTC (needs troubleshooting of broadcast/outcall + Bitcoin API integration).",
+    "User reports reserve/flash-withdrawal sends are failing and not showing on Bitcoin mainnet; needs troubleshooting of broadcast/outcall + blockchain API integration for this flow."
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-add-internet-identity-authentication-so-each-user-has-an-account-and-a-persistent-credit-balance",
@@ -468,6 +469,62 @@
         "REQ-92"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-dashboard-signed-in-experience-to-display-1-the-user-s-credit-balance-in-btc-and-2-an-approximate-usd-value-derived-from-the-live-btc-usd-price-with-clear-english-copy-stating-it-is-an-estimate-and-can-fluctuate",
+      "title": "Update the Dashboard signed-in experience to display (1) the user’s credit balance in BTC and (2) an approximate USD value derived from the live BTC/USD price, with clear English copy stating it is an estimate and can fluctuate.",
+      "reqIds": [
+        "REQ-94"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-new-puzzle-rewards-feature-that-lets-signed-in-users-solve-simple-in-app-puzzles-to-earn-small-amounts-of-credits-and-record-earned-credits-in-the-ledger-transaction-history-as-an-adjustment-with-an-english-reason",
+      "title": "Add a new \"Puzzle Rewards\" feature that lets signed-in users solve simple in-app puzzles to earn small amounts of credits, and record earned credits in the ledger/transaction history as an adjustment with an English reason.",
+      "reqIds": [
+        "REQ-95"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-clear-english-disclosures-in-the-puzzle-rewards-ui-explaining-that-solving-puzzles-does-not-mine-real-bitcoin-and-that-rewards-are-app-issued-credits-btc-denominated-that-can-be-used-for-bitcoin-mainnet-transfers-subject-to-reserve-and-network-fees",
+      "title": "Add clear English disclosures in the Puzzle Rewards UI explaining that solving puzzles does NOT mine real Bitcoin and that rewards are app-issued credits (BTC-denominated) that can be used for Bitcoin mainnet transfers, subject to reserve and network fees.",
+      "reqIds": [
+        "REQ-96"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-display-the-usd-value-of-a-single-credit-btc-denominated-using-the-live-btc-usd-price-and-show-it-in-the-signed-in-ui-alongside-existing-balance-usd-estimates-e-g-1-credit-btc-x-xx",
+      "title": "Display the USD value of a single credit (BTC-denominated) using the live BTC/USD price, and show it in the signed-in UI alongside existing balance USD estimates (e.g., “1 Credit (BTC) ≈ $X.XX”).",
+      "reqIds": [
+        "REQ-97"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-user-facing-send-transfer-flows-reflect-the-real-broadcast-outcome-posted-vs-not-posted-based-on-the-persisted-transfer-request-fields-status-blockchaintxid-failurereason-and-keep-all-user-facing-text-in-clear-english",
+      "title": "Ensure user-facing send/transfer flows reflect the real broadcast outcome (posted vs. not posted) based on the persisted transfer request fields (status, blockchainTxId, failureReason), and keep all user-facing text in clear English.",
+      "reqIds": [
+        "REQ-100"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-admin-reserve-management-ux-copy-to-reflect-that-reserve-btc-can-be-funded-via-third-party-providers-bitpay-moonpay-metamask-without-implementing-direct-provider-integrations-ensure-all-user-facing-text-is-clear-english",
+      "title": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
+      "reqIds": [
+        "REQ-105"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-send-btc-admin-send-btc-user-experience-clearly-reflects-the-real-on-chain-posting-outcome-for-the-created-request-and-makes-it-easy-to-view-the-request-details-when-a-transfer-fails-to-appear-on-mainnet",
+      "title": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
+      "reqIds": [
+        "REQ-106"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -854,6 +911,86 @@
       "summary": "Add backend enforcement for the 1:1 reserve claim by preventing issuance of new credits if it would cause outstanding credits to exceed tracked reserve coverage, unless an admin explicitly overrides via an admin-only reserve management action.",
       "reqIds": [
         "REQ-90"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-65",
+      "summary": "Add an in-app \"puzzle solving / cloud mining\" mechanism intended to generate BTC for instant mainnet transaction liquidity, and integrate it with the app wallet + reserve tracking so mined BTC increases reserves/available credits-to-send.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-66",
+      "summary": "Add a backend API to fetch and cache the current Bitcoin market price (BTC/USD) so the frontend can show the user the approximate USD value of their BTC-denominated credits.",
+      "reqIds": [
+        "REQ-93"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-68",
+      "summary": "Implement a backend BTC/USD price feed API that the frontend can query to compute per-credit USD value, with basic caching to avoid excessive external calls.",
+      "reqIds": [
+        "REQ-98"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-69",
+      "summary": "Replace the current stubbed on-chain broadcast behavior so that creating a Send BTC request attempts to broadcast a real Bitcoin mainnet transaction via the existing HTTP outcalls capability, and persists the broadcast result (txid on success, English failure reason on failure) on the transfer request.",
+      "reqIds": [
+        "REQ-99"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-70",
+      "summary": "Integrate reserve BTC acquisition via BitPay, MoonPay, and/or MetaMask as supported funding sources for the app’s tracked BTC reserve.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-71",
+      "summary": "Add a “flash bitcoin” withdraw/send option that lets users transfer/withdraw BTC from the app reserve to an external Bitcoin mainnet wallet, with clear on-chain posting status.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-72",
+      "summary": "Troubleshoot and fix failing Send BTC / withdrawal transactions that are not appearing on Bitcoin mainnet (broadcast/on-chain posting failure).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-73",
+      "summary": "Fix backend on-chain broadcast so Send BTC / “flash bitcoin” withdrawals are actually posted to Bitcoin mainnet instead of always failing with `BTC_API_DISABLED`, and persist the resulting on-chain txid when broadcast succeeds.",
+      "reqIds": [
+        "REQ-101"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-74",
+      "summary": "Ensure backend failure semantics are safe and auditable when an on-chain broadcast fails: the transfer request must remain saved, be marked `FAILED`, store an English `failureReason`, and the user’s deducted credits (full `totalCost`) must be restored so users are not charged for transfers that were not posted on-chain.",
+      "reqIds": [
+        "REQ-102"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-75",
+      "summary": "Update reserve accounting so reserve BTC tracking is consistent with real on-chain outcomes: do not decrement reserve on failed broadcasts, and decrement reserve only when a broadcast succeeds (or when a transfer is later confirmed on-chain, if confirmation is the point at which reserve should be reduced).",
+      "reqIds": [
+        "REQ-103"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-76",
+      "summary": "Add backend-side troubleshooting diagnostics (admin-only or development-only) to help identify why broadcasts are failing, without exposing secrets: capture and surface a structured error/failure reason from the broadcast attempt that can be shown in English in the UI.",
+      "reqIds": [
+        "REQ-104"
       ],
       "status": "pending"
     }

@@ -10,6 +10,7 @@ import SendBtcPage from './pages/SendBtcPage';
 import HistoryPage from './pages/HistoryPage';
 import AdminPage from './pages/AdminPage';
 import AdminCredentialsPage from './pages/AdminCredentialsPage';
+import PuzzleRewardsPage from './pages/PuzzleRewardsPage';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminAccessLoadingScreen from './components/auth/AdminAccessLoadingScreen';
 import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
@@ -222,6 +223,12 @@ const historyRoute = createRoute({
   component: HistoryPage,
 });
 
+const puzzleRewardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/puzzle-rewards',
+  component: PuzzleRewardsPage,
+});
+
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin',
@@ -247,6 +254,7 @@ const routeTree = rootRoute.addChildren([
   buyCreditsRoute,
   sendBtcRoute,
   historyRoute,
+  puzzleRewardsRoute,
   adminRoute,
   adminCredentialsRoute,
 ]);

@@ -1,50 +1,69 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T03:08:49.016Z",
-  "summary": "Frontend changes clearly add 1:1 BTC backing copy on the Dashboard and introduce an admin Reserve Management UI section/hooks. Backend diff evidence shows new reserve-related state/types, but the truncated backend snippet does not show the required reserve query, lifecycle accounting updates, enforcement, or auditable reserve-adjustment history being implemented/queryable.",
+  "generatedAt": "2026-02-18T04:07:46.386Z",
+  "summary": "Frontend UX for Send BTC/History appears updated to surface request IDs, statuses, txids, failure messaging, and a details flow. Backend state shape was changed (added diagnosticData) with a migration. However, the diff summary is truncated for backend/main.mo and does not show the actual sendBTC broadcast logic, failure rollback semantics, or reserve accounting changes, so those backend requirements cannot be confirmed from the provided evidence. Admin Reserve Management copy about external funding sources is also not evidenced in the shown AdminPage excerpt.",
   "missing_requirements": [
     {
-      "id": "REQ-88",
-      "requirement": "Expose a backend query that returns reserve status including: reserve BTC balance, total outstanding issued credits, and a reserve coverage ratio computed from backend state.",
-      "reason": "The backend diff snippet shows new state/types (e.g., `reserveBtcBalance`, `outstandingIssuedCredits`, `ReserveStatus`) but does not show a public query method that returns these fields, nor evidence that outstanding credits are computed deterministically from backend state within that query.",
+      "id": "REQ-101",
+      "requirement": "Fix backend on-chain broadcast so Send BTC withdrawals are posted to Bitcoin mainnet via existing IC HTTP outcalls path and persist txid on success.",
+      "reason": "backend/main.mo changes are truncated and do not show sendBTC implementation or any replacement of BTC_API_DISABLED with a real OutCall-based broadcast, nor the persistence update of blockchainTxId on success.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; shows OutCall import and type additions but not sendBTC logic)"
       ]
     },
     {
-      "id": "REQ-89",
-      "requirement": "Automatically update reserve status during credit lifecycle events (increase reserve on verified purchase issuance; decrease reserve on broadcast-successful send by amount+networkFee; do not decrement reserve on broadcast failure; ensure no double-counting).",
-      "reason": "The diff snippet does not show any modifications to the credit purchase verification/issuance flow or the on-chain broadcast flow that adjust `reserveBtcBalance` according to the specified rules, nor any idempotency/deduplication mechanism for retries.",
+      "id": "REQ-102",
+      "requirement": "On broadcast failure, mark request FAILED, store English failureReason, and restore deducted credits (totalCost) while keeping the request record retrievable.",
+      "reason": "The diff shows failureReason fields/types and UI messaging, but does not show backend logic that (a) updates status to FAILED, (b) sets failureReason, and (c) restores caller balance/credits on broadcast failure.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; SendBTCRequest type includes failureReason but no failure handling logic shown)"
       ]
     },
     {
-      "id": "REQ-90",
-      "requirement": "Enforce 1:1 reserve backing by preventing issuance when outstanding credits would exceed tracked reserve unless an admin override exists; add an admin-only reserve adjustment method with required English reason and auditable, queryable history.",
-      "reason": "The backend snippet includes reserve-related types (e.g., `ReserveAdjustment`, `ReserveChangeReason`) but does not show (a) issuance-time enforcement that fails with a clear English message, (b) an admin-only method to adjust reserve with a reason string, or (c) a queryable audit log/history of reserve adjustments.",
+      "id": "REQ-103",
+      "requirement": "Reserve accounting should not decrement on failed broadcasts and should decrement only on successful on-chain outcomes.",
+      "reason": "No reserve accounting logic changes related to successful vs failed broadcasts are visible in the diff summary; only type/state definitions are shown.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; reserveBtcBalance var shown, but no corresponding send/reserve update logic shown)"
+      ]
+    },
+    {
+      "id": "REQ-104",
+      "requirement": "Add backend-side diagnostics for broadcast failures without leaking secrets; store a structured/English failure reason retrievable via getTransferRequest.",
+      "reason": "A new diagnosticData field/type is added and migration sets it to null, but the diff summary does not show backend code that populates diagnosticData/failureReason from actual broadcast attempt errors, nor any admin/dev-only gating semantics.",
+      "evidence": [
+        "backend/main.mo (truncated; SendBTCRequest adds diagnosticData and BroadcastResponse adds diagnosticData but no usage shown)",
+        "backend/migration.mo (adds diagnosticData field with null default)"
+      ]
+    },
+    {
+      "id": "REQ-105",
+      "requirement": "Update Admin Reserve Management UX copy to state reserve BTC can be funded externally (BitPay, MoonPay, MetaMask) without implementing integrations.",
+      "reason": "AdminPage is truncated and the provided excerpt does not show the reserve management explanatory copy requested; no other shown diff section contains the specified text.",
+      "evidence": [
+        "frontend/src/pages/AdminPage.tsx (truncated; reserve management state present but no external-funding copy shown)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added URL/session parameter persistence utilities (including sensitive-parameter handling via hash/query parsing and sessionStorage persistence) that are unrelated to the reserve backing + admin reserve monitoring requirements.",
-      "reason": "BuildRequest does not request URL parameter/session persistence utilities; this appears to be additional functionality beyond the specified reserve model/admin monitoring/copy updates.",
+      "description": "Added general-purpose URL/sessionStorage parameter utilities (getUrlParameter, getPersistedUrlParameter, clearSessionParameter, etc.).",
+      "reason": "Not requested by any listed requirements (REQ-101 through REQ-106) which focus on BTC broadcast reliability, diagnostics, reserve accounting, and specific UX copy/transfer outcome visibility.",
       "evidence": [
         "frontend/src/utils/urlParams.ts"
       ]
     }
   ],
-  "confidence": 0.55,
+  "confidence": 0.56,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/transfers/TransferHistoryTable.tsx",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
     "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/DashboardPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
     "frontend/src/utils/urlParams.ts",
     "project_state.json"
   ]

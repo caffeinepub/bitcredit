@@ -1,43 +1,47 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Admin Reserve Monitoring UI + Signed-in Copy Updates",
+  "title": "ReserveBTC Wallet — Frontend UX/copy updates for on-chain send outcomes and reserve funding clarification",
   "requirements": [
     {
-      "id": "REQ-91",
-      "summary": "Add an admin-only Reserve section on /admin that displays reserve status and allows admins to adjust tracked reserve with a required reason.",
+      "id": "REQ-105",
+      "summary": "Clarify Admin Reserve Management copy to state reserve BTC can be funded externally (BitPay, MoonPay, MetaMask) without adding any provider integrations.",
       "acceptanceCriteria": [
-        "Admins can see reserve BTC balance, outstanding credits, and coverage ratio on `/admin`.",
-        "Admins can submit a reserve adjustment amount and a required reason; on success, the reserve status display updates.",
-        "Non-admin users cannot access the reserve management UI (it should not render for them).",
-        "All user-facing text in this section is in English."
+        "Admin Reserve Management section includes clear English explanatory text stating that reserve BTC may be funded externally (e.g., “Reserve BTC can be funded via external providers such as BitPay, MoonPay, or MetaMask, then recorded here.”).",
+        "No direct MetaMask/BitPay/MoonPay API integration is required for this change; it is strictly copy/UX clarification.",
+        "All new/updated text in this area is English and consistent with existing tone."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add React Query hooks for reserve admin features: a query hook that calls backend getReserveStatus() and a mutation hook that calls backend manageReserve(...) and invalidates the reserve-status query on success/failure. Ensure errors are shown in clear English via existing toast patterns. (Use the selected \"authorization\" component patterns via existing admin checks as needed; verify the component's usage instructions before implementing.)"
-        },
-        {
           "path": "frontend/src/pages/AdminPage.tsx",
           "operation": "modify",
-          "description": "Add a new \"Reserve\" section within the existing Admin dashboard UI. Display reserve BTC balance, outstanding issued credits, and coverage ratio (including an explicit English fallback such as \"Not available\" when coverageRatio is absent). Add an admin-only form to adjust tracked reserve with: adjustment type (deposit/withdraw/correction), amount, and required English reason; call the new mutation hook and refresh the displayed status after success. Guard the entire Reserve section so it does not render unless admin status is confirmed (use existing admin-gating patterns from the selected \"authorization\" component; verify the component's usage instructions before implementing)."
+          "description": "Update the Reserve Management section UI copy (e.g., CardDescription and/or an inline Alert under the section header) to explain that reserve BTC can be funded externally via providers such as BitPay, MoonPay, or MetaMask, then recorded/adjusted here; keep wording clear English and avoid adding any provider connection flows."
         }
       ]
     },
     {
-      "id": "REQ-92",
-      "summary": "Update signed-in dashboard copy to clearly explain BTC denomination, 1:1 reserve backing, and USD value fluctuation without changing theme.",
+      "id": "REQ-106",
+      "summary": "Make Send BTC and Admin Send BTC flows clearly show request ID, txid (when available), failure reason (when FAILED), and an obvious path to open request details in History.",
       "acceptanceCriteria": [
-        "Dashboard (or another signed-in screen) includes English text that states: 1 credit = 1 BTC, credits are backed 1:1 by BTC held in reserve, and USD value fluctuates with market price.",
-        "No existing copy contradicts the 1:1 reserve statement.",
-        "No blue/purple theme changes are introduced as part of this request (copy-only change is acceptable)."
+        "After submitting Send BTC, the UI shows the created request ID and, when available, the on-chain txid pulled from the persisted `SendBTCRequest.blockchainTxId`.",
+        "If a send fails (request status `FAILED`), the UI shows a clear English message that the transaction was not posted to the Bitcoin blockchain, includes the backend-provided failure reason when present, and indicates credits were restored.",
+        "The UI provides an obvious action to view the request details (e.g., navigates to History and opens the request details) so users can troubleshoot why it did not appear on mainnet."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/DashboardPage.tsx",
+          "path": "frontend/src/pages/SendBtcPage.tsx",
           "operation": "modify",
-          "description": "Add an English informational copy block in the signed-in Dashboard view stating: \"1 credit = 1 BTC\", credits are backed 1:1 by BTC held in reserve, and the USD market value fluctuates with the Bitcoin market price. Review and adjust any nearby dashboard copy to ensure nothing contradicts the 1:1 reserve statement, while keeping styling/theme unchanged (copy-only change)."
+          "description": "Refine the post-submit outcome alert messaging and labels to consistently communicate: (1) request ID always, (2) txid when `transferRequest.blockchainTxId` is present, (3) for `FAILED`, explicitly state it was not posted to the Bitcoin blockchain, show `failureReason` when available, and state credits were restored; ensure the existing CTA to open History details remains prominent."
+        },
+        {
+          "path": "frontend/src/pages/AdminPage.tsx",
+          "operation": "modify",
+          "description": "Align the Admin 'Send BTC to Mainnet Wallet' outcome UI with the Send BTC page: after submit, display request ID; show txid when `SendBTCRequest.blockchainTxId` is present; if status is `FAILED`, show a clear English 'not posted to the Bitcoin blockchain' message including backend-provided `failureReason` when present and note credits were restored; include an obvious action that navigates to History and auto-opens the request details using the existing sessionStorage `openTransferRequestId` pattern."
+        },
+        {
+          "path": "frontend/src/components/transfers/TransferHistoryTable.tsx",
+          "operation": "modify",
+          "description": "Make the History 'Details' affordance more explicit for troubleshooting failed/unknown mainnet posting (e.g., adjust button label and/or add a short helper text/tooltip for debit rows indicating it opens the transfer request details including status/txid/failure reason), without changing the underlying navigation behavior."
         }
       ]
     }

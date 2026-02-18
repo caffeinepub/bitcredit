@@ -47,6 +47,7 @@ export interface SendBTCRequest {
     id: bigint;
     status: TransferStatus;
     failureReason?: string;
+    diagnosticData?: string;
     owner: Principal;
     destinationAddress: string;
     totalCost: BitcoinAmount;
@@ -95,13 +96,19 @@ export interface backendInterface {
     getCallerBitcoinWallet(): Promise<BitcoinWallet | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getCurrentBtcPriceUsd(): Promise<number | null>;
     getEstimatedNetworkFee(_destination: string, _amount: BitcoinAmount): Promise<BitcoinAmount>;
+    getPuzzleRewardsOverview(): Promise<{
+        totalPuzzles: bigint;
+        availablePuzzles: Array<[string, BitcoinAmount]>;
+    }>;
     getReserveStatus(): Promise<ReserveStatus>;
     getTransactionHistory(): Promise<Array<Transaction>>;
     getTransferRequest(requestId: bigint): Promise<SendBTCRequest | null>;
     getTransferRequestDiagnostics(requestId: bigint): Promise<{
         status: TransferStatus;
         failureReason?: string;
+        diagnosticData?: string;
         owner: Principal;
         failureCode?: string;
     } | null>;
@@ -112,10 +119,16 @@ export interface backendInterface {
     makeTestOutcall(_endpoint: string): Promise<string>;
     manageReserve(action: ReserveManagementAction): Promise<void>;
     purchaseCredits(transactionId: string, amount: BitcoinAmount): Promise<void>;
+    refreshBtcPrice(): Promise<number | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendBTC(destination: string, amount: BitcoinAmount): Promise<bigint>;
+    submitPuzzleSolution(_puzzleId: string, solution: string): Promise<{
+        rewardAmount: BitcoinAmount;
+        newBalance: BitcoinAmount;
+    }>;
     toggleApiDiagnostics(): Promise<boolean>;
     transferCreditsToUser(user: Principal, amount: BitcoinAmount): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     verifyBTCTransfer(requestId: bigint, blockchainTxId: string): Promise<void>;
+    verifyPuzzleReward(_rewardId: string): Promise<boolean>;
 }

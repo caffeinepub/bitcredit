@@ -129,6 +129,7 @@ export interface SendBTCRequest {
     id: bigint;
     status: TransferStatus;
     failureReason?: string;
+    diagnosticData?: string;
     owner: Principal;
     destinationAddress: string;
     totalCost: BitcoinAmount;
@@ -178,13 +179,19 @@ export interface backendInterface {
     getCallerBitcoinWallet(): Promise<BitcoinWallet | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getCurrentBtcPriceUsd(): Promise<number | null>;
     getEstimatedNetworkFee(_destination: string, _amount: BitcoinAmount): Promise<BitcoinAmount>;
+    getPuzzleRewardsOverview(): Promise<{
+        totalPuzzles: bigint;
+        availablePuzzles: Array<[string, BitcoinAmount]>;
+    }>;
     getReserveStatus(): Promise<ReserveStatus>;
     getTransactionHistory(): Promise<Array<Transaction>>;
     getTransferRequest(requestId: bigint): Promise<SendBTCRequest | null>;
     getTransferRequestDiagnostics(requestId: bigint): Promise<{
         status: TransferStatus;
         failureReason?: string;
+        diagnosticData?: string;
         owner: Principal;
         failureCode?: string;
     } | null>;
@@ -195,12 +202,18 @@ export interface backendInterface {
     makeTestOutcall(_endpoint: string): Promise<string>;
     manageReserve(action: ReserveManagementAction): Promise<void>;
     purchaseCredits(transactionId: string, amount: BitcoinAmount): Promise<void>;
+    refreshBtcPrice(): Promise<number | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendBTC(destination: string, amount: BitcoinAmount): Promise<bigint>;
+    submitPuzzleSolution(_puzzleId: string, solution: string): Promise<{
+        rewardAmount: BitcoinAmount;
+        newBalance: BitcoinAmount;
+    }>;
     toggleApiDiagnostics(): Promise<boolean>;
     transferCreditsToUser(user: Principal, amount: BitcoinAmount): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
     verifyBTCTransfer(requestId: bigint, blockchainTxId: string): Promise<void>;
+    verifyPuzzleReward(_rewardId: string): Promise<boolean>;
 }
 import type { BitcoinAmount as _BitcoinAmount, BitcoinWallet as _BitcoinWallet, ReserveManagementAction as _ReserveManagementAction, ReserveStatus as _ReserveStatus, SendBTCRequest as _SendBTCRequest, Time as _Time, Transaction as _Transaction, TransactionType as _TransactionType, TransferStatus as _TransferStatus, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -345,6 +358,20 @@ export class Backend implements backendInterface {
             return from_candid_UserRole_n7(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getCurrentBtcPriceUsd(): Promise<number | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCurrentBtcPriceUsd();
+                return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCurrentBtcPriceUsd();
+            return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getEstimatedNetworkFee(arg0: string, arg1: BitcoinAmount): Promise<BitcoinAmount> {
         if (this.processError) {
             try {
@@ -359,18 +386,35 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getPuzzleRewardsOverview(): Promise<{
+        totalPuzzles: bigint;
+        availablePuzzles: Array<[string, BitcoinAmount]>;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPuzzleRewardsOverview();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPuzzleRewardsOverview();
+            return result;
+        }
+    }
     async getReserveStatus(): Promise<ReserveStatus> {
         if (this.processError) {
             try {
                 const result = await this.actor.getReserveStatus();
-                return from_candid_ReserveStatus_n9(this._uploadFile, this._downloadFile, result);
+                return from_candid_ReserveStatus_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getReserveStatus();
-            return from_candid_ReserveStatus_n9(this._uploadFile, this._downloadFile, result);
+            return from_candid_ReserveStatus_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async getTransactionHistory(): Promise<Array<Transaction>> {
@@ -404,6 +448,7 @@ export class Backend implements backendInterface {
     async getTransferRequestDiagnostics(arg0: bigint): Promise<{
         status: TransferStatus;
         failureReason?: string;
+        diagnosticData?: string;
         owner: Principal;
         failureCode?: string;
     } | null> {
@@ -518,6 +563,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async refreshBtcPrice(): Promise<number | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.refreshBtcPrice();
+                return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.refreshBtcPrice();
+            return from_candid_opt_n9(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
@@ -543,6 +602,23 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.sendBTC(arg0, arg1);
+            return result;
+        }
+    }
+    async submitPuzzleSolution(arg0: string, arg1: string): Promise<{
+        rewardAmount: BitcoinAmount;
+        newBalance: BitcoinAmount;
+    }> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.submitPuzzleSolution(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.submitPuzzleSolution(arg0, arg1);
             return result;
         }
     }
@@ -602,9 +678,23 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async verifyPuzzleReward(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.verifyPuzzleReward(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.verifyPuzzleReward(arg0);
+            return result;
+        }
+    }
 }
-function from_candid_ReserveStatus_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ReserveStatus): ReserveStatus {
-    return from_candid_record_n10(_uploadFile, _downloadFile, value);
+function from_candid_ReserveStatus_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ReserveStatus): ReserveStatus {
+    return from_candid_record_n11(_uploadFile, _downloadFile, value);
 }
 function from_candid_SendBTCRequest_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SendBTCRequest): SendBTCRequest {
     return from_candid_record_n19(_uploadFile, _downloadFile, value);
@@ -624,9 +714,6 @@ function from_candid_UserProfile_n5(_uploadFile: (file: ExternalBlob) => Promise
 function from_candid_UserRole_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n8(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [number]): number | null {
-    return value.length === 0 ? null : value[0];
-}
 function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_SendBTCRequest]): SendBTCRequest | null {
     return value.length === 0 ? null : from_candid_SendBTCRequest_n18(_uploadFile, _downloadFile, value[0]);
 }
@@ -636,11 +723,13 @@ function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [{
         status: _TransferStatus;
         failureReason: [] | [string];
+        diagnosticData: [] | [string];
         owner: Principal;
         failureCode: [] | [string];
     }]): {
     status: TransferStatus;
     failureReason?: string;
+    diagnosticData?: string;
     owner: Principal;
     failureCode?: string;
 } | null {
@@ -655,7 +744,10 @@ function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_opt_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : from_candid_UserProfile_n5(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [number]): number | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     reserveBtcBalance: _BitcoinAmount;
     outstandingIssuedCredits: _BitcoinAmount;
     coverageRatio: [] | [number];
@@ -667,7 +759,7 @@ function from_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         reserveBtcBalance: value.reserveBtcBalance,
         outstandingIssuedCredits: value.outstandingIssuedCredits,
-        coverageRatio: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.coverageRatio))
+        coverageRatio: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.coverageRatio))
     };
 }
 function from_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -695,6 +787,7 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
     id: bigint;
     status: _TransferStatus;
     failureReason: [] | [string];
+    diagnosticData: [] | [string];
     owner: Principal;
     destinationAddress: string;
     totalCost: _BitcoinAmount;
@@ -706,6 +799,7 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
     id: bigint;
     status: TransferStatus;
     failureReason?: string;
+    diagnosticData?: string;
     owner: Principal;
     destinationAddress: string;
     totalCost: BitcoinAmount;
@@ -718,6 +812,7 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
         id: value.id,
         status: from_candid_TransferStatus_n20(_uploadFile, _downloadFile, value.status),
         failureReason: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.failureReason)),
+        diagnosticData: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.diagnosticData)),
         owner: value.owner,
         destinationAddress: value.destinationAddress,
         totalCost: value.totalCost,
@@ -730,17 +825,20 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
 function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     status: _TransferStatus;
     failureReason: [] | [string];
+    diagnosticData: [] | [string];
     owner: Principal;
     failureCode: [] | [string];
 }): {
     status: TransferStatus;
     failureReason?: string;
+    diagnosticData?: string;
     owner: Principal;
     failureCode?: string;
 } {
     return {
         status: from_candid_TransferStatus_n20(_uploadFile, _downloadFile, value.status),
         failureReason: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.failureReason)),
+        diagnosticData: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.diagnosticData)),
         owner: value.owner,
         failureCode: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.failureCode))
     };

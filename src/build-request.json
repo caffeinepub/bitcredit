@@ -1,112 +1,130 @@
 {
   "kind": "build_request",
-  "title": "Add 1:1 BTC Reserve Backing Model and Admin Reserve Monitoring",
-  "projectName": "Reserve BTC Credits",
-  "priority": "normal",
+  "title": "Troubleshoot and fix failing Bitcoin mainnet broadcasts for Send/Flash withdrawals",
+  "projectName": "ReserveBTC Wallet",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-88",
-      "text": "Implement a backend BTC reserve-tracking model so that issued credits are represented as being backed 1:1 by mainnet BTC held in reserve, and expose a backend query that returns reserve status including: reserve BTC balance, total outstanding issued credits, and a reserve coverage ratio.",
+      "id": "REQ-101",
+      "text": "Fix backend on-chain broadcast so Send BTC / “flash bitcoin” withdrawals are actually posted to Bitcoin mainnet instead of always failing with `BTC_API_DISABLED`, and persist the resulting on-chain txid when broadcast succeeds.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "Yes set reserve and with bot that backs credit transfer to mainnet wallet bitcoin. Each credit on app has market value of mainnet bitcoin."
+          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
         ]
       },
       "acceptanceCriteria": [
-        "A new backend query method exists that returns reserve status fields: reserve BTC balance, outstanding credits, and coverage ratio (reserve/outstanding).",
-        "Reserve status can be fetched without trapping for authorized callers (admin-only is acceptable).",
-        "Outstanding credits are computed deterministically from backend state (not a frontend calculation)."
+        "When `sendBTC(destination, amount)` is called, the backend attempts a real on-chain broadcast via the existing IC HTTP outcalls path (`http-outcalls/outcall`) rather than returning `BTC_API_DISABLED`.",
+        "On broadcast success, the saved `SendBTCRequest` is updated with `blockchainTxId = ?<txid>` and `status` remains a non-terminal “in progress” state (e.g., `#IN_PROGRESS`).",
+        "The frontend (which fetches `getTransferRequest` after `sendBTC`) can display a txid for successful broadcasts (i.e., `blockchainTxId` is not null)."
       ]
     },
     {
-      "id": "REQ-89",
-      "text": "Update backend accounting so reserve status updates automatically during credit lifecycle events: (1) when a credit purchase is successfully verified and credits are issued, increase tracked reserve by the issued amount; (2) when an on-chain BTC transfer is successfully broadcast, decrease tracked reserve by the on-chain spend amount (receiver amount plus network fee); (3) when an on-chain broadcast fails and the transfer request is marked FAILED and credits are restored, do not decrement reserve.",
+      "id": "REQ-102",
+      "text": "Ensure backend failure semantics are safe and auditable when an on-chain broadcast fails: the transfer request must remain saved, be marked `FAILED`, store an English `failureReason`, and the user’s deducted credits (full `totalCost`) must be restored so users are not charged for transfers that were not posted on-chain.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "Yes set reserve and with bot that backs credit transfer to mainnet wallet bitcoin. Each credit on app has market value of mainnet bitcoin."
+          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
         ]
       },
       "acceptanceCriteria": [
-        "After a successful credit purchase, reserve BTC balance increases by the same amount of credits issued.",
-        "After a broadcast-successful send, reserve BTC balance decreases by (amount + networkFee) recorded on the transfer request.",
-        "After a broadcast failure (FAILED) where credits are restored, reserve BTC balance is unchanged compared to pre-send state.",
-        "Reserve changes are consistent across retries/page refreshes (no double-counting for the same request)."
+        "If broadcast fails for any reason, the existing `SendBTCRequest` is updated to `status = #FAILED` and `failureReason` is set to a clear English message suitable for display in the UI.",
+        "After a failed broadcast, the caller’s balance is restored by `totalCost` (amount + network fee) and does not remain reduced.",
+        "A failed broadcast does not remove the transfer request record; `getTransferRequest(requestId)` still returns it for the owner/admin."
       ]
     },
     {
-      "id": "REQ-90",
-      "text": "Add backend enforcement for the 1:1 reserve claim by preventing issuance of new credits if it would cause outstanding credits to exceed tracked reserve coverage, unless an admin explicitly overrides via an admin-only reserve management action.",
+      "id": "REQ-103",
+      "text": "Update reserve accounting so reserve BTC tracking is consistent with real on-chain outcomes: do not decrement reserve on failed broadcasts, and decrement reserve only when a broadcast succeeds (or when a transfer is later confirmed on-chain, if confirmation is the point at which reserve should be reduced).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "Yes set reserve and with bot that backs credit transfer to mainnet wallet bitcoin. Each credit on app has market value of mainnet bitcoin."
+          "Reserve btc from app has flash bitcoin option to send transferable withdrawalable bitcoin to mainnet wallet. Transactions sent aren’t showing on mainnet and failing please troubleshoot"
         ]
       },
       "acceptanceCriteria": [
-        "If issuing credits would result in outstanding credits > tracked reserve, the purchase/issuance operation fails with a clear English error message.",
-        "An admin-only backend method exists to adjust the tracked reserve balance (increase/decrease) with an English reason string for audit purposes.",
-        "All admin reserve adjustments are recorded in an auditable backend history (can be a dedicated reserve log or reuse an existing transaction-style record, but must be queryable)."
+        "Reserve balance tracking is not reduced for `SendBTCRequest` entries that end in `FAILED`.",
+        "Reserve balance tracking is reduced in a way that corresponds to actual on-chain spending for successful transfers (at minimum: receiver amount + network fee).",
+        "`getReserveStatus()` reflects the updated reserve after successful sends in a way that is consistent across refreshes."
       ]
     },
     {
-      "id": "REQ-91",
-      "text": "Add an admin-visible Reserve section in the existing Admin page that displays reserve BTC balance, outstanding credits, and reserve coverage ratio, and includes a simple admin-only control to adjust the tracked reserve balance with a required English reason.",
+      "id": "REQ-104",
+      "text": "Add backend-side troubleshooting diagnostics (admin-only or development-only) to help identify why broadcasts are failing, without exposing secrets: capture and surface a structured error/failure reason from the broadcast attempt that can be shown in English in the UI.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a broadcast attempt fails, the backend stores an English `failureReason` on the transfer request that explains the failure at a user-comprehensible level (e.g., invalid destination address, insufficient on-chain funds, provider rejected request, outcall error).",
+        "Diagnostics do not leak private keys, admin secrets, or raw sensitive provider credentials in the UI-facing failure message.",
+        "Admins can retrieve failure information for a request via existing request-fetching flows (e.g., `getTransferRequest` / existing diagnostics query methods)."
+      ]
+    },
+    {
+      "id": "REQ-105",
+      "text": "Update the admin Reserve Management UX copy to reflect that reserve BTC can be funded via third-party providers (BitPay, MoonPay, MetaMask) without implementing direct provider integrations; ensure all user-facing text is clear English.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "Yes set reserve and with bot that backs credit transfer to mainnet wallet bitcoin. Each credit on app has market value of mainnet bitcoin."
+          "Reservebtc is purchased with credits from BitPay, moonpay or MetaMask."
         ]
       },
       "acceptanceCriteria": [
-        "Admins can see reserve BTC balance, outstanding credits, and coverage ratio on `/admin`.",
-        "Admins can submit a reserve adjustment amount and a required reason; on success, the reserve status display updates.",
-        "Non-admin users cannot access the reserve management UI (it should not render for them).",
-        "All user-facing text in this section is in English."
+        "Admin Reserve Management section includes clear English explanatory text stating that reserve BTC may be funded externally (e.g., “Reserve BTC can be funded via external providers such as BitPay, MoonPay, or MetaMask, then recorded here.”).",
+        "No direct MetaMask/BitPay/MoonPay API integration is required for this change; it is strictly copy/UX clarification.",
+        "All new/updated text in this area is English and consistent with existing tone."
       ]
     },
     {
-      "id": "REQ-92",
-      "text": "Update user-facing copy in the signed-in experience to clearly state that credits are BTC-denominated, represent 1:1 backing by BTC held in reserve, and that the USD market value fluctuates with the Bitcoin market price.",
+      "id": "REQ-106",
+      "text": "Ensure the Send BTC / Admin Send BTC user experience clearly reflects the real on-chain posting outcome for the created request, and makes it easy to view the request details when a transfer fails to appear on mainnet.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "Each credit on app has market value of mainnet bitcoin."
+          "Transactions sent aren’t showing on mainnet and failing please troubleshoot"
         ]
       },
       "acceptanceCriteria": [
-        "Dashboard (or another signed-in screen) includes English text that states: 1 credit = 1 BTC, credits are backed 1:1 by BTC held in reserve, and USD value fluctuates with market price.",
-        "No existing copy contradicts the 1:1 reserve statement.",
-        "No blue/purple theme changes are introduced as part of this request (copy-only change is acceptable)."
+        "After submitting Send BTC, the UI shows the created request ID and, when available, the on-chain txid pulled from the persisted `SendBTCRequest.blockchainTxId`.",
+        "If a send fails (request status `FAILED`), the UI shows a clear English message that the transaction was not posted to the Bitcoin blockchain, includes the backend-provided failure reason when present, and indicates credits were restored.",
+        "The UI provides an obvious action to view the request details (e.g., navigates to History and opens the request details) so users can troubleshoot why it did not appear on mainnet."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo`; do not introduce additional backend services.",
-    "Do not edit files under `frontend/src/components/ui` or other paths listed in `frontend.immutablePaths`; compose existing components instead.",
+    "Backend must remain a single Motoko actor in `backend/main.mo`; do not introduce additional canisters/services.",
+    "Only generate `backend/migration.mo` if a state upgrade is required by any state shape changes.",
+    "Do not edit frontend files under `frontend/src/components/ui` or other `frontend.immutablePaths`; compose existing UI components instead.",
     "Use English for all user-facing text.",
-    "Do not add Python/Telegram/third-party bot services; any “bot” behavior must be implemented within the existing IC app constraints (backend automation + existing outcall approach where applicable)."
+    "Do not implement third-party wallet authentication/integration (e.g., MetaMask wallet connect) as part of this troubleshooting fix; focus on on-chain broadcast reliability and app-side diagnostics."
   ],
   "nonGoals": [
-    "Implementing external Telegram bot commands or a separate off-chain service.",
-    "Adding external databases or non-IC backend infrastructure.",
-    "Implementing real-time updates via WebSockets."
+    "Building a full BitPay/MoonPay/MetaMask purchase pipeline or SDK integrations.",
+    "Adding third-party authentication providers beyond Internet Identity.",
+    "Implementing external databases or non-Motoko backend services.",
+    "Implementing Telegram bot, Python agents, LangChain/Eliza, or any non-supported backend runtime."
   ],
   "imageRequirements": {
     "required": [],

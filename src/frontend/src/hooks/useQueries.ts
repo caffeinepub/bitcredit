@@ -373,6 +373,16 @@ export function useGetTransferRequest(requestId: bigint | null) {
       return actor.getTransferRequest(requestId);
     },
     enabled: !!actor && !actorFetching && requestId !== null,
+    // Auto-refetch while transfer is in progress
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Refetch every 3 seconds if status is IN_PROGRESS
+      if (data && data.status === 'IN_PROGRESS') {
+        return 3000;
+      }
+      // Stop refetching for terminal states
+      return false;
+    },
   });
 }
 
@@ -472,6 +482,59 @@ export function useManageReserve() {
     },
     onError: (error: Error) => {
       toast.error(`Reserve management failed: ${error.message}`);
+    },
+  });
+}
+
+export function useGetCurrentBtcPriceUsd() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<number | null>({
+    queryKey: ['btcPriceUsd'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getCurrentBtcPriceUsd();
+    },
+    enabled: !!actor && !actorFetching,
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    retry: false,
+  });
+}
+
+export function useGetPuzzleRewardsOverview() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<{
+    availablePuzzles: Array<[string, bigint]>;
+    totalPuzzles: bigint;
+  }>({
+    queryKey: ['puzzleRewardsOverview'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getPuzzleRewardsOverview();
+    },
+    enabled: !!actor && !actorFetching,
+  });
+}
+
+export function useSubmitPuzzleSolution() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ puzzleId, solution }: { puzzleId: string; solution: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.submitPuzzleSolution(puzzleId, solution);
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['puzzleRewardsOverview'] });
+      toast.success(`Puzzle solved! You earned ${result.rewardAmount.toString()} BTC credits.`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Puzzle submission failed: ${error.message}`);
     },
   });
 }

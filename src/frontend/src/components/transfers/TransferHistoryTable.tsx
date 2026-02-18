@@ -113,7 +113,7 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
                           </TooltipTrigger>
                           <TooltipContent side="right" className="max-w-xs">
                             <p className="text-xs">
-                              On-chain Bitcoin mainnet transfer. This amount includes the Bitcoin network fee deducted from your credits.
+                              On-chain Bitcoin mainnet transfer. Click Details to view status, txid, and troubleshoot if the transaction did not appear on mainnet.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -157,7 +157,7 @@ export default function TransferHistoryTable({ transactions, initialRequestId }:
                       className="gap-1"
                     >
                       <FileText className="h-3.5 w-3.5" />
-                      Details
+                      View Details
                     </Button>
                   )}
                 </TableCell>

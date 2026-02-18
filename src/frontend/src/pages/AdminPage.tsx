@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Shield, Coins, Send, Copy, Check, User, Wallet, AlertCircle, Loader2, XCircle, CheckCircle, Database, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Shield, Coins, Send, Copy, Check, User, Wallet, AlertCircle, Loader2, XCircle, CheckCircle, Database, TrendingUp, AlertTriangle, Info } from 'lucide-react';
 import { Principal } from '@dfinity/principal';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -172,6 +172,96 @@ export default function AdminPage() {
       : 'critical'
     : 'unknown';
 
+  const getAdminTransferOutcomeAlert = () => {
+    if (!transferOutcome || !transferOutcome.request) return null;
+
+    const { requestId, request } = transferOutcome;
+    const isFailed = request.status === 'FAILED';
+    const hasTxId = !!request.blockchainTxId;
+
+    if (isFailed) {
+      const failureMessage = request.failureReason 
+        ? request.failureReason 
+        : 'The transaction could not be broadcast.';
+      
+      return (
+        <Alert className="border-destructive bg-destructive/10">
+          <XCircle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive">
+            <strong>Transfer Failed</strong>
+            <br />
+            Request ID: <code className="font-mono text-xs bg-destructive/20 px-1 py-0.5 rounded">{requestId.toString()}</code>
+            <br />
+            <span className="text-sm mt-1 block font-semibold">
+              This transaction was not posted to the Bitcoin blockchain.
+            </span>
+            <span className="text-sm mt-1 block">
+              {failureMessage}
+            </span>
+            <br />
+            <span className="text-sm font-semibold">Your credits have been restored.</span>
+            <br />
+            <Button
+              variant="link"
+              className="h-auto p-0 text-destructive underline mt-1"
+              onClick={handleViewTransferDetails}
+            >
+              View request details in History to troubleshoot →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (hasTxId) {
+      return (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Transfer Broadcast Successfully!</strong>
+            <br />
+            Request ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{requestId.toString()}</code>
+            <br />
+            <span className="text-sm mt-1 block">
+              Transaction ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{request.blockchainTxId}</code>
+            </span>
+            <br />
+            <span className="text-sm font-semibold">This transaction has been posted to the Bitcoin blockchain.</span>
+            <br />
+            <Button
+              variant="link"
+              className="h-auto p-0 text-green-700 dark:text-green-300 underline mt-1"
+              onClick={handleViewTransferDetails}
+            >
+              View transfer details and status in History →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    return (
+      <Alert className="border-chart-1 bg-chart-1/10">
+        <CheckCircle className="h-4 w-4 text-chart-1" />
+        <AlertDescription className="text-chart-1">
+          <strong>Transfer request created!</strong>
+          <br />
+          Request ID: <code className="font-mono text-xs bg-chart-1/20 px-1 py-0.5 rounded">{requestId.toString()}</code>
+          <br />
+          <span className="text-sm">Status: {request.status}</span>
+          <br />
+          <Button
+            variant="link"
+            className="h-auto p-0 text-chart-1 underline mt-1"
+            onClick={handleViewTransferDetails}
+          >
+            View transfer details and status in History →
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -251,6 +341,13 @@ export default function AdminPage() {
             <CardDescription>Monitor and adjust BTC reserve backing</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Reserve BTC can be funded via external providers such as BitPay, MoonPay, or MetaMask, then recorded here. Use the adjustment form below to reflect external deposits or withdrawals.
+              </AlertDescription>
+            </Alert>
+
             {reserveLoading ? (
               <div className="space-y-3">
                 <div className="h-20 bg-muted animate-pulse rounded" />
@@ -299,7 +396,7 @@ export default function AdminPage() {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Coverage ratio is below 100%. Consider depositing additional BTC to maintain full backing.
+                      Coverage ratio is below 100%. Consider depositing more BTC to the reserve.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -308,7 +405,7 @@ export default function AdminPage() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Critical: Coverage ratio is below 80%. Immediate action required to restore full reserve backing.
+                      <strong>Critical:</strong> Coverage ratio is below 80%. Immediate action required to maintain reserve backing.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -331,20 +428,23 @@ export default function AdminPage() {
                         <SelectItem value="correction">Correction (Set Exact Amount)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {reserveActionType === 'deposit' && 'Add BTC to the reserve (e.g., after external funding via BitPay, MoonPay, or MetaMask)'}
+                      {reserveActionType === 'withdraw' && 'Remove BTC from the reserve'}
+                      {reserveActionType === 'correction' && 'Set the reserve to an exact amount'}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="reserveAmount">
-                      {reserveActionType === 'correction' ? 'New Reserve Amount (BTC)' : 'Amount (BTC)'}
-                    </Label>
+                    <Label htmlFor="reserveAmount">Amount (BTC)</Label>
                     <Input
                       id="reserveAmount"
                       type="number"
-                      placeholder="0"
+                      min="1"
+                      step="1"
+                      placeholder="Enter amount"
                       value={reserveAmount}
                       onChange={(e) => setReserveAmount(e.target.value)}
-                      required
-                      min="1"
                     />
                   </div>
 
@@ -352,12 +452,14 @@ export default function AdminPage() {
                     <Label htmlFor="reserveReason">Reason (Required)</Label>
                     <Textarea
                       id="reserveReason"
-                      placeholder="Explain the reason for this reserve adjustment..."
+                      placeholder="Explain the reason for this adjustment (e.g., 'External deposit via BitPay', 'Correction after audit')"
                       value={reserveReason}
                       onChange={(e) => setReserveReason(e.target.value)}
-                      required
                       rows={3}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Document the reason for this reserve adjustment for audit purposes
+                    </p>
                   </div>
 
                   <Button
@@ -367,15 +469,15 @@ export default function AdminPage() {
                   >
                     {manageReserve.isPending ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                         Processing...
                       </>
                     ) : (
                       <>
-                        <Database className="mr-2 h-4 w-4" />
-                        {reserveActionType === 'deposit' ? 'Deposit to Reserve' :
-                         reserveActionType === 'withdraw' ? 'Withdraw from Reserve' :
-                         'Set Reserve Amount'}
+                        <Database className="h-4 w-4 mr-2" />
+                        {reserveActionType === 'deposit' && 'Deposit to Reserve'}
+                        {reserveActionType === 'withdraw' && 'Withdraw from Reserve'}
+                        {reserveActionType === 'correction' && 'Apply Correction'}
                       </>
                     )}
                   </Button>
@@ -397,19 +499,20 @@ export default function AdminPage() {
         <CardContent>
           <form onSubmit={handleTransferCredits} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="recipientPrincipal">Recipient Principal</Label>
+              <Label htmlFor="recipientPrincipal">Recipient Principal ID</Label>
               <Input
                 id="recipientPrincipal"
+                type="text"
                 placeholder="Enter user principal ID"
                 value={recipientPrincipal}
                 onChange={(e) => {
                   setRecipientPrincipal(e.target.value);
                   setPrincipalError('');
                 }}
-                required
+                className={`font-mono text-sm ${principalError ? 'border-destructive' : ''}`}
               />
               {principalError && (
-                <p className="text-sm text-destructive">{principalError}</p>
+                <p className="text-xs text-destructive">{principalError}</p>
               )}
             </div>
 
@@ -418,27 +521,30 @@ export default function AdminPage() {
               <Input
                 id="transferAmount"
                 type="number"
-                placeholder="0"
+                min="1"
+                step="1"
+                placeholder="Enter amount to transfer"
                 value={transferAmount}
                 onChange={(e) => setTransferAmount(e.target.value)}
-                required
-                min="1"
               />
+              <p className="text-xs text-muted-foreground">
+                Available: {balance?.toString() || '0'} BTC
+              </p>
             </div>
 
             <Button
               type="submit"
-              disabled={transferCredits.isPending}
+              disabled={transferCredits.isPending || !recipientPrincipal.trim() || !transferAmount}
               className="w-full"
             >
               {transferCredits.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Transferring...
                 </>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" />
+                  <Send className="h-4 w-4 mr-2" />
                   Transfer Credits
                 </>
               )}
@@ -453,18 +559,23 @@ export default function AdminPage() {
             <Send className="h-5 w-5 text-primary" />
             <CardTitle>Send BTC to Mainnet Wallet</CardTitle>
           </div>
-          <CardDescription>Transfer Bitcoin to any mainnet address</CardDescription>
+          <CardDescription>
+            Transfer Bitcoin from your admin balance to any Bitcoin mainnet address
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {transferOutcome && getAdminTransferOutcomeAlert()}
+
           <form onSubmit={handleSendBTC} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="btcDestination">Destination Address</Label>
+              <Label htmlFor="btcDestination">Destination Bitcoin Address</Label>
               <Input
                 id="btcDestination"
-                placeholder="Enter Bitcoin mainnet address"
+                type="text"
+                placeholder="Enter Bitcoin mainnet address (e.g., bc1q...)"
                 value={btcDestination}
                 onChange={(e) => setBtcDestination(e.target.value)}
-                required
+                className="font-mono text-sm"
               />
             </div>
 
@@ -473,44 +584,48 @@ export default function AdminPage() {
               <Input
                 id="btcAmount"
                 type="number"
-                placeholder="0"
+                min="1"
+                step="1"
+                placeholder="Enter amount to send"
                 value={btcAmount}
                 onChange={(e) => setBtcAmount(e.target.value)}
-                required
-                min="1"
               />
+              <p className="text-xs text-muted-foreground">
+                Available: {balance?.toString() || '0'} BTC
+              </p>
             </div>
 
-            {requestedBtcAmount > BigInt(0) && btcDestination.trim() && (
-              <div className="p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Receiver gets:</span>
-                  <span className="font-medium">{receiverAmount} BTC</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Network fee:</span>
-                  <span className="font-medium">
+            {btcDestination.trim() && requestedBtcAmount > BigInt(0) && (
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                <h4 className="font-semibold text-sm">Transaction Summary</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Receiver gets:</span>
+                    <span className="font-semibold">{receiverAmount} BTC</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Estimated network fee:</span>
                     {feeLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin inline" />
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Loading...
+                      </span>
                     ) : feeError ? (
-                      <span className="text-destructive">Error</span>
+                      <span className="text-destructive text-xs">Fee unavailable</span>
                     ) : (
-                      `${networkFee} BTC`
+                      <span className="font-semibold">{networkFee} BTC</span>
                     )}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex justify-between text-sm font-semibold">
-                  <span>Total deducted:</span>
-                  <span className={insufficientBalance ? 'text-destructive' : ''}>
-                    {totalDeducted} BTC
-                  </span>
+                  </div>
+                  <div className="pt-2 border-t flex justify-between items-center">
+                    <span className="font-semibold">Total deducted from credits:</span>
+                    <span className="font-bold text-lg">{totalDeducted} BTC</span>
+                  </div>
                 </div>
                 {insufficientBalance && (
-                  <Alert variant="destructive">
+                  <Alert variant="destructive" className="mt-2">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC.
+                      Insufficient balance. You need {totalDeducted} BTC but only have {availableBalance} BTC available.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -519,67 +634,22 @@ export default function AdminPage() {
 
             <Button
               type="submit"
-              disabled={sendBTC.isPending || insufficientBalance || feeLoading}
+              disabled={sendBTC.isPending || insufficientBalance || !btcDestination.trim() || !btcAmount || feeLoading || !!feeError}
               className="w-full"
             >
               {sendBTC.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Request...
                 </>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Send BTC
+                  <Send className="h-4 w-4 mr-2" />
+                  Create Transfer Request
                 </>
               )}
             </Button>
           </form>
-
-          {transferOutcome && (
-            <div className="mt-6 p-4 bg-muted rounded-lg space-y-3">
-              <div className="flex items-start gap-3">
-                {transferOutcome.request?.status === 'FAILED' ? (
-                  <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                ) : (
-                  <CheckCircle className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                )}
-                <div className="space-y-2 flex-1">
-                  <p className="font-medium">
-                    {transferOutcome.request?.status === 'FAILED'
-                      ? 'Transfer Request Created (Broadcast Failed)'
-                      : 'Transfer Request Created'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Request ID: {transferOutcome.requestId.toString()}
-                  </p>
-
-                  {transferOutcome.request?.status === 'FAILED' && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="space-y-2">
-                        <p className="font-medium">
-                          {transferOutcome.request.failureReason || 'The transaction was not posted to the Bitcoin blockchain.'}
-                        </p>
-                        <p className="text-sm">
-                          Your credits have been restored to your balance.
-                        </p>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleViewTransferDetails}
-                    className="w-full"
-                  >
-                    View Details in History
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

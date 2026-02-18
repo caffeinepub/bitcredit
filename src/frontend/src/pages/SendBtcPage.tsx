@@ -79,7 +79,7 @@ export default function SendBtcPage() {
       // Display clear English failure reason
       const failureMessage = request.failureReason 
         ? request.failureReason 
-        : 'The transaction was not posted to the Bitcoin blockchain.';
+        : 'The transaction could not be broadcast.';
       
       return (
         <Alert className="border-destructive bg-destructive/10">
@@ -89,6 +89,9 @@ export default function SendBtcPage() {
             <br />
             Request ID: <code className="font-mono text-xs bg-destructive/20 px-1 py-0.5 rounded">{requestId.toString()}</code>
             <br />
+            <span className="text-sm mt-1 block font-semibold">
+              This transaction was not posted to the Bitcoin blockchain.
+            </span>
             <span className="text-sm mt-1 block">
               {failureMessage}
             </span>
@@ -100,7 +103,7 @@ export default function SendBtcPage() {
               className="h-auto p-0 text-destructive underline mt-1"
               onClick={handleViewDetails}
             >
-              View request details in History →
+              View request details in History to troubleshoot →
             </Button>
           </AlertDescription>
         </Alert>
