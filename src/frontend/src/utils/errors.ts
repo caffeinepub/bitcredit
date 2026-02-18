@@ -48,3 +48,43 @@ export function normalizeSendBTCError(error: Error): string {
   // Default: return original message with context
   return `Transfer failed: ${error.message}`;
 }
+
+/**
+ * Normalizes backend error messages for reserve deposit validation into clear, user-friendly English text.
+ */
+export function normalizeReserveDepositValidationError(error: Error): string {
+  const message = error.message.toLowerCase();
+  
+  // Check for reserve address not configured
+  if (message.includes('reserve address not set') || message.includes('reserve multisig config not set')) {
+    return 'Reserve wallet address is not configured. Please configure the reserve multisig address before validating deposits.';
+  }
+  
+  // Check for transaction not matching reserve address
+  if (message.includes('does not match reserve address')) {
+    return 'Transaction does not send funds to the configured reserve wallet address. Please verify the transaction ID and reserve address.';
+  }
+  
+  // Check for amount mismatch
+  if (message.includes('does not match') && message.includes('amount')) {
+    return 'Transaction amount does not match the specified amount. Please verify the transaction details.';
+  }
+  
+  // Check for blockchain verification failure
+  if (message.includes('unable to verify') || message.includes('blockchain')) {
+    return 'Unable to verify transaction on the blockchain. The transaction may not be confirmed yet, or the blockchain API may be temporarily unavailable. Please try again later.';
+  }
+  
+  // Check for zero amount
+  if (message.includes('cannot validate 0')) {
+    return 'Cannot validate a deposit of 0 satoshis. Please enter a valid amount.';
+  }
+  
+  // Check for duplicate validation (if implemented)
+  if (message.includes('already validated') || message.includes('duplicate')) {
+    return 'This transaction has already been validated and credited to the reserve. Duplicate validation is not allowed.';
+  }
+  
+  // Default: return original message with context
+  return `Validation failed: ${error.message}`;
+}

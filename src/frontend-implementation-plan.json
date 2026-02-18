@@ -1,6 +1,43 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Reserve Ledger — Frontend Implementation Plan (No changes required)",
-  "requirements": []
+  "title": "Add tappable Internet Identity sign-in button to logged-out mobile screen",
+  "requirements": [
+    {
+      "id": "REQ-173",
+      "summary": "Render a prominent, tappable sign-in button on the logged-out screen that triggers the existing Internet Identity login flow while keeping the logged-out message visible.",
+      "acceptanceCriteria": [
+        "When the user is not authenticated, the page shows a prominent button that can be tapped on mobile (no text-only login state).",
+        "Tapping the button starts the Internet Identity login flow (same behavior as the existing header LoginButton).",
+        "The existing logged-out message (or equivalent) remains visible along with the button so users understand why they are being asked to sign in."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+          "operation": "create",
+          "description": "Create a dedicated logged-out UI panel that keeps the existing logged-out message visible and adds a prominent primary action button. Use the existing useInternetIdentity hook to trigger the same Internet Identity login flow used by the header LoginButton (including handling the logging-in disabled state). Use the shadcn-ui Button component for a large, mobile-friendly CTA. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Update AuthGate’s unauthenticated branch to render the new LoggedOutSignInPanel (instead of message-only), ensuring the screen remains centered and mobile-friendly while preserving the logged-out explanatory message alongside the new button."
+        }
+      ]
+    },
+    {
+      "id": "REQ-174",
+      "summary": "Ensure the logged-out screen’s primary sign-in button label explicitly reads \"Sign in with Internet Identity\".",
+      "acceptanceCriteria": [
+        "On the logged-out screen, the primary button text is \"Sign in with Internet Identity\" (English).",
+        "No user-facing login text implies an invisible/automatic login; the user can always see what to tap."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+          "operation": "modify",
+          "description": "Set the logged-out screen CTA label to exactly \"Sign in with Internet Identity\" (and keep any loading-state text in clear English, e.g., \"Signing in...\"). Ensure the label is not reused from the header LoginButton’s generic \"Sign In\" text. Verify the component's usage instructions before implementing."
+        }
+      ]
+    }
+  ]
 }

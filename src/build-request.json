@@ -1,106 +1,59 @@
 {
   "kind": "build_request",
-  "title": "Backend reserve accounting to match issued credits with real reserve for broadcasts",
-  "projectName": "Reserve Ledger",
-  "priority": "normal",
+  "title": "Add visible Internet Identity login button on mobile login screen",
+  "projectName": "BTC Credits",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-152",
-      "text": "Implement a backend reserve-matching mechanism that deterministically tracks (a) total outstanding issued credits and (b) BTC reserve available for on-chain broadcasts, and exposes a single source of truth for reserve coverage (no AI/LLM logic).",
-      "target": "backend",
+      "id": "REQ-173",
+      "text": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-6"
         ],
         "quotes": [
-          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
+          "Add button"
         ]
       },
       "acceptanceCriteria": [
-        "Backend maintains explicit state for reserve BTC balance and outstanding issued credits (already present as `reserveBtcBalance` and `outstandingIssuedCredits`) and uses deterministic logic only.",
-        "Reserve coverage can be computed as a ratio (e.g., `reserveBtcBalance / outstandingIssuedCredits`) and returned as part of a reserve-status response.",
-        "No code path references or implies using external AI services for reserve matching/allocation."
+        "When the user is not authenticated, the page shows a prominent button that can be tapped on mobile (no text-only login state).",
+        "Tapping the button starts the Internet Identity login flow (same behavior as the existing header LoginButton).",
+        "The existing logged-out message (or equivalent) remains visible along with the button so users understand why they are being asked to sign in."
       ]
     },
     {
-      "id": "REQ-153",
-      "text": "Fix credit-issuance reserve accounting so that a successfully verified credit purchase can mint credits even when the tracked reserve starts at 0, while still preserving the invariant that issued credits are 1:1 backed by tracked reserve after the purchase completes.",
-      "target": "backend",
+      "id": "REQ-174",
+      "text": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-4",
+          "msg-5",
+          "msg-6"
         ],
         "quotes": [
-          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
+          "Stuck at login no login button appears for app",
+          "From phone just a message saying login app but no button to login appears",
+          "Add button"
         ]
       },
       "acceptanceCriteria": [
-        "When a deposit is verified, the backend updates reserve tracking in a way that does not block the very first purchase solely because `reserveBtcBalance` was 0 before the purchase.",
-        "After a successful purchase, `outstandingIssuedCredits` increases by the minted amount and `reserveBtcBalance` reflects the corresponding increase so coverage is not worse than before the purchase.",
-        "Any user-facing trap/error messages remain clear English."
-      ]
-    },
-    {
-      "id": "REQ-154",
-      "text": "Enforce reserve-aware send/broadcast behavior: before creating or broadcasting a Send BTC transfer request, ensure there is sufficient tracked reserve coverage for the total on-chain spend (receiver amount + network fee), and keep reserve accounting consistent with broadcast outcomes.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
-        ]
-      },
-      "acceptanceCriteria": [
-        "If a Send BTC attempt cannot be covered by tracked reserve for the full `totalCost` (amount + fee), the backend fails safely with a clear English error (and does not create an inconsistent transfer record).",
-        "If broadcast succeeds (a txid is produced and the request is persisted as in-progress/posted), reserve tracking is decremented exactly once for the on-chain spend amount governed by the request’s `totalCost` (or a clearly defined equivalent).",
-        "If broadcast fails and the request is persisted as `FAILED` with credits restored, reserve tracking is not decremented for that failed attempt.",
-        "Failure reasons and diagnostic text remain in clear English and do not mention AI."
-      ]
-    },
-    {
-      "id": "REQ-155",
-      "text": "Expose (or ensure the existing exposure of) a backend API that returns reserve status for admin UI consumption, including reserve BTC balance, outstanding issued credits, and coverage ratio, using clear English field naming and documentation comments.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "Create backend reserve using ai matching amount of credits of real and flash bitcoin to broadcast for transactions"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A backend query method exists that returns `ReserveStatus` including `reserveBtcBalance`, `outstandingIssuedCredits`, and `coverageRatio`.",
-        "The method is safe to call repeatedly and does not mutate state.",
-        "All associated developer/user-facing text (if any) is in clear English."
+        "On the logged-out screen, the primary button text is \"Sign in with Internet Identity\" (English).",
+        "No user-facing login text implies an invisible/automatic login; the user can always see what to tap."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo` (no new backend services).",
-    "Do not add any external AI/LLM integrations or dependencies; reserve matching must be deterministic and implemented fully in Motoko.",
-    "All user-facing text must be clear English.",
-    "Do not edit files under `frontend/src/components/ui` or other `frontend.immutablePaths`."
+    "Frontend immutable paths must not be edited: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
+    "Keep all user-facing text in clear English."
   ],
   "nonGoals": [
-    "Implementing “flash bitcoin” instant-guarantee transfers that claim delivery without an on-chain broadcast/confirmation.",
-    "Adding any automated private-key custody, signing, or external Python/Node.js agents for reserve management or broadcasting.",
-    "Integrating external reserve funding providers (e.g., BitPay/MoonPay/MetaMask) as direct in-app payment rails as part of this change."
+    "Do not change backend authentication logic or admin allowlist behavior.",
+    "Do not add new authentication providers; Internet Identity remains the only login method."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

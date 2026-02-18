@@ -27,6 +27,13 @@ export interface CoverageDetails {
   'pendingOutflow' : bigint,
   'pendingOutflowWithFees' : bigint,
 }
+export interface ExtendedReserveAdjustment {
+  'performedBy' : Principal,
+  'timestamp' : Time,
+  'amount' : BitcoinAmount,
+  'transactionId' : [] | [string],
+  'reason' : ReserveChangeReason,
+}
 export type FeeRateSufficiency = { 'BORDERLINE' : null } |
   { 'SUFFICIENT' : null } |
   { 'INSUFFICIENT' : null };
@@ -41,9 +48,26 @@ export interface MempoolAnalysisResult {
   'recommendedNextBlockFeeRate' : [] | [BitcoinAmount],
   'mempoolFeeRate' : BitcoinAmount,
 }
+export type ReserveChangeReason = { 'adjustment' : null } |
+  { 'deposit' : null } |
+  { 'withdrawal' : null };
+export interface ReserveDepositValidationRequest {
+  'txid' : string,
+  'amount' : BitcoinAmount,
+}
+export interface ReserveDepositValidationResult {
+  'confirmedDeposit' : boolean,
+  'success' : boolean,
+}
 export type ReserveManagementAction = { 'withdraw' : BitcoinAmount } |
   { 'deposit' : BitcoinAmount } |
   { 'correction' : BitcoinAmount };
+export interface ReserveMultisigConfig {
+  'threshold' : bigint,
+  'redeemScript' : [] | [string],
+  'address' : [] | [string],
+  'pubkeys' : Array<Uint8Array>,
+}
 export interface ReserveStatus {
   'reserveBtcBalance' : BitcoinAmount,
   'coverageDetails' : [] | [CoverageDetails],
@@ -131,6 +155,10 @@ export interface _SERVICE {
   >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createCallerBitcoinWallet' : ActorMethod<[], undefined>,
+  'getAllReserveAdjustments' : ActorMethod<
+    [],
+    Array<[bigint, ExtendedReserveAdjustment]>
+  >,
   'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
   'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
@@ -141,15 +169,7 @@ export interface _SERVICE {
     [string, BitcoinAmount],
     BitcoinAmount
   >,
-  /**
-   * / Returns actual reserve status after netting all positive and negative adjustments.
-   * / # Reserve Status Calculation
-   * / The fields returned by this query represent the canonical source of truth for reserve coverage:
-   * / - outstandingIssuedCredits represents the net outstanding deposited credits after accounting for all adjustments
-   * / - reserveBtcBalance represents the net available reserve balance (sum of all deposits minus withdrawals)
-   * / - minReserveBalanceAvailable represents the tracked reserve balance available for credit issuance (reserveBtcBalance - outstandingIssuedCredits)
-   * / - coverageRatio represents the coverage ratio (outstandingIssuedCredits / reserveBtcBalance), which must always be >= 1.
-   */
+  'getReserveMultisigConfig' : ActorMethod<[], [] | [ReserveMultisigConfig]>,
   'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getTransferRequest' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
@@ -160,17 +180,12 @@ export interface _SERVICE {
   >,
   'getWithdrawalRequest' : ActorMethod<[bigint], [] | [WithdrawalRequest]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'manageReserve' : ActorMethod<[ReserveManagementAction], undefined>,
+  'isReserveMultisigConfigSet' : ActorMethod<[], boolean>,
+  'manageReserve' : ActorMethod<
+    [ReserveManagementAction, [] | [string]],
+    undefined
+  >,
   'markWithdrawalPaid' : ActorMethod<[bigint], undefined>,
-  /**
-   * / Issues credits to user upon successful verification of on-chain deposit. This function performs reserve accounting.
-   * /
-   * / # Reserve Accounting Rules
-   * / - Always increment outstandingIssuedCredits by the credited amount (corresponds to outstanding deposit promise).
-   * / - Only increment reserveBtcBalance if the deposit is actually received on-chain.
-   * / - The getReserveStatus query must always return the correct coverage ratio (outstandingIssuedCredits / reserveBtcBalance).
-   * / - The minReserveBalanceAvailable (tracked reserve after accounting for all outstanding credits) is calculated in getReserveStatus (no need to check/increment here).
-   */
   'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
   'refreshBtcPrice' : ActorMethod<[], [] | [number]>,
   'refreshTransferRequestStatus' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
@@ -183,6 +198,14 @@ export interface _SERVICE {
   >,
   'toggleApiDiagnostics' : ActorMethod<[], boolean>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
+  'updateReserveMultisigConfig' : ActorMethod<
+    [bigint, Array<Uint8Array>, [] | [string], [] | [string]],
+    undefined
+  >,
+  'validateReserveDeposit' : ActorMethod<
+    [ReserveDepositValidationRequest],
+    ReserveDepositValidationResult
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

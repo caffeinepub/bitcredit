@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
-import type { Transaction, UserProfile, SendBTCRequest, WithdrawalRequest, ConfirmationAnalysisResult } from '../backend';
+import type { Transaction, UserProfile, SendBTCRequest, WithdrawalRequest, ConfirmationAnalysisResult, ReserveStatus, ReserveMultisigConfig, ReserveDepositValidationRequest, ReserveDepositValidationResult, ExtendedReserveAdjustment } from '../backend';
 import { toast } from 'sonner';
 import { Principal } from '@dfinity/principal';
 
@@ -192,16 +192,17 @@ export function useAnalyzeSendBTCRequestConfirmation(requestId: bigint | null, f
   });
 }
 
-export function useGetReserveStatus() {
+export function useGetReserveStatus(options?: { refetchInterval?: number }) {
   const { actor, isFetching } = useActor();
 
-  return useQuery({
+  return useQuery<ReserveStatus>({
     queryKey: ['reserveStatus'],
     queryFn: async () => {
       if (!actor) throw new Error('Actor not available');
       return actor.getReserveStatus();
     },
     enabled: !!actor && !isFetching,
+    refetchInterval: options?.refetchInterval,
   });
 }
 
@@ -210,14 +211,30 @@ export function useManageReserve() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (action: any) => {
+    mutationFn: async ({ action, txid }: { action: any; txid?: string | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.manageReserve(action);
+      return actor.manageReserve(action, txid || null);
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
-      toast.success('Reserve updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['reserveAdjustments'] });
+      
+      const txidMessage = variables.txid ? ` Txid recorded: ${variables.txid}` : '';
+      toast.success(`Reserve updated successfully!${txidMessage}`);
     },
+  });
+}
+
+export function useGetAllReserveAdjustments() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Array<[bigint, ExtendedReserveAdjustment]>>({
+    queryKey: ['reserveAdjustments'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllReserveAdjustments();
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -384,6 +401,70 @@ export function useRejectWithdrawalRequest() {
     },
     onError: (error: any) => {
       toast.error(`Failed to reject withdrawal request: ${error.message || 'Unknown error'}`);
+    },
+  });
+}
+
+export function useGetReserveMultisigConfig() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<ReserveMultisigConfig | null>({
+    queryKey: ['reserveMultisigConfig'],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getReserveMultisigConfig();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useUpdateReserveMultisigConfig() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      threshold, 
+      pubkeys, 
+      address, 
+      redeemScript 
+    }: { 
+      threshold: bigint; 
+      pubkeys: Uint8Array[]; 
+      address: string | null; 
+      redeemScript: string | null;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.updateReserveMultisigConfig(threshold, pubkeys, address, redeemScript);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reserveMultisigConfig'] });
+      toast.success('Reserve multisig configuration updated successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update multisig config: ${error.message || 'Unknown error'}`);
+    },
+  });
+}
+
+export function useValidateReserveDeposit() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation<ReserveDepositValidationResult, Error, ReserveDepositValidationRequest>({
+    mutationFn: async (request: ReserveDepositValidationRequest) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.validateReserveDeposit(request);
+    },
+    onSuccess: (result) => {
+      if (result.success && result.confirmedDeposit) {
+        queryClient.invalidateQueries({ queryKey: ['reserveStatus'] });
+        queryClient.invalidateQueries({ queryKey: ['reserveAdjustments'] });
+        toast.success('Reserve deposit validated and credited successfully!');
+      }
+    },
+    onError: (error: any) => {
+      // Error handling is done in the component
     },
   });
 }

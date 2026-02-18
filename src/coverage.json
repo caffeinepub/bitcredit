@@ -1,54 +1,48 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T09:04:38.687Z",
+  "generatedAt": "2026-02-18T12:13:33.628Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 0,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-152",
-        "summary": "Implement a backend reserve-matching mechanism that deterministically tracks (a) total outstanding issued credits and (b) BTC reserve available for on-chain broadcasts, and exposes a single source of truth for reserve coverage (no AI/LLM logic).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "id": "REQ-173",
+        "summary": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+          "frontend/src/App.tsx"
+        ]
       },
       {
-        "id": "REQ-153",
-        "summary": "Fix credit-issuance reserve accounting so that a successfully verified credit purchase can mint credits even when the tracked reserve starts at 0, while still preserving the invariant that issued credits are 1:1 backed by tracked reserve after the purchase completes.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-154",
-        "summary": "Enforce reserve-aware send/broadcast behavior: before creating or broadcasting a Send BTC transfer request, ensure there is sufficient tracked reserve coverage for the total on-chain spend (receiver amount + network fee), and keep reserve accounting consistent with broadcast outcomes.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-155",
-        "summary": "Expose (or ensure the existing exposure of) a backend API that returns reserve status for admin UI consumption, including reserve BTC balance, outstanding issued credits, and coverage ratio, using clear English field naming and documentation comments.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "id": "REQ-174",
+        "summary": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/App.tsx",
+    "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

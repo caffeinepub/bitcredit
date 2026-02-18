@@ -1,61 +1,46 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T09:04:38.681Z",
-  "summary": "The diff shows type-level additions in backend/main.mo around reserve status reporting, but it does not provide evidence of the required reserve-matching logic changes for credit issuance or send/broadcast enforcement. It also appears to introduce unrelated scope in project_state.json and includes an incorrect coverage ratio definition in comments/types.",
-  "missing_requirements": [
-    {
-      "id": "REQ-152",
-      "requirement": "Expose a single source of truth for reserve coverage where coverageRatio is computed as reserveBtcBalance / outstandingIssuedCredits and returned in a reserve-status response.",
-      "reason": "The diff introduces a ReserveStatus type, but its documentation explicitly defines the ratio as outstandingIssuedCredits / reserveBtcBalance, which conflicts with the requirement’s example and intent (reserve coverage). No other implementation is shown to correct this.",
-      "evidence": [
-        "backend/main.mo (ReserveStatus comments: \"coverageRatio ... outstandingIssuedCredits / reserveBtcBalance\")"
-      ]
-    },
-    {
-      "id": "REQ-153",
-      "requirement": "Fix verified credit purchase accounting so first purchase can mint credits even when reserveBtcBalance starts at 0, while ensuring reserveBtcBalance and outstandingIssuedCredits increase appropriately after purchase.",
-      "reason": "The diff snippet contains only state/type declarations; it does not show any deposit verification or credit-minting logic changes that would adjust reserve tracking during purchase verification.",
-      "evidence": [
-        "backend/main.mo (truncated; no deposit verification / minting logic shown)"
-      ]
-    },
-    {
-      "id": "REQ-154",
-      "requirement": "Enforce reserve-aware send/broadcast behavior by checking tracked reserve coverage for totalCost before creating/broadcasting a send request, decrementing reserve exactly once on success, and not decrementing on failed broadcasts where credits are restored.",
-      "reason": "No code paths for creating/broadcasting Send BTC requests are shown in the diff excerpt; therefore there is no evidence of the required pre-checks and reserve accounting adjustments tied to broadcast outcomes.",
-      "evidence": [
-        "backend/main.mo (truncated; no send/broadcast logic shown)"
-      ]
-    },
-    {
-      "id": "REQ-155",
-      "requirement": "Provide a backend query method that returns ReserveStatus including reserveBtcBalance, outstandingIssuedCredits, and coverageRatio, and does not mutate state.",
-      "reason": "A ReserveStatus type is added, but the diff excerpt does not show any query method (e.g., getReserveStatus) that returns it, nor evidence that such a method is non-mutating.",
-      "evidence": [
-        "backend/main.mo (truncated; only type definitions shown)"
-      ]
-    }
-  ],
+  "generatedAt": "2026-02-18T12:13:33.620Z",
+  "summary": "REQ-173 and REQ-174 appear implemented via a new logged-out panel component that shows the existing logged-out message plus a prominent button labeled \"Sign in with Internet Identity\" that triggers the existing Internet Identity login flow. The diff also includes multiple unrelated feature additions/changes (e.g., AI Lottery route, admin behavior changes) that were not requested.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Project scope expanded to include an \"AI-driven lottery page\" and displaying USD value beneath credits in transaction history.",
-      "reason": "This is not requested in the BuildRequest and conflicts with the constraint/non-goals around avoiding AI/LLM-related functionality.",
+      "description": "Add AI Lottery page/route and related UI/navigation updates",
+      "reason": "Not requested (BuildRequest is only about adding a visible Internet Identity sign-in button on the logged-out screen).",
       "evidence": [
-        "project_state.json (\"summary\": \"... add an AI-driven lottery page ...\")"
+        "frontend/src/App.tsx (imports include AiLotteryPage; file summary mentions new /ai-lottery route)",
+        "frontend-file-summaries.txt (\"new /ai-lottery route\"; \"new AI Lottery link\")"
       ]
     },
     {
-      "description": "Added fields/types related to detached signed transactions and mempool/fee analysis (e.g., tempStorageForBTCTransaction, MempoolAnalysisResult, FeeRateSufficiency).",
-      "reason": "These additions are not explicitly requested by REQ-152 through REQ-155, which focus on reserve accounting, reserve-aware send enforcement, and reserve status reporting.",
+      "description": "Automatic 500-credit assignment for verified admins",
+      "reason": "Not requested and potentially conflicts with the non-goal of not changing backend authentication logic/admin behavior.",
       "evidence": [
-        "backend/main.mo (SendBTCRequest.tempStorageForBTCTransaction; MempoolAnalysisResult; FeeRateSufficiency; ConfirmationAnalysisResult.feeDecryptorAnalysis)"
+        "frontend-file-summaries.txt (\"automatic 500-credit assignment for verified admins\")"
+      ]
+    },
+    {
+      "description": "Admin guard/caching/token-detection behavior changes (e.g., caching admin status, denied screen token detection)",
+      "reason": "Not requested; BuildRequest explicitly scopes changes to the logged-out screen button and indicates no changes to admin allowlist behavior.",
+      "evidence": [
+        "frontend/src/App.tsx (AdminGuard uses adminStatusCache; tokenDetected via getSecretParameter('caffeineAdminToken'))",
+        "frontend-file-summaries.txt (describes admin guard changes and cache usage)"
+      ]
+    },
+    {
+      "description": "Large set of unrelated UI/feature updates (USD estimate lines, transfer history enhancements, new troubleshooting components, theme/css expansions, additional queries)",
+      "reason": "Not requested by the BuildRequest (scope is limited to the mobile logged-out login button/label).",
+      "evidence": [
+        "frontend-file-summaries.txt (multiple entries: index.css theme/lottery classes, tailwind changes, many page/component behavior updates, new React Query hooks)"
       ]
     }
   ],
-  "confidence": 0.62,
+  "confidence": 0.74,
   "changed_files": [
-    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
+    "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
     "project_state.json"
   ]
 }

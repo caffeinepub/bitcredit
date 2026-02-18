@@ -1,4 +1,46 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-update-the-unauthenticated-logged-out-screen-so-it-renders-a-visible-tappable-sign-in-button-that-triggers-the-existing-internet-identity-login-flow-instead-of-showing-only-the-please-log-in-to-access-the-application-message",
+      "featureTitle": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-173"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-sign-in-button-s-label-explicitly-says-sign-in-with-internet-identity-on-the-logged-out-screen-so-users-understand-what-provider-they-are-using",
+      "featureTitle": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
+      "files": [
+        "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-174"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

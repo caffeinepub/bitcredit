@@ -4,25 +4,26 @@ import Float "mo:core/Float";
 import List "mo:core/List";
 import Nat "mo:core/Nat";
 import Int "mo:core/Int";
-import Order "mo:core/Order";
-import Blob "mo:core/Blob";
 import Principal "mo:core/Principal";
+import Order "mo:core/Order";
+import Runtime "mo:core/Runtime";
+import Blob "mo:core/Blob";
 import Text "mo:core/Text";
 import Array "mo:core/Array";
 import OutCall "http-outcalls/outcall";
-import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
-// migration
+
 
 actor {
+  public type BitcoinAmount = Nat; // 1 Satoshi
+
   // State
   var currentBtcPriceUsd : ?Float = null;
   var lastUpdatedPriceTime : ?Time.Time = null;
-
   var reserveBtcBalance : Nat = 0;
   var outstandingIssuedCredits : Nat = 0;
   let transactionFeeRate : Nat = 50_000; // Satoshis per gigabyte
@@ -35,8 +36,11 @@ actor {
   let failedTransfersToRetry = Map.empty<Nat, SendBTCRequest>();
   let withdrawalRequests = Map.empty<Nat, WithdrawalRequest>();
   let adminInitialCreditsIssued = Map.empty<Principal, Bool>();
+  let reserveAdjustments = Map.empty<Nat, ExtendedReserveAdjustment>();
   var requestIdCounter : Nat = 0;
+  var reserveAdjustmentCounter : Nat = 0;
   var btcApiDiagnosticsEnabled = false;
+  var reserveMultisigConfig : ?ReserveMultisigConfig = null;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -68,8 +72,6 @@ actor {
     #EVICTED;
   };
 
-  public type BitcoinAmount = Nat; // 1 Satoshi
-
   public type ConfirmationAnalysisResult = {
     status : TransferStatus;
     feeDecryptorAnalysis : ?MempoolAnalysisResult;
@@ -99,27 +101,17 @@ actor {
     #INSUFFICIENT;
   };
 
-  /// New type returned by getReserveStatus query and admin GUI
-  /// Represents the authoritative 1:1 mapping of outstanding issued credits and on-chain reserves after netting all positive and negative adjustments.
-  /// IMPORTANT: The coverageRatio is a simple derived value calculated as outstandingIssuedCredits / reserveBtcBalance.
   public type ReserveStatus = {
-    /// On-chain Bitcoin held in cold wallet(s)
     reserveBtcBalance : BitcoinAmount;
-    /// Net outstanding issued credits after deducting all negative adjustments and topping up refunds/cancellations
     outstandingIssuedCredits : BitcoinAmount;
-    /// Simple ratio calculated as outstandingIssuedCredits / reserveBtcBalance
     coverageRatio : ?Float;
-    /// Additional coverage information for clarity
     coverageDetails : ?CoverageDetails;
-    /// Timestamp when this status was queried
     timestamp : Time.Time;
   };
 
   public type CoverageDetails = {
     pendingOutflow : Nat;
-    /// Network fees associated with pending outflow
     pendingOutflowWithFees : Nat;
-    /// Calculated as outstandingIssuedCredits + pendingOutflowWithFees
     adjustedCoverageRatio : Float;
   };
 
@@ -131,8 +123,6 @@ actor {
   public type BitcoinWallet = {
     address : Text;
     publicKey : Blob;
-    // SECURITY: This type MUST NEVER contain private key material.
-    // Private keys must never be stored in the backend or returned via public API.
   };
 
   public type WithdrawalRequest = {
@@ -222,11 +212,12 @@ actor {
     #adjustment;
   };
 
-  public type ReserveAdjustment = {
+  public type ExtendedReserveAdjustment = {
     amount : BitcoinAmount;
     reason : ReserveChangeReason;
     timestamp : Time.Time;
     performedBy : Principal;
+    transactionId : ?Text;
   };
 
   public type PuzzleReward = {
@@ -246,18 +237,35 @@ actor {
     diagnosticData : ?Text;
   };
 
+  public type ReserveMultisigConfig = {
+    threshold : Nat;
+    pubkeys : [Blob];
+    address : ?Text;
+    redeemScript : ?Text;
+  };
+
+  public type ReserveDepositValidationRequest = {
+    txid : Text;
+    amount : BitcoinAmount;
+  };
+
+  public type ReserveDepositValidationResult = {
+    success : Bool;
+    confirmedDeposit : Bool;
+  };
+
   module Transaction {
     public func compare(transaction1 : Transaction, transaction2 : Transaction) : Order.Order {
       Int.compare(transaction1.timestamp, transaction2.timestamp);
     };
   };
 
-  // SECURITY GUARD: Prevent private key material from being stored or returned
   func guardAgainstPrivateKeyExposure() {
-    Runtime.trap("SECURITY VIOLATION: This backend must never store, process, or return private key material. Private keys must be managed client-side only. The BitcoinWallet type is restricted to public information (address and public key) only.");
+    Runtime.trap(
+      "SECURITY VIOLATION: This backend must never store, process, or return private key material. Private keys must be managed client-side only. The BitcoinWallet type is restricted to public information (address and public key) only.",
+    );
   };
 
-  // Confirmations and troubleshooting
   public shared ({ caller }) func analyzeSendBTCRequestConfirmation(requestId : Nat, forceFreshCheck : ?Bool) : async ConfirmationAnalysisResult {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can analyze confirmations");
@@ -327,7 +335,7 @@ actor {
 
             return dynamicResult;
           } else {
-            return basicResult; // No further checks needed for completed/failed/evicted/withdrawn
+            return basicResult;
           };
         };
       };
@@ -431,7 +439,6 @@ actor {
     "The transaction appears to have been dropped/evicted from the mempool due to not being confirmed and no longer being found in the mempool or on the blockchain. This typically occurs when a transaction has a low fee rate or if it has been pending for an extended period without confirmation. Please review the transaction details, including the fee rate and confirmation status, to determine if adjustments are needed for successful broadcasting.";
   };
 
-  // User endpoints
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view profiles");
@@ -511,7 +518,6 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Credit purchase/update with reserve coverage accounting
   public shared ({ caller }) func getCallerBalance() : async BitcoinAmount {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view balance");
@@ -522,13 +528,6 @@ actor {
     };
   };
 
-  /// Issues credits to user upon successful verification of on-chain deposit. This function performs reserve accounting.
-  ///
-  /// # Reserve Accounting Rules
-  /// - Always increment outstandingIssuedCredits by the credited amount (corresponds to outstanding deposit promise).
-  /// - Only increment reserveBtcBalance if the deposit is actually received on-chain.
-  /// - The getReserveStatus query must always return the correct coverage ratio (outstandingIssuedCredits / reserveBtcBalance).
-  /// - The minReserveBalanceAvailable (tracked reserve after accounting for all outstanding credits) is calculated in getReserveStatus (no need to check/increment here).
   public shared ({ caller }) func purchaseCredits(transactionId : Text, amount : BitcoinAmount) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can purchase credits");
@@ -567,7 +566,6 @@ actor {
     };
     transactions.add(transaction);
 
-    // Update outstanding issued credits (corresponds to deposit promise)
     outstandingIssuedCredits += amount;
   };
 
@@ -586,7 +584,6 @@ actor {
     transformImpl(input);
   };
 
-  // Send BTC - always attempt broadcast via HTTP outcall
   public shared ({ caller }) func sendBTC(destination : Text, amount : BitcoinAmount) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send BTC");
@@ -602,17 +599,11 @@ actor {
       Runtime.trap("Insufficient funds");
     };
 
-    // Reserve coverage check: Ensure that the requested transfer (amount + network fee)
-    // does not cause outstanding issued credits to exceed available reserves.
     let reserveStatus = await getReserveStatus();
     if (totalCost > reserveStatus.reserveBtcBalance) {
       Runtime.trap("Insufficient backend reserves for transaction");
     };
 
-    // Minimal reserve coverage (outstandingIssuedCredits <= reserveBtcBalance) enforced.
-    // Reserve coverage ratio can go below 1 temporarily but must not fall below 0 after new credit issuance.
-
-    // Deduct amount and related credit adjustment, but do not subtract from reserves here.
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
       case (?balance) { balance.adjustments };
@@ -645,7 +636,7 @@ actor {
       amount;
       networkFee = currentNetworkFee;
       totalCost;
-      tempStorageForBTCTransaction = null; // Initialize to null
+      tempStorageForBTCTransaction = null;
       status = #IN_PROGRESS;
       timestamp = Time.now();
       blockchainTxId = null;
@@ -667,7 +658,6 @@ actor {
     };
     transactions.add(transaction);
 
-    // Perform HTTP outcall to broadcast transaction
     let submitResult = await broadcastTransactionToBlockchain(requestId, destination, amount);
 
     if (not submitResult.success) {
@@ -742,7 +732,6 @@ actor {
 
     transferRequests.add(requestId, failedRequest);
     restoreUserBalance(owner, totalCost);
-    // Do not decrement reserve when transfer fails
   };
 
   func restoreUserBalance(user : Principal, amount : BitcoinAmount) {
@@ -774,12 +763,13 @@ actor {
     balances.add(user, newBalance);
   };
 
-  // Network fee query - PUBLIC (no authentication required)
-  public query func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
+  public query ({ caller }) func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get network fee estimates");
+    };
     currentNetworkFee;
   };
 
-  // Transfer request helpers
   public query ({ caller }) func getTransferRequest(requestId : Nat) : async ?SendBTCRequest {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view transfer requests");
@@ -807,7 +797,6 @@ actor {
     true;
   };
 
-  // Transaction history
   public query ({ caller }) func getTransactionHistory() : async [Transaction] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view transaction history");
@@ -822,7 +811,6 @@ actor {
     };
   };
 
-  // Withdrawal requests
   public query ({ caller }) func getWithdrawalRequest(requestId : Nat) : async ?WithdrawalRequest {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view withdrawal requests");
@@ -992,7 +980,6 @@ actor {
 
         balances.add(existingRequest.owner, restoredBalance);
 
-        // Record the rejection transaction
         let rejectionTransaction : Transaction = {
           id = requestId.toText();
           user = existingRequest.owner;
@@ -1005,7 +992,6 @@ actor {
     };
   };
 
-  // Other API endpoints
   public shared ({ caller }) func toggleApiDiagnostics() : async Bool {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can toggle API diagnostics");
@@ -1014,13 +1000,12 @@ actor {
     btcApiDiagnosticsEnabled;
   };
 
-  // Submit new (tracked) deposit or adjustment
-  public shared ({ caller }) func manageReserve(action : ReserveManagementAction) : async () {
+  public shared ({ caller }) func manageReserve(action : ReserveManagementAction, transactionId : ?Text) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can manage reserves");
     };
 
-    let adjustment : ReserveAdjustment = {
+    let adjustment : ExtendedReserveAdjustment = {
       amount = switch (action) {
         case (#deposit(amount)) { amount };
         case (#withdraw(amount)) { amount };
@@ -1033,18 +1018,14 @@ actor {
       };
       timestamp = Time.now();
       performedBy = caller;
+      transactionId;
     };
 
     reserveBtcBalance += adjustment.amount;
+    reserveAdjustments.add(reserveAdjustmentCounter, adjustment);
+    reserveAdjustmentCounter += 1;
   };
 
-  /// Returns actual reserve status after netting all positive and negative adjustments.
-  /// # Reserve Status Calculation
-  /// The fields returned by this query represent the canonical source of truth for reserve coverage:
-  /// - outstandingIssuedCredits represents the net outstanding deposited credits after accounting for all adjustments
-  /// - reserveBtcBalance represents the net available reserve balance (sum of all deposits minus withdrawals)
-  /// - minReserveBalanceAvailable represents the tracked reserve balance available for credit issuance (reserveBtcBalance - outstandingIssuedCredits)
-  /// - coverageRatio represents the coverage ratio (outstandingIssuedCredits / reserveBtcBalance), which must always be >= 1.
   public query ({ caller }) func getReserveStatus() : async ReserveStatus {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can view reserve status");
@@ -1064,7 +1045,17 @@ actor {
     };
   };
 
-  public query func getCurrentBtcPriceUsd() : async ?Float {
+  public query ({ caller }) func getAllReserveAdjustments() : async [(Nat, ExtendedReserveAdjustment)] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view reserve adjustments");
+    };
+    reserveAdjustments.toArray();
+  };
+
+  public query ({ caller }) func getCurrentBtcPriceUsd() : async ?Float {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view BTC price");
+    };
     getCurrentBtcPrice();
   };
 
@@ -1084,5 +1075,99 @@ actor {
   func fetchAndUpdateBtcPrice() : async () {
     currentBtcPriceUsd := ?65000.0;
     lastUpdatedPriceTime := ?Time.now();
+  };
+
+  public query ({ caller }) func getReserveMultisigConfig() : async ?ReserveMultisigConfig {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can get reserve multisig config");
+    };
+
+    reserveMultisigConfig;
+  };
+
+  public query ({ caller }) func isReserveMultisigConfigSet() : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can check reserve multisig config status");
+    };
+
+    switch (reserveMultisigConfig) {
+      case (null) { false };
+      case (?(config)) {
+        config.address != null or config.pubkeys.size() > 0;
+      };
+    };
+  };
+
+  public shared ({ caller }) func updateReserveMultisigConfig(threshold : Nat, pubkeys : [Blob], address : ?Text, redeemScript : ?Text) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can update reserve multisig config");
+    };
+
+    if (threshold == 0 or threshold > pubkeys.size()) {
+      Runtime.trap("Invalid threshold: must be between 1 and the number of pubkeys");
+    };
+
+    let config : ReserveMultisigConfig = {
+      threshold;
+      pubkeys;
+      address;
+      redeemScript;
+    };
+
+    reserveMultisigConfig := ?config;
+  };
+
+  public shared ({ caller }) func validateReserveDeposit(request : ReserveDepositValidationRequest) : async ReserveDepositValidationResult {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can validate reserve deposits");
+    };
+
+    let reserveAddress = switch (reserveMultisigConfig) {
+      case (?config) {
+        switch (config.address) {
+          case (?address) { address };
+          case (null) {
+            Runtime.trap("Reserve address not set in multisig config");
+          };
+        };
+      };
+      case (null) {
+        Runtime.trap("Reserve multisig config not set");
+      };
+    };
+
+    if (request.amount == 0) {
+      Runtime.trap("Cannot validate 0-credit deposits");
+    };
+
+    let verificationResult = await verifyBlockchainDeposit(request.txid, request.amount);
+
+    if (verificationResult.success and verificationResult.matchingDeposit) {
+      let adjustment : ExtendedReserveAdjustment = {
+        amount = request.amount;
+        reason = #deposit;
+        timestamp = Time.now();
+        performedBy = caller;
+        transactionId = ?request.txid;
+      };
+
+      reserveBtcBalance += adjustment.amount;
+      reserveAdjustments.add(reserveAdjustmentCounter, adjustment);
+      reserveAdjustmentCounter += 1;
+
+      {
+        success = true;
+        confirmedDeposit = true;
+      };
+    } else {
+      if (verificationResult.success) {
+        Runtime.trap(
+          "Transaction found but does not match reserve address (" 
+          # reserveAddress # ") or amount (" # request.amount.toText() # " sats)"
+        );
+      } else {
+        Runtime.trap("Unable to verify transaction confirmation via blockchain");
+      };
+    };
   };
 };

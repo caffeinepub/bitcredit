@@ -20,6 +20,7 @@ import AiLotteryPage from './pages/AiLotteryPage';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminAccessLoadingScreen from './components/auth/AdminAccessLoadingScreen';
 import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
+import LoggedOutSignInPanel from './components/auth/LoggedOutSignInPanel';
 import { adminStatusCache } from './utils/adminStatusCache';
 import { getSecretParameter } from './utils/urlParams';
 
@@ -47,14 +48,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!identity) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-md">
-          <h1 className="text-3xl font-bold">Welcome</h1>
-          <p className="text-muted-foreground">Please log in to access the application</p>
-        </div>
-      </div>
-    );
+    return <LoggedOutSignInPanel />;
   }
 
   return <>{children}</>;
