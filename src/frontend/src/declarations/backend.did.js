@@ -117,9 +117,21 @@ export const Transaction = IDL.Record({
   'timestamp' : Time,
   'amount' : BitcoinAmount,
 });
+export const AddressType = IDL.Variant({
+  'P2PKH' : IDL.Null,
+  'P2SH' : IDL.Null,
+  'Bech32m' : IDL.Null,
+  'Bech32' : IDL.Null,
+});
+export const AddressValidationResult = IDL.Record({
+  'error' : IDL.Opt(IDL.Text),
+  'addressType' : IDL.Opt(AddressType),
+  'isValid' : IDL.Bool,
+});
 export const SendBTCRequest = IDL.Record({
   'id' : IDL.Nat,
   'status' : TransferStatus,
+  'addressValidation' : IDL.Opt(AddressValidationResult),
   'failureReason' : IDL.Opt(IDL.Text),
   'diagnosticData' : IDL.Opt(IDL.Text),
   'owner' : IDL.Principal,
@@ -380,9 +392,21 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : Time,
     'amount' : BitcoinAmount,
   });
+  const AddressType = IDL.Variant({
+    'P2PKH' : IDL.Null,
+    'P2SH' : IDL.Null,
+    'Bech32m' : IDL.Null,
+    'Bech32' : IDL.Null,
+  });
+  const AddressValidationResult = IDL.Record({
+    'error' : IDL.Opt(IDL.Text),
+    'addressType' : IDL.Opt(AddressType),
+    'isValid' : IDL.Bool,
+  });
   const SendBTCRequest = IDL.Record({
     'id' : IDL.Nat,
     'status' : TransferStatus,
+    'addressValidation' : IDL.Opt(AddressValidationResult),
     'failureReason' : IDL.Opt(IDL.Text),
     'diagnosticData' : IDL.Opt(IDL.Text),
     'owner' : IDL.Principal,

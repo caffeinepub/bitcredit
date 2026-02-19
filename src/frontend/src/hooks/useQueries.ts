@@ -157,6 +157,30 @@ export function useGetTransferRequest(requestId: bigint | null, enableLiveRefres
   });
 }
 
+export function useTransferRequestStatus(requestId: bigint | null, enabled: boolean) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SendBTCRequest | null>({
+    queryKey: ['transferRequestStatus', requestId?.toString()],
+    queryFn: async () => {
+      if (!actor || requestId === null) return null;
+      return actor.refreshTransferRequestStatus(requestId);
+    },
+    enabled: !!actor && !isFetching && requestId !== null && enabled,
+    refetchInterval: (query) => {
+      if (!enabled) return false;
+      
+      const data = query.state.data;
+      // Poll while status is PENDING or IN_PROGRESS
+      if (data && (data.status === 'PENDING' || data.status === 'IN_PROGRESS')) {
+        return 3000; // Poll every 3 seconds
+      }
+      // Stop polling for COMPLETED, FAILED, or EVICTED
+      return false;
+    },
+  });
+}
+
 export function useRefreshTransferStatus() {
   const { actor } = useActor();
   const queryClient = useQueryClient();

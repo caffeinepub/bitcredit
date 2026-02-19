@@ -1,14 +1,23 @@
-import { useState } from 'react';
-import { useSendBTC, useGetCallerBalance, useGetEstimatedNetworkFee } from '../hooks/useQueries';
+import { useState, useEffect } from 'react';
+import { useSendBTC, useGetCallerBalance, useGetEstimatedNetworkFee, useTransferRequestStatus } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Send, AlertCircle, Wallet, Loader2, XCircle, CheckCircle, Wrench, ShieldAlert } from 'lucide-react';
+import { Send, AlertCircle, Wallet, Loader2, XCircle, CheckCircle, Wrench, ShieldAlert, Clock, CheckCheck } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import type { SendBTCRequest } from '../backend';
 import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
+import { normalizeSendBTCError } from '../utils/errors';
+
+// Bitcoin mainnet address validation regex
+// Supports Legacy (P2PKH starting with 1), P2SH (starting with 3), and Bech32 (starting with bc1)
+const BITCOIN_MAINNET_ADDRESS_REGEX = /^(bc1|[13])[a-km-zA-HJ-NP-Z1-9]{25,87}$/;
+
+function isValidBitcoinMainnetAddress(address: string): boolean {
+  return BITCOIN_MAINNET_ADDRESS_REGEX.test(address.trim());
+}
 
 export default function SendBtcPage() {
   const [destination, setDestination] = useState('');
@@ -17,14 +26,47 @@ export default function SendBtcPage() {
     requestId: bigint;
     request: SendBTCRequest | null;
   } | null>(null);
+  const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
   const navigate = useNavigate();
   
   const { mutate: sendBTC, isPending, isError, error } = useSendBTC();
   const { data: balance } = useGetCallerBalance();
 
+  // Poll transfer status while broadcasting
+  const { data: liveTransferRequest } = useTransferRequestStatus(
+    transferOutcome?.requestId || null,
+    isPending || (transferOutcome?.request?.status === 'PENDING' || transferOutcome?.request?.status === 'IN_PROGRESS')
+  );
+
+  // Update transfer outcome with live data
+  useEffect(() => {
+    if (liveTransferRequest && transferOutcome) {
+      setTransferOutcome({
+        requestId: transferOutcome.requestId,
+        request: liveTransferRequest,
+      });
+
+      // Update broadcast status messages
+      if (liveTransferRequest.status === 'PENDING') {
+        setBroadcastStatus('Attempting broadcast to blockchain API...');
+      } else if (liveTransferRequest.status === 'IN_PROGRESS' && !liveTransferRequest.blockchainTxId) {
+        setBroadcastStatus('Broadcast in progress, analyzing connection...');
+      } else if (liveTransferRequest.status === 'IN_PROGRESS' && liveTransferRequest.blockchainTxId) {
+        setBroadcastStatus('Transaction posted to blockchain, awaiting confirmation...');
+      } else if (liveTransferRequest.status === 'COMPLETED') {
+        setBroadcastStatus('Transaction confirmed on-chain!');
+      } else if (liveTransferRequest.status === 'FAILED') {
+        setBroadcastStatus(null);
+      }
+    }
+  }, [liveTransferRequest, transferOutcome]);
+
   const requestedAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
+  const trimmedDestination = destination.trim();
+  const isValidAddress = trimmedDestination ? isValidBitcoinMainnetAddress(trimmedDestination) : true;
+  
   const { data: estimatedFee, isLoading: feeLoading, error: feeError } = useGetEstimatedNetworkFee(
-    destination.trim(),
+    trimmedDestination,
     requestedAmount
   );
 
@@ -36,14 +78,26 @@ export default function SendBtcPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (destination.trim() && amount && Number(amount) > 0 && !insufficientFunds && !feeError) {
+    
+    if (!isValidAddress) {
+      return;
+    }
+    
+    if (trimmedDestination && amount && Number(amount) > 0 && !insufficientFunds && !feeError) {
+      setBroadcastStatus('Submitting transfer request...');
       sendBTC(
-        { destination: destination.trim(), amount: BigInt(amount) },
+        { destination: trimmedDestination, amount: BigInt(amount) },
         {
           onSuccess: ({ requestId, transferRequest }) => {
             setTransferOutcome({ requestId, request: transferRequest });
             setDestination('');
             setAmount('');
+
+            if (transferRequest?.status === 'PENDING') {
+              setBroadcastStatus('Attempting broadcast to blockchain API...');
+            } else if (transferRequest?.status === 'IN_PROGRESS') {
+              setBroadcastStatus('Broadcast in progress...');
+            }
 
             if (import.meta.env.DEV) {
               console.log('[SendBtcPage] Transfer outcome received:');
@@ -52,6 +106,9 @@ export default function SendBtcPage() {
               console.log(`  - Has txid: ${!!transferRequest?.blockchainTxId}`);
               console.log(`  - Failure reason: ${transferRequest?.failureReason || 'none'}`);
             }
+          },
+          onError: () => {
+            setBroadcastStatus(null);
           },
         }
       );
@@ -80,6 +137,7 @@ export default function SendBtcPage() {
 
     const { requestId, request } = transferOutcome;
     const isFailed = request.status === 'FAILED';
+    const isCompleted = request.status === 'COMPLETED';
     const hasTxId = !!request.blockchainTxId;
 
     if (isFailed) {
@@ -128,6 +186,35 @@ export default function SendBtcPage() {
       );
     }
 
+    if (isCompleted) {
+      return (
+        <Alert className="border-emerald-600 bg-emerald-50 dark:bg-emerald-950">
+          <CheckCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+            <strong>Transfer Confirmed On-Chain!</strong>
+            <br />
+            Request ID: <code className="font-mono text-xs bg-emerald-100 dark:bg-emerald-900 px-1 py-0.5 rounded">{requestId.toString()}</code>
+            <br />
+            <span className="text-sm mt-1 block">
+              Transaction ID: <code className="font-mono text-xs bg-emerald-100 dark:bg-emerald-900 px-1 py-0.5 rounded">{request.blockchainTxId}</code>
+            </span>
+            <br />
+            <span className="text-sm font-semibold">
+              This transaction has been confirmed on the Bitcoin blockchain. The transfer is complete.
+            </span>
+            <br />
+            <Button
+              variant="link"
+              className="h-auto p-0 text-emerald-700 dark:text-emerald-300 underline mt-1"
+              onClick={handleViewDetails}
+            >
+              View transfer details in History →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
     if (hasTxId) {
       return (
         <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
@@ -142,7 +229,7 @@ export default function SendBtcPage() {
             </span>
             <br />
             <span className="text-sm font-semibold">
-              This transaction has been posted to the Bitcoin blockchain. The recipient will receive BTC once the transaction is broadcast and confirmed on the Bitcoin mainnet.
+              This transaction has been posted to the Bitcoin blockchain. The recipient will receive BTC once the transaction is confirmed on the Bitcoin mainnet.
             </span>
             <br />
             <Button
@@ -159,7 +246,7 @@ export default function SendBtcPage() {
 
     return (
       <Alert className="border-chart-1 bg-chart-1/10">
-        <CheckCircle className="h-4 w-4 text-chart-1" />
+        <Clock className="h-4 w-4 text-chart-1" />
         <AlertDescription className="text-chart-1">
           <strong>Transfer request created!</strong>
           <br />
@@ -211,6 +298,18 @@ export default function SendBtcPage() {
         </CardContent>
       </Card>
 
+      {/* Real-time broadcast status */}
+      {broadcastStatus && (
+        <Alert className="border-chart-1 bg-chart-1/10">
+          <Loader2 className="h-4 w-4 animate-spin text-chart-1" />
+          <AlertDescription className="text-chart-1">
+            <strong>Broadcasting Status</strong>
+            <br />
+            <span className="text-sm">{broadcastStatus}</span>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {transferOutcome && getOutcomeAlert()}
 
       <BroadcastingDetailsNote />
@@ -219,7 +318,7 @@ export default function SendBtcPage() {
         <CardHeader>
           <CardTitle>Create Transfer Request</CardTitle>
           <CardDescription>
-            Send Bitcoin to any mainnet wallet address
+            Send Bitcoin to any mainnet wallet address — recipient does not need an account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,7 +326,7 @@ export default function SendBtcPage() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                <strong>On-Chain Bitcoin Mainnet Transaction:</strong> This transfer creates a Bitcoin mainnet transaction using the app's custodial reserve. The recipient receives BTC only when the transaction is broadcast and confirmed on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits.
+                <strong>On-Chain Bitcoin Mainnet Transaction:</strong> This transfer creates a Bitcoin mainnet transaction using the app's custodial reserve. The recipient receives BTC only when the transaction is broadcast and confirmed on the Bitcoin blockchain. Bitcoin network fees are deducted from your credits. <strong>The recipient does not need to be registered in this app.</strong>
               </AlertDescription>
             </Alert>
 
@@ -236,13 +335,23 @@ export default function SendBtcPage() {
               <Input
                 id="destination"
                 type="text"
-                placeholder="Enter Bitcoin mainnet address (e.g., bc1q...)"
+                placeholder="Enter Bitcoin mainnet address (e.g., bc1q... or 1... or 3...)"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                className="font-mono text-sm"
+                className={`font-mono text-sm ${!isValidAddress && trimmedDestination ? 'border-destructive' : ''}`}
               />
+              {!isValidAddress && trimmedDestination && (
+                <p className="text-xs text-destructive">
+                  Please enter a valid Bitcoin mainnet address. Supported formats: Legacy (1...), P2SH (3...), or Bech32 (bc1...)
+                </p>
+              )}
+              {isValidAddress && trimmedDestination && (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  ✓ Valid Bitcoin mainnet address format
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
-                The Bitcoin mainnet address where you want to send funds
+                Any valid Bitcoin mainnet address — recipient does not need an account in this app
               </p>
             </div>
 
@@ -266,7 +375,7 @@ export default function SendBtcPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Unable to estimate network fee. Please check the destination address.
+                  Unable to estimate network fee. Please check the destination address format.
                 </AlertDescription>
               </Alert>
             )}
@@ -300,7 +409,7 @@ export default function SendBtcPage() {
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  {error instanceof Error ? error.message : 'Failed to send BTC'}
+                  {error instanceof Error ? normalizeSendBTCError(error) : 'Failed to send BTC'}
                 </AlertDescription>
               </Alert>
             )}
@@ -311,7 +420,8 @@ export default function SendBtcPage() {
               size="lg"
               disabled={
                 isPending ||
-                !destination.trim() ||
+                !trimmedDestination ||
+                !isValidAddress ||
                 !amount ||
                 Number(amount) <= 0 ||
                 insufficientFunds ||

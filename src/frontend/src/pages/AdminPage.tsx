@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
-import { useGetCallerBalance, useGetTransactionHistory, useSendBTC, useGetEstimatedNetworkFee, useManageReserve, useSubmitWithdrawalRequest, useGetAllWithdrawalRequests, useGetCurrentBtcPriceUsd, useValidateReserveDeposit, useGetAllReserveAdjustments } from '../hooks/useQueries';
+import { useState, useRef, useEffect } from 'react';
+import { useGetCallerBalance, useGetTransactionHistory, useSendBTC, useGetEstimatedNetworkFee, useManageReserve, useSubmitWithdrawalRequest, useGetAllWithdrawalRequests, useGetCurrentBtcPriceUsd, useValidateReserveDeposit, useGetAllReserveAdjustments, useTransferRequestStatus } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Send, AlertCircle, TrendingUp, Wallet, CheckCircle, XCircle, Loader2, DollarSign, Inbox, Hash, Copy, Clock } from 'lucide-react';
+import { Shield, Send, AlertCircle, TrendingUp, Wallet, CheckCircle, XCircle, Loader2, DollarSign, Inbox, Hash, Copy, Clock, CheckCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,54 +39,77 @@ export default function AdminPage() {
     request: SendBTCRequest | null;
   } | null>(null);
   const [withdrawalRequestId, setWithdrawalRequestId] = useState<bigint | null>(null);
+  const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
 
   const [depositTxid, setDepositTxid] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
-  const [depositValidationResult, setDepositValidationResult] = useState<{
-    success: boolean;
-    confirmedDeposit: boolean;
-    creditedAmount: bigint;
-  } | null>(null);
-
-  const [aiMonitoringEnabled, setAiMonitoringEnabled] = useAiReserveMonitoringPreference();
-
-  const inboxRef = useRef<HTMLDivElement>(null);
 
   const { data: balance } = useGetCallerBalance();
   const { data: transactions } = useGetTransactionHistory();
+  const { data: btcPrice } = useGetCurrentBtcPriceUsd();
   const { data: allWithdrawalRequests } = useGetAllWithdrawalRequests();
-  const { data: btcPriceUsd, isLoading: priceLoading } = useGetCurrentBtcPriceUsd();
   const { data: reserveAdjustments } = useGetAllReserveAdjustments();
-  const { mutate: sendBTC, isPending: isSending } = useSendBTC();
-  const { mutate: manageReserve, isPending: isManagingReserve } = useManageReserve();
-  const { mutate: submitWithdrawal, isPending: isSubmittingWithdrawal } = useSubmitWithdrawalRequest();
-  const { mutate: validateDeposit, isPending: isValidatingDeposit, error: depositValidationError } = useValidateReserveDeposit();
+  const { mutate: sendBTC, isPending: sendPending } = useSendBTC();
+  const { mutate: manageReserve, isPending: reservePending } = useManageReserve();
+  const { mutate: submitWithdrawal, isPending: withdrawPending } = useSubmitWithdrawalRequest();
+  const { mutate: validateDeposit, isPending: depositValidationPending, error: depositValidationError } = useValidateReserveDeposit();
+  const [monitoringEnabled, setMonitoringEnabled] = useAiReserveMonitoringPreference();
 
   const requestedAmount = sendAmount && Number(sendAmount) > 0 ? BigInt(sendAmount) : BigInt(0);
-  const { data: estimatedFee, isLoading: feeLoading, error: feeError } = useGetEstimatedNetworkFee(
-    destination.trim(),
-    requestedAmount
+  const { data: estimatedFee } = useGetEstimatedNetworkFee(destination, requestedAmount);
+
+  const payoutsTabRef = useRef<HTMLButtonElement>(null);
+  const approvalInboxRef = useRef<HTMLDivElement>(null);
+
+  // Poll transfer status while broadcasting
+  const { data: liveTransferRequest } = useTransferRequestStatus(
+    transferOutcome?.requestId || null,
+    sendPending || (transferOutcome?.request?.status === 'PENDING' || transferOutcome?.request?.status === 'IN_PROGRESS')
   );
 
-  const availableBalance = balance ? Number(balance) : 0;
-  const receiverAmount = Number(requestedAmount);
-  const networkFee = estimatedFee ? Number(estimatedFee) : 0;
-  const totalDeducted = receiverAmount + networkFee;
-  const insufficientFunds = totalDeducted > availableBalance;
+  // Update transfer outcome with live data
+  useEffect(() => {
+    if (liveTransferRequest && transferOutcome) {
+      setTransferOutcome({
+        requestId: transferOutcome.requestId,
+        request: liveTransferRequest,
+      });
 
-  const withdrawAmountNum = withdrawAmount && Number(withdrawAmount) > 0 ? Number(withdrawAmount) : 0;
-  const insufficientWithdrawFunds = withdrawAmountNum > availableBalance;
+      // Update broadcast status messages
+      if (liveTransferRequest.status === 'PENDING') {
+        setBroadcastStatus('Attempting broadcast to blockchain API...');
+      } else if (liveTransferRequest.status === 'IN_PROGRESS' && !liveTransferRequest.blockchainTxId) {
+        setBroadcastStatus('Broadcast in progress, analyzing connection...');
+      } else if (liveTransferRequest.status === 'IN_PROGRESS' && liveTransferRequest.blockchainTxId) {
+        setBroadcastStatus('Transaction posted to blockchain, awaiting confirmation...');
+      } else if (liveTransferRequest.status === 'COMPLETED') {
+        setBroadcastStatus('Transaction confirmed on-chain!');
+      } else if (liveTransferRequest.status === 'FAILED') {
+        setBroadcastStatus(null);
+      }
+    }
+  }, [liveTransferRequest, transferOutcome]);
 
   const handleSendBTC = (e: React.FormEvent) => {
     e.preventDefault();
-    if (destination.trim() && sendAmount && Number(sendAmount) > 0 && !insufficientFunds && !feeError) {
+    if (destination && sendAmount && Number(sendAmount) > 0) {
+      setBroadcastStatus('Submitting transfer request...');
       sendBTC(
-        { destination: destination.trim(), amount: BigInt(sendAmount) },
+        { destination, amount: BigInt(sendAmount) },
         {
           onSuccess: ({ requestId, transferRequest }) => {
             setTransferOutcome({ requestId, request: transferRequest });
             setDestination('');
             setSendAmount('');
+
+            if (transferRequest?.status === 'PENDING') {
+              setBroadcastStatus('Attempting broadcast to blockchain API...');
+            } else if (transferRequest?.status === 'IN_PROGRESS') {
+              setBroadcastStatus('Broadcast in progress...');
+            }
+          },
+          onError: () => {
+            setBroadcastStatus(null);
           },
         }
       );
@@ -96,11 +119,10 @@ export default function AdminPage() {
   const handleManageReserve = (e: React.FormEvent) => {
     e.preventDefault();
     if (reserveAmount && Number(reserveAmount) > 0) {
-      const amount = BigInt(reserveAmount);
+      const action = { __kind__: 'deposit' as const, deposit: BigInt(reserveAmount) };
       const txid = reserveTxid.trim() || null;
-      
       manageReserve(
-        { action: { __kind: 'deposit', deposit: amount }, txid },
+        { action, txid },
         {
           onSuccess: () => {
             setReserveAmount('');
@@ -113,19 +135,20 @@ export default function AdminPage() {
 
   const handleSubmitWithdrawal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (withdrawAmount && Number(withdrawAmount) > 0 && withdrawMethod.trim() && !insufficientWithdrawFunds) {
-      const amount = BigInt(withdrawAmount);
-      const account = withdrawAccount.trim() || null;
-      
+    if (withdrawAmount && Number(withdrawAmount) > 0 && withdrawMethod) {
       submitWithdrawal(
-        { amount, method: withdrawMethod.trim(), account },
+        {
+          amount: BigInt(withdrawAmount),
+          method: withdrawMethod,
+          account: withdrawAccount || null,
+        },
         {
           onSuccess: (requestId) => {
             setWithdrawalRequestId(requestId);
             setWithdrawAmount('');
             setWithdrawMethod('');
             setWithdrawAccount('');
-            toast.success(`Payout request #${requestId} created successfully!`);
+            payoutsTabRef.current?.click();
           },
         }
       );
@@ -134,89 +157,89 @@ export default function AdminPage() {
 
   const handleValidateDeposit = (e: React.FormEvent) => {
     e.preventDefault();
-    setDepositValidationResult(null);
-
-    if (!depositTxid.trim()) {
-      toast.error('Please enter a transaction ID');
-      return;
-    }
-
-    if (!depositAmount || Number(depositAmount) <= 0) {
-      toast.error('Please enter a valid deposit amount');
-      return;
-    }
-
-    const amount = BigInt(depositAmount);
-    validateDeposit(
-      { txid: depositTxid.trim(), amount },
-      {
-        onSuccess: (result) => {
-          setDepositValidationResult({
-            success: result.success,
-            confirmedDeposit: result.confirmedDeposit,
-            creditedAmount: amount,
-          });
-          setDepositTxid('');
-          setDepositAmount('');
+    if (depositTxid && depositAmount && Number(depositAmount) > 0) {
+      validateDeposit(
+        {
+          txid: depositTxid,
+          amount: BigInt(depositAmount),
         },
-        onError: (error: any) => {
-          const normalizedError = normalizeReserveDepositValidationError(error);
-          toast.error(normalizedError);
-        },
-      }
-    );
+        {
+          onSuccess: () => {
+            setDepositTxid('');
+            setDepositAmount('');
+          },
+          onError: (error: any) => {
+            toast.error(normalizeReserveDepositValidationError(error));
+          },
+        }
+      );
+    }
+  };
+
+  const handleCopyTxid = async (txid: string) => {
+    try {
+      await navigator.clipboard.writeText(txid);
+      toast.success('Transaction ID copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to copy transaction ID');
+    }
   };
 
   const handleScrollToInbox = () => {
-    inboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    approvalInboxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleCopyTxid = (txid: string) => {
-    navigator.clipboard.writeText(txid);
-    toast.success('Transaction ID copied to clipboard');
+  const formatReserveReason = (reason: ReserveChangeReason): string => {
+    // Handle enum-style types from backend
+    if (typeof reason === 'string') {
+      return reason;
+    }
+    // Handle object-style variants
+    if (typeof reason === 'object' && reason !== null) {
+      // Try to extract the variant name
+      const keys = Object.keys(reason);
+      if (keys.length > 0) {
+        return keys[0];
+      }
+    }
+    return 'unknown';
   };
 
-  const getReasonLabel = (reason: ReserveChangeReason): string => {
-    if (reason === 'deposit') return 'Deposit';
-    if (reason === 'withdrawal') return 'Withdrawal';
-    if (reason === 'adjustment') return 'Adjustment';
-    return 'Unknown';
-  };
-
-  const getReasonBadgeVariant = (reason: ReserveChangeReason): 'default' | 'secondary' | 'outline' => {
-    if (reason === 'deposit') return 'default';
-    if (reason === 'withdrawal') return 'secondary';
-    return 'outline';
-  };
-
-  const getOutcomeAlert = () => {
+  const getTransferOutcomeAlert = () => {
     if (!transferOutcome || !transferOutcome.request) return null;
 
     const { requestId, request } = transferOutcome;
     const isFailed = request.status === 'FAILED';
+    const isCompleted = request.status === 'COMPLETED';
     const hasTxId = !!request.blockchainTxId;
 
     if (isFailed) {
-      const failureMessage = request.failureReason 
-        ? request.failureReason 
-        : 'The transaction could not be broadcast.';
-      
       return (
         <Alert className="border-destructive bg-destructive/10">
           <XCircle className="h-4 w-4 text-destructive" />
           <AlertDescription className="text-destructive">
             <strong>Transfer Failed</strong>
             <br />
-            Request ID: <code className="font-mono text-xs bg-destructive/20 px-1 py-0.5 rounded">{requestId.toString()}</code>
+            Request ID: <code className="font-mono text-xs">{requestId.toString()}</code>
             <br />
-            <span className="text-sm mt-1 block font-semibold">
-              This transaction was not posted to the Bitcoin blockchain.
-            </span>
-            <span className="text-sm mt-1 block">
-              {failureMessage}
-            </span>
+            {request.failureReason && (
+              <span className="text-sm">{request.failureReason}</span>
+            )}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (isCompleted) {
+      return (
+        <Alert className="border-emerald-600 bg-emerald-50 dark:bg-emerald-950">
+          <CheckCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+            <strong>Transfer Confirmed On-Chain!</strong>
             <br />
-            <span className="text-sm font-semibold">Your credits have been restored.</span>
+            Request ID: <code className="font-mono text-xs">{requestId.toString()}</code>
+            <br />
+            Transaction ID: <code className="font-mono text-xs">{request.blockchainTxId}</code>
           </AlertDescription>
         </Alert>
       );
@@ -229,15 +252,9 @@ export default function AdminPage() {
           <AlertDescription className="text-green-800 dark:text-green-200">
             <strong>Transfer Broadcast Successfully!</strong>
             <br />
-            Request ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{requestId.toString()}</code>
+            Request ID: <code className="font-mono text-xs">{requestId.toString()}</code>
             <br />
-            <span className="text-sm mt-1 block">
-              Transaction ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{request.blockchainTxId}</code>
-            </span>
-            <br />
-            <span className="text-sm font-semibold">
-              This transaction has been posted to the Bitcoin blockchain.
-            </span>
+            Transaction ID: <code className="font-mono text-xs">{request.blockchainTxId}</code>
           </AlertDescription>
         </Alert>
       );
@@ -245,227 +262,133 @@ export default function AdminPage() {
 
     return (
       <Alert className="border-chart-1 bg-chart-1/10">
-        <CheckCircle className="h-4 w-4 text-chart-1" />
+        <Clock className="h-4 w-4 text-chart-1" />
         <AlertDescription className="text-chart-1">
-          <strong>Transfer request created!</strong>
+          <strong>Transfer request created</strong>
           <br />
-          Request ID: <code className="font-mono text-xs bg-chart-1/20 px-1 py-0.5 rounded">{requestId.toString()}</code>
+          Request ID: <code className="font-mono text-xs">{requestId.toString()}</code>
           <br />
-          <span className="text-sm">Status: {request.status}</span>
+          Status: {request.status}
         </AlertDescription>
       </Alert>
     );
   };
-
-  const getDepositValidationAlert = () => {
-    if (!depositValidationResult) return null;
-
-    if (depositValidationResult.success && depositValidationResult.confirmedDeposit) {
-      return (
-        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
-          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertDescription className="text-green-800 dark:text-green-200">
-            <strong>Reserve Deposit Validated Successfully!</strong>
-            <br />
-            <span className="text-sm mt-1 block">
-              ✓ Transaction matched the reserve wallet address
-            </span>
-            <span className="text-sm mt-1 block">
-              ✓ Credited amount: <strong>{depositValidationResult.creditedAmount.toString()} satoshis</strong>
-            </span>
-            <br />
-            <span className="text-sm font-semibold">
-              The reserve balance has been updated.
-            </span>
-          </AlertDescription>
-        </Alert>
-      );
-    }
-
-    return (
-      <Alert className="border-destructive bg-destructive/10">
-        <XCircle className="h-4 w-4 text-destructive" />
-        <AlertDescription className="text-destructive">
-          <strong>Validation Failed</strong>
-          <br />
-          <span className="text-sm mt-1 block">
-            The transaction could not be validated. No funds were added to the reserve.
-          </span>
-        </AlertDescription>
-      </Alert>
-    );
-  };
-
-  const pendingCount = allWithdrawalRequests?.filter((r) => r.status === 'PENDING').length || 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
+        <h1 className="text-4xl font-bold tracking-tight flex items-center gap-2">
           <Shield className="h-10 w-10 text-primary" />
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">Admin Dashboard</h1>
-            <p className="text-muted-foreground">
-              Manage reserves, send BTC to mainnet, and process withdrawal requests
-            </p>
+          Admin Dashboard
+        </h1>
+        <p className="text-muted-foreground">
+          Manage reserves, process payouts, and monitor system health
+        </p>
+      </div>
+
+      <Card className="financial-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Admin Balance</CardTitle>
+              <CardDescription>Your personal app wallet balance</CardDescription>
+            </div>
+            <Wallet className="h-8 w-8 text-primary" />
           </div>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <div className="stat-value text-primary">{balance?.toString() || '0'} BTC</div>
+          <UsdEstimateLine btcAmount={balance || BigInt(0)} btcPriceUsd={btcPrice} />
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="financial-card">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Admin Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="stat-value text-primary">{balance?.toString() || '0'} BTC</div>
-            <UsdEstimateLine 
-              btcAmount={balance || BigInt(0)} 
-              btcPriceUsd={btcPriceUsd} 
-              isLoading={priceLoading}
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="financial-card">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="stat-value text-chart-2">{transactions?.length || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">All-time transaction count</p>
-          </CardContent>
-        </Card>
-
-        <Card className="financial-card">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Pending Payouts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="stat-value text-amber-600">{pendingCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting processing</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="reserve" className="w-full">
+      <Tabs defaultValue="reserve" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="reserve">
-            <Wallet className="h-4 w-4 mr-2" />
-            Reserve
-          </TabsTrigger>
-          <TabsTrigger value="payouts" className="gap-2">
-            <DollarSign className="h-4 w-4" />
+          <TabsTrigger value="reserve">Reserve</TabsTrigger>
+          <TabsTrigger value="payouts" ref={payoutsTabRef}>
+            <Inbox className="h-4 w-4 mr-2" />
             Payouts
-            {pendingCount > 0 && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-600 text-xs font-bold text-white">
-                {pendingCount}
-              </span>
-            )}
           </TabsTrigger>
-          <TabsTrigger value="transfers">
-            <Send className="h-4 w-4 mr-2" />
-            Transfers
-          </TabsTrigger>
+          <TabsTrigger value="transfers">Transfers</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="reserve" className="space-y-6 mt-6">
+        <TabsContent value="reserve" className="space-y-6">
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle>AI Reserve Monitoring</CardTitle>
-              <CardDescription>
-                Control automatic reserve status updates
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="ai-monitoring-toggle" className="text-base font-medium">
-                    AI reserve monitoring (auto-refresh)
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    {aiMonitoringEnabled 
-                      ? 'Reserve status updates automatically every 10 seconds' 
-                      : 'When off, reserve status updates only when you click Refresh Now'}
-                  </p>
+                <div>
+                  <CardTitle>AI Reserve Monitoring</CardTitle>
+                  <CardDescription>
+                    Enable automatic reserve status checks and real-time monitoring
+                  </CardDescription>
                 </div>
-                <Switch
-                  id="ai-monitoring-toggle"
-                  checked={aiMonitoringEnabled}
-                  onCheckedChange={setAiMonitoringEnabled}
-                />
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="monitoring-toggle" className="text-sm">
+                    {monitoringEnabled ? 'ON' : 'OFF'}
+                  </Label>
+                  <Switch
+                    id="monitoring-toggle"
+                    checked={monitoringEnabled}
+                    onCheckedChange={setMonitoringEnabled}
+                  />
+                </div>
               </div>
-              <div className="pt-2 border-t">
-                <p className="text-xs text-muted-foreground">
-                  Current state: <span className="font-semibold">{aiMonitoringEnabled ? 'ON' : 'OFF'}</span>
-                </p>
-              </div>
+            </CardHeader>
+            <CardContent>
+              <AdminReserveStatusMonitor monitoringEnabled={monitoringEnabled} />
             </CardContent>
           </Card>
 
-          <AdminReserveStatusMonitor 
-            pollingInterval={10000} 
-            monitoringEnabled={aiMonitoringEnabled}
-          />
-
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5" />
-                Validate Reserve Deposit
-              </CardTitle>
+              <CardTitle>Validate Reserve Deposit</CardTitle>
               <CardDescription>
-                Submit a Bitcoin transaction ID (txid) to verify and credit a deposit to the reserve wallet
+                Verify and credit a Bitcoin deposit to the reserve address
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {getDepositValidationAlert()}
-
+            <CardContent>
               <form onSubmit={handleValidateDeposit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="depositTxid">Transaction ID (txid)</Label>
                   <Input
                     id="depositTxid"
                     type="text"
-                    placeholder="e.g., a1b2c3d4e5f6..."
+                    placeholder="Enter Bitcoin transaction ID"
                     value={depositTxid}
                     onChange={(e) => setDepositTxid(e.target.value)}
-                    disabled={isValidatingDeposit}
+                    className="font-mono text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the Bitcoin transaction ID that sent funds to the reserve wallet
-                  </p>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="depositAmount">Amount (satoshis)</Label>
+                  <Label htmlFor="depositAmount">Amount (BTC)</Label>
                   <Input
                     id="depositAmount"
                     type="number"
-                    placeholder="e.g., 100000000"
+                    placeholder="0.00000000"
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
-                    disabled={isValidatingDeposit}
+                    step="0.00000001"
+                    min="0"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the amount that was sent to the reserve wallet in this transaction
-                  </p>
                 </div>
-
-                <Button
-                  type="submit"
-                  disabled={isValidatingDeposit || !depositTxid.trim() || !depositAmount || Number(depositAmount) <= 0}
-                  className="w-full"
-                >
-                  {isValidatingDeposit ? (
+                {depositValidationError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {normalizeReserveDepositValidationError(depositValidationError)}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <Button type="submit" disabled={depositValidationPending} className="w-full">
+                  {depositValidationPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Validating...
+                      Validating Deposit...
                     </>
                   ) : (
                     <>
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Validate & Credit Reserve
+                      Validate & Credit Deposit
                     </>
                   )}
                 </Button>
@@ -475,60 +398,49 @@ export default function AdminPage() {
 
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Manual Reserve Update
-              </CardTitle>
+              <CardTitle>Manual Reserve Management</CardTitle>
               <CardDescription>
-                Manually adjust the reserve balance (e.g., for corrections or withdrawals)
+                Manually adjust reserve balance (for corrections or off-chain deposits)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleManageReserve} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="reserveAmount">Amount (satoshis)</Label>
+                  <Label htmlFor="reserveAmount">Amount (BTC)</Label>
                   <Input
                     id="reserveAmount"
                     type="number"
-                    placeholder="e.g., 100000000"
+                    placeholder="0.00000000"
                     value={reserveAmount}
                     onChange={(e) => setReserveAmount(e.target.value)}
-                    disabled={isManagingReserve}
+                    step="0.00000001"
+                    min="0"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the amount to add to the reserve balance
-                  </p>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="reserveTxid">Transaction ID (txid) (optional)</Label>
+                  <Label htmlFor="reserveTxid">Transaction ID (optional)</Label>
                   <Input
                     id="reserveTxid"
                     type="text"
-                    placeholder="e.g., a1b2c3d4e5f6..."
+                    placeholder="Enter Bitcoin transaction ID (optional)"
                     value={reserveTxid}
                     onChange={(e) => setReserveTxid(e.target.value)}
-                    disabled={isManagingReserve}
+                    className="font-mono text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optionally record a transaction ID for audit purposes
+                    Optional: Record the on-chain transaction ID for audit trail
                   </p>
                 </div>
-
-                <Button
-                  type="submit"
-                  disabled={isManagingReserve || !reserveAmount || Number(reserveAmount) <= 0}
-                  className="w-full"
-                >
-                  {isManagingReserve ? (
+                <Button type="submit" disabled={reservePending} className="w-full">
+                  {reservePending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
+                      Updating Reserve...
                     </>
                   ) : (
                     <>
                       <TrendingUp className="mr-2 h-4 w-4" />
-                      Update Reserve
+                      Add to Reserve
                     </>
                   )}
                 </Button>
@@ -538,70 +450,61 @@ export default function AdminPage() {
 
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Reserve Adjustment History
-              </CardTitle>
+              <CardTitle>Reserve Adjustment History</CardTitle>
               <CardDescription>
-                View all reserve balance changes with transaction IDs
+                All reserve deposits, withdrawals, and adjustments
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!reserveAdjustments || reserveAdjustments.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No reserve adjustments recorded yet</p>
-                </div>
-              ) : (
-                <div className="rounded-md border">
+              {reserveAdjustments && reserveAdjustments.length > 0 ? (
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Transaction ID</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Txid</TableHead>
+                        <TableHead>Timestamp</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {reserveAdjustments.map(([id, adjustment]) => (
                         <TableRow key={id.toString()}>
-                          <TableCell className="text-sm">
-                            {new Date(Number(adjustment.timestamp) / 1_000_000).toLocaleString()}
-                          </TableCell>
+                          <TableCell className="font-mono text-xs">{id.toString()}</TableCell>
+                          <TableCell className="font-semibold">{adjustment.amount.toString()} BTC</TableCell>
                           <TableCell>
-                            <Badge variant={getReasonBadgeVariant(adjustment.reason)}>
-                              {getReasonLabel(adjustment.reason)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            {adjustment.amount.toString()} sats
+                            <Badge variant="outline">{formatReserveReason(adjustment.reason)}</Badge>
                           </TableCell>
                           <TableCell>
                             {adjustment.transactionId ? (
-                              <div className="flex items-center gap-2">
-                                <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                                  {adjustment.transactionId.length > 16 
-                                    ? `${adjustment.transactionId.slice(0, 8)}...${adjustment.transactionId.slice(-8)}`
-                                    : adjustment.transactionId}
+                              <div className="flex items-center gap-1">
+                                <code className="text-xs font-mono">
+                                  {adjustment.transactionId.slice(0, 8)}...
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  className="h-6 w-6 p-0"
                                   onClick={() => handleCopyTxid(adjustment.transactionId!)}
-                                  className="h-7 w-7 p-0"
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="text-xs text-muted-foreground">N/A</span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(Number(adjustment.timestamp) / 1_000_000).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No reserve adjustments yet</p>
               )}
             </CardContent>
           </Card>
@@ -613,127 +516,39 @@ export default function AdminPage() {
           <AdminBroadcastTroubleshootingCard />
         </TabsContent>
 
-        <TabsContent value="payouts" className="space-y-6 mt-6">
+        <TabsContent value="payouts" className="space-y-6">
           <AdminWithdrawalStatusDashboard 
             requests={allWithdrawalRequests || []} 
-            onScrollToInbox={handleScrollToInbox} 
+            onScrollToInbox={handleScrollToInbox}
           />
-
-          <Card className="financial-card">
-            <CardHeader>
-              <CardTitle>Submit Test Withdrawal Request</CardTitle>
-              <CardDescription>
-                Create a withdrawal request from your admin account for testing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitWithdrawal} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="withdrawAmount">Amount (satoshis)</Label>
-                  <Input
-                    id="withdrawAmount"
-                    type="number"
-                    placeholder="e.g., 50000000"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    disabled={isSubmittingWithdrawal}
-                  />
-                  {insufficientWithdrawFunds && (
-                    <p className="text-xs text-destructive">Insufficient balance</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="withdrawMethod">Withdrawal Method</Label>
-                  <Input
-                    id="withdrawMethod"
-                    type="text"
-                    placeholder="e.g., PayPal, Bank Transfer"
-                    value={withdrawMethod}
-                    onChange={(e) => setWithdrawMethod(e.target.value)}
-                    disabled={isSubmittingWithdrawal}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="withdrawAccount">Account (optional)</Label>
-                  <Input
-                    id="withdrawAccount"
-                    type="text"
-                    placeholder="e.g., user@example.com"
-                    value={withdrawAccount}
-                    onChange={(e) => setWithdrawAccount(e.target.value)}
-                    disabled={isSubmittingWithdrawal}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmittingWithdrawal || !withdrawAmount || Number(withdrawAmount) <= 0 || !withdrawMethod.trim() || insufficientWithdrawFunds}
-                  className="w-full"
-                >
-                  {isSubmittingWithdrawal ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Submit Withdrawal Request
-                    </>
-                  )}
-                </Button>
-              </form>
-
-              {withdrawalRequestId !== null && (
-                <Alert className="mt-4 border-green-500 bg-green-50 dark:bg-green-950">
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <AlertDescription className="text-green-800 dark:text-green-200">
-                    <strong>Withdrawal request created!</strong>
-                    <br />
-                    Request ID: <code className="font-mono text-xs bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded">{withdrawalRequestId.toString()}</code>
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-
-          <div ref={inboxRef}>
-            <Card className="financial-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Inbox className="h-5 w-5" />
-                  Withdrawal Approval Inbox
-                </CardTitle>
-                <CardDescription>
-                  Review and process pending withdrawal requests
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AdminWithdrawalRequestsTable requests={allWithdrawalRequests || []} />
-              </CardContent>
-            </Card>
+          <div ref={approvalInboxRef}>
+            <AdminWithdrawalRequestsTable requests={allWithdrawalRequests || []} />
           </div>
-
           <ExternalPayoutApisDeveloperNote context="admin" />
         </TabsContent>
 
-        <TabsContent value="transfers" className="space-y-6 mt-6">
-          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
-              <strong>Security Notice:</strong> This app manages Bitcoin transactions using a custodial model. 
-              The backend broadcasts signed transactions to the Bitcoin network via public blockchain APIs. 
-              Never paste private keys into this application.
-            </AlertDescription>
-          </Alert>
+        <TabsContent value="transfers" className="space-y-6">
+          {/* Real-time broadcast status */}
+          {broadcastStatus && (
+            <Alert className="border-chart-1 bg-chart-1/10">
+              <Loader2 className="h-4 w-4 animate-spin text-chart-1" />
+              <AlertDescription className="text-chart-1">
+                <strong>Broadcasting Status</strong>
+                <br />
+                <span className="text-sm">{broadcastStatus}</span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {transferOutcome && getTransferOutcomeAlert()}
+
+          <BroadcastingDetailsNote />
 
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle>Send BTC to Mainnet</CardTitle>
+              <CardTitle>Admin Send BTC</CardTitle>
               <CardDescription>
-                Create a Bitcoin transfer request (requires external signing)
+                Send Bitcoin from your admin wallet to any mainnet address
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -743,77 +558,48 @@ export default function AdminPage() {
                   <Input
                     id="destination"
                     type="text"
-                    placeholder="bc1q..."
+                    placeholder="Enter Bitcoin mainnet address"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    disabled={isSending}
+                    className="font-mono text-sm"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="sendAmount">Amount (satoshis)</Label>
+                  <Label htmlFor="sendAmount">Amount (BTC)</Label>
                   <Input
                     id="sendAmount"
                     type="number"
-                    placeholder="e.g., 100000"
+                    placeholder="0.00000000"
                     value={sendAmount}
                     onChange={(e) => setSendAmount(e.target.value)}
-                    disabled={isSending}
+                    step="0.00000001"
+                    min="0"
                   />
                 </div>
-
-                {requestedAmount > BigInt(0) && (
-                  <div className="rounded-lg border bg-muted/50 p-4 space-y-2 text-sm">
+                {estimatedFee !== undefined && (
+                  <div className="p-3 bg-muted rounded-lg text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Receiver gets:</span>
-                      <span className="font-mono">{receiverAmount.toLocaleString()} sats</span>
+                      <span className="text-muted-foreground">Estimated network fee:</span>
+                      <span className="font-semibold">{estimatedFee.toString()} BTC</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Network fee:</span>
-                      <span className="font-mono">
-                        {feeLoading ? 'Loading...' : `${networkFee.toLocaleString()} sats`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t pt-2 font-semibold">
-                      <span>Total deducted:</span>
-                      <span className="font-mono">{totalDeducted.toLocaleString()} sats</span>
-                    </div>
-                    {insufficientFunds && (
-                      <p className="text-xs text-destructive pt-2">
-                        Insufficient balance. You need {totalDeducted.toLocaleString()} sats but only have {availableBalance.toLocaleString()} sats.
-                      </p>
-                    )}
                   </div>
                 )}
-
-                <Button
-                  type="submit"
-                  disabled={isSending || !destination.trim() || !sendAmount || Number(sendAmount) <= 0 || insufficientFunds || !!feeError}
-                  className="w-full"
-                >
-                  {isSending ? (
+                <Button type="submit" disabled={sendPending} className="w-full">
+                  {sendPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Transfer...
+                      Broadcasting Transaction...
                     </>
                   ) : (
                     <>
                       <Send className="mr-2 h-4 w-4" />
-                      Create Transfer Request
+                      Send Bitcoin
                     </>
                   )}
                 </Button>
               </form>
-
-              {transferOutcome && (
-                <div className="mt-4">
-                  {getOutcomeAlert()}
-                </div>
-              )}
             </CardContent>
           </Card>
-
-          <BroadcastingDetailsNote />
         </TabsContent>
       </Tabs>
     </div>

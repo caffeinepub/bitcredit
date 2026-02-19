@@ -1,11 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Make the logged-out (unauthenticated) mobile screen show a clear, tappable Internet Identity sign-in button while keeping the logged-out message visible.
+**Goal:** Enable flexible Bitcoin address validation, implement AI-assisted broadcast troubleshooting with automatic retry logic, and add on-chain confirmation tracking for transfer requests.
 
 **Planned changes:**
-- Update the unauthenticated screen to render a prominent primary button alongside the existing “Please log in…” message.
-- Label the button exactly “Sign in with Internet Identity”.
-- Wire the button to trigger the existing Internet Identity login flow (same behavior as the existing header LoginButton).
+- Accept any valid Bitcoin mainnet address format (P2PKH, P2SH, Bech32, Bech32m) without requiring app registration
+- Implement deterministic AI-assisted troubleshooting system that automatically diagnoses and retries failed broadcasts with corrected parameters
+- Add automatic blockchain confirmation detection that updates transfer status from IN_PROGRESS to COMPLETED
+- Display confirmation indicators in frontend UI when transactions are posted and confirmed on-chain
+- Handle specific Bitcoin broadcast error patterns (low fees, duplicates, connectivity issues) with targeted retry strategies
+- Show real-time broadcast and troubleshooting status updates in clear English during send flows
+- Persist complete troubleshooting attempt history per transfer request for audit trail
 
-**User-visible outcome:** When not signed in (including on mobile), users see a clear “Sign in with Internet Identity” button and can tap it to start the existing Internet Identity login flow, with a visible message explaining they must log in.
+**User-visible outcome:** Users can send Bitcoin to any valid mainnet address regardless of app registration. The app automatically troubleshoots and retries failed broadcasts, displays clear progress messages during the process, shows confirmation indicators when transactions are posted and confirmed on-chain, and provides full audit trails of all troubleshooting attempts.

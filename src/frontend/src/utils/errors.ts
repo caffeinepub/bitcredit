@@ -5,9 +5,14 @@
 export function normalizeSendBTCError(error: Error): string {
   const message = error.message.toLowerCase();
   
+  // Check for "account not registered" or similar registration errors
+  if (message.includes('account') && (message.includes('not registered') || message.includes('registration'))) {
+    return 'Unable to process transfer. Please ensure you have entered a valid Bitcoin mainnet address. The recipient does not need to be registered in this app.';
+  }
+  
   // Check for invalid address format
   if (message.includes('invalid') && (message.includes('address') || message.includes('destination'))) {
-    return 'Invalid Bitcoin address format. Please check the destination address and try again.';
+    return 'Invalid Bitcoin address format. Please enter a valid Bitcoin mainnet address (starting with 1, 3, or bc1).';
   }
   
   // Check for insufficient on-chain funds in app wallet

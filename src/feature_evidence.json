@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-unauthenticated-logged-out-screen-so-it-renders-a-visible-tappable-sign-in-button-that-triggers-the-existing-internet-identity-login-flow-instead-of-showing-only-the-please-log-in-to-access-the-application-message",
-      "featureTitle": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
+      "featureId": "feature-update-the-frontend-transfer-details-ui-verifytransferdialog-and-transfertroubleshootingpage-to-display-a-clear-visual-confirmation-indicator-check-mark-or-similar-when-a-transfer-request-has-been-successfully-posted-to-the-blockchain-api-with-a-txid-and-show-an-additional-confirmed-completed-indicator-when-the-transaction-reaches-confirmed-status-on-chain",
+      "featureTitle": "Update the frontend transfer details UI (VerifyTransferDialog and TransferTroubleshootingPage) to display a clear visual confirmation indicator (check mark or similar) when a transfer request has been successfully posted to the blockchain API with a txid, and show an additional confirmed/completed indicator when the transaction reaches confirmed status on-chain.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+        "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+        "frontend/src/pages/TransferTroubleshootingPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,15 +18,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-173"
+        "REQ-182"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-ensure-the-sign-in-button-s-label-explicitly-says-sign-in-with-internet-identity-on-the-logged-out-screen-so-users-understand-what-provider-they-are-using",
-      "featureTitle": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
+      "featureId": "feature-update-the-frontend-send-btc-and-admin-send-btc-flows-to-display-real-time-broadcast-and-troubleshooting-status-updates-while-the-ai-assisted-broadcast-loop-is-active-showing-progress-messages-in-clear-english-e-g-attempting-broadcast-broadcast-failed-analyzing-issue-retrying-with-adjusted-parameters-transaction-posted-to-blockchain-awaiting-confirmation",
+      "featureTitle": "Update the frontend Send BTC and Admin Send BTC flows to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active, showing progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...').",
       "files": [
-        "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/pages/AdminPage.tsx",
+        "frontend/src/pages/SendBtcPage.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -38,7 +40,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-174"
+        "REQ-184"
       ],
       "confidence": "high"
     }

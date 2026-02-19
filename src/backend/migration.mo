@@ -1,130 +1,71 @@
 import Map "mo:core/Map";
-import List "mo:core/List";
 import Nat "mo:core/Nat";
-import Principal "mo:core/Principal";
-import Time "mo:core/Time";
 
 module {
-  public type ReserveStatus = {
-    reserveBtcBalance : Nat;
-    outstandingIssuedCredits : Nat;
-    coverageRatio : ?Float;
-  };
-
-  public type UserProfile = {
-    name : Text;
-    bitcoinWallet : ?BitcoinWallet;
-  };
-
-  public type BitcoinWallet = {
-    address : Text;
-    publicKey : Blob;
-  };
-
-  public type CreditBalance = {
-    balance : Nat;
-    adjustments : [CreditAdjustment];
-  };
-
-  public type CreditAdjustment = {
-    amount : Nat;
-    reason : Text;
-    timestamp : Time.Time;
-    adjustmentType : AdjustmentType;
-  };
-
-  public type AdjustmentType = {
-    #puzzleReward : { puzzleId : Text; difficulty : Nat };
-    #adminAdjustment : { reason : Text };
-  };
-
-  public type Transaction = {
-    id : Text;
-    user : Principal;
-    amount : Nat;
-    timestamp : Time.Time;
-    transactionType : TransactionType;
-  };
-
-  public type TransactionType = {
-    #creditPurchase;
-    #debit;
-    #adjustment;
-  };
-
-  public type TransferStatus = {
-    #IN_PROGRESS;
-    #VERIFIED;
-    #COMPLETED;
-    #FAILED;
-  };
-
-  // Old transfer request type.
-  public type OldSendBTCRequest = {
+  type OldSendBTCRequest = {
     id : Nat;
     owner : Principal;
     destinationAddress : Text;
     amount : Nat;
     networkFee : Nat;
     totalCost : Nat;
-    status : TransferStatus;
-    timestamp : Time.Time;
-    blockchainTxId : ?Text;
-    failureReason : ?Text;
-  };
-
-  // New transfer request type.
-  public type NewSendBTCRequest = {
-    id : Nat;
-    owner : Principal;
-    destinationAddress : Text;
-    amount : Nat;
-    networkFee : Nat;
-    totalCost : Nat;
-    status : TransferStatus;
-    timestamp : Time.Time;
+    status : { #IN_PROGRESS; #VERIFIED; #COMPLETED; #FAILED; #PENDING; #EVICTED };
+    timestamp : Int;
+    tempStorageForBTCTransaction : ?[Nat8];
     blockchainTxId : ?Text;
     failureReason : ?Text;
     diagnosticData : ?Text;
+    confirmedBlockheight : ?Nat;
+    evictedDetectedTimestamp : ?Int;
+    lastStatusCheckTimestamp : ?Int;
   };
 
-  public type OldActor = {
-    currentBtcPriceUsd : ?Float;
-    lastUpdatedPriceTime : ?Time.Time;
-    reserveBtcBalance : Nat;
-    outstandingIssuedCredits : Nat;
-    transactionFeeRate : Nat;
-    balances : Map.Map<Principal, CreditBalance>;
-    transactions : List.List<Transaction>;
-    userProfiles : Map.Map<Principal, UserProfile>;
+  type NewSendBTCRequest = {
+    id : Nat;
+    owner : Principal;
+    destinationAddress : Text;
+    amount : Nat;
+    networkFee : Nat;
+    totalCost : Nat;
+    status : { #IN_PROGRESS; #VERIFIED; #COMPLETED; #FAILED; #PENDING; #EVICTED };
+    timestamp : Int;
+    tempStorageForBTCTransaction : ?[Nat8];
+    blockchainTxId : ?Text;
+    failureReason : ?Text;
+    diagnosticData : ?Text;
+    confirmedBlockheight : ?Nat;
+    evictedDetectedTimestamp : ?Int;
+    lastStatusCheckTimestamp : ?Int;
+    addressValidation : ?{ isValid : Bool; addressType : ?{ #P2PKH; #P2SH; #Bech32; #Bech32m }; error : ?Text };
+  };
+
+  type OldActor = {
     transferRequests : Map.Map<Nat, OldSendBTCRequest>;
-    adminInitialCreditsIssued : Map.Map<Principal, Bool>;
-    requestIdCounter : Nat;
-    btcApiDiagnosticsEnabled : Bool;
+    failedTransfersToRetry : Map.Map<Nat, OldSendBTCRequest>;
+    // Remaining unchanged state variables omitted for brevity.
   };
 
-  public type NewActor = {
-    currentBtcPriceUsd : ?Float;
-    lastUpdatedPriceTime : ?Time.Time;
-    reserveBtcBalance : Nat;
-    outstandingIssuedCredits : Nat;
-    transactionFeeRate : Nat;
-    balances : Map.Map<Principal, CreditBalance>;
-    transactions : List.List<Transaction>;
-    userProfiles : Map.Map<Principal, UserProfile>;
+  type NewActor = {
     transferRequests : Map.Map<Nat, NewSendBTCRequest>;
-    adminInitialCreditsIssued : Map.Map<Principal, Bool>;
-    requestIdCounter : Nat;
-    btcApiDiagnosticsEnabled : Bool;
+    failedTransfersToRetry : Map.Map<Nat, NewSendBTCRequest>;
+    // Remaining unchanged state variables omitted for brevity.
   };
 
-  // Migration function called by the main actor via the with-clause
+  func migrateSendBTCRequest(old : OldSendBTCRequest) : NewSendBTCRequest {
+    { old with addressValidation = null };
+  };
+
   public func run(old : OldActor) : NewActor {
-    let newTransferRequests = old.transferRequests.map<Nat, OldSendBTCRequest, NewSendBTCRequest>(
-      func(_id, oldRequest) {
-        { oldRequest with diagnosticData = null };
-      }
+    let migratedTransferRequests = old.transferRequests.map<Nat, OldSendBTCRequest, NewSendBTCRequest>(
+      func(_id, oldRequest) { migrateSendBTCRequest(oldRequest) }
     );
-    { old with transferRequests = newTransferRequests };
+    let migratedFailedTransfers = old.failedTransfersToRetry.map<Nat, OldSendBTCRequest, NewSendBTCRequest>(
+      func(_id, oldRequest) { migrateSendBTCRequest(oldRequest) }
+    );
+
+    {
+      transferRequests = migratedTransferRequests;
+      failedTransfersToRetry = migratedFailedTransfers;
+    };
   };
 };

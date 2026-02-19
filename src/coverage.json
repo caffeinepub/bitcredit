@@ -1,48 +1,96 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T12:13:33.628Z",
+  "generatedAt": "2026-02-19T00:07:18.297Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
+    "total": 7,
     "implemented": 2,
     "items": [
       {
-        "id": "REQ-173",
-        "summary": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
+        "id": "REQ-179",
+        "summary": "Update the backend sendBTC flow to accept any valid Bitcoin mainnet address format (P2PKH, P2SH, Bech32, Bech32m) without requiring the destination address to be registered in the app's user profile/wallet registry, and ensure validation checks only verify Bitcoin mainnet address format correctness (not app account existence).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-180",
+        "summary": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues (invalid address, connectivity, insufficient funds, fee-too-low, mempool congestion), and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-181",
+        "summary": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-182",
+        "summary": "Update the frontend transfer details UI (VerifyTransferDialog and TransferTroubleshootingPage) to display a clear visual confirmation indicator (check mark or similar) when a transfer request has been successfully posted to the blockchain API with a txid, and show an additional confirmed/completed indicator when the transaction reaches confirmed status on-chain.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+          "frontend/src/pages/TransferTroubleshootingPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+          "frontend/src/pages/TransferTroubleshootingPage.tsx"
         ]
       },
       {
-        "id": "REQ-174",
-        "summary": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
+        "id": "REQ-183",
+        "summary": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-184",
+        "summary": "Update the frontend Send BTC and Admin Send BTC flows to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active, showing progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...').",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/auth/LoggedOutSignInPanel.tsx"
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/AdminPage.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
+      },
+      {
+        "id": "REQ-185",
+        "summary": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
+    "frontend/src/pages/TransferTroubleshootingPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

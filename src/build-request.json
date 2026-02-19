@@ -1,56 +1,156 @@
 {
   "kind": "build_request",
-  "title": "Add visible Internet Identity login button on mobile login screen",
-  "projectName": "BTC Credits",
+  "title": "Implement flexible Bitcoin address validation, AI-assisted broadcast troubleshooting, and on-chain confirmation tracking",
+  "projectName": "Bitcoin Credit Transfer",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-173",
-      "text": "Update the unauthenticated (logged-out) screen so it renders a visible, tappable sign-in button that triggers the existing Internet Identity login flow, instead of showing only the \"Please log in to access the application\" message.",
-      "target": "frontend",
+      "id": "REQ-179",
+      "text": "Update the backend sendBTC flow to accept any valid Bitcoin mainnet address format (P2PKH, P2SH, Bech32, Bech32m) without requiring the destination address to be registered in the app's user profile/wallet registry, and ensure validation checks only verify Bitcoin mainnet address format correctness (not app account existence).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-last"
         ],
         "quotes": [
-          "Add button"
+          "App accepts any bitcoin send wallet format and attempts to make transfer to mainnet api"
         ]
       },
       "acceptanceCriteria": [
-        "When the user is not authenticated, the page shows a prominent button that can be tapped on mobile (no text-only login state).",
-        "Tapping the button starts the Internet Identity login flow (same behavior as the existing header LoginButton).",
-        "The existing logged-out message (or equivalent) remains visible along with the button so users understand why they are being asked to sign in."
+        "Backend accepts any valid Bitcoin mainnet address format as a destination",
+        "No 'account not registered' or similar error is raised for unregistered addresses",
+        "Address validation checks only Bitcoin mainnet format correctness",
+        "Send BTC flow successfully creates transfer requests for any valid mainnet address"
       ]
     },
     {
-      "id": "REQ-174",
-      "text": "Ensure the sign-in button’s label explicitly says \"Sign in with Internet Identity\" on the logged-out screen so users understand what provider they are using.",
-      "target": "frontend",
+      "id": "REQ-180",
+      "text": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues (invalid address, connectivity, insufficient funds, fee-too-low, mempool congestion), and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4",
-          "msg-5",
-          "msg-6"
+          "msg-last"
         ],
         "quotes": [
-          "Stuck at login no login button appears for app",
-          "From phone just a message saying login app but no button to login appears",
-          "Add button"
+          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
         ]
       },
       "acceptanceCriteria": [
-        "On the logged-out screen, the primary button text is \"Sign in with Internet Identity\" (English).",
-        "No user-facing login text implies an invisible/automatic login; the user can always see what to tap."
+        "Backend automatically retries failed broadcasts when issues are recoverable (e.g., temporary connectivity)",
+        "System diagnoses and surfaces clear English failure reasons for non-recoverable issues",
+        "Troubleshooting loop continues until broadcast succeeds or definitively fails",
+        "All retry attempts and diagnostics are logged without exposing secrets"
+      ]
+    },
+    {
+      "id": "REQ-181",
+      "text": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Once transaction is posted on blockchain API app places a confirm check mark on sent attempt with transaction hash in app"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend periodically checks blockchain API for confirmation status of IN_PROGRESS transfers",
+        "Transfer request status is updated to COMPLETED once blockchain confirmation is detected",
+        "Confirmation state is persisted and survives canister upgrades",
+        "Blockchain txid is retained and displayed throughout the confirmation lifecycle"
+      ]
+    },
+    {
+      "id": "REQ-182",
+      "text": "Update the frontend transfer details UI (VerifyTransferDialog and TransferTroubleshootingPage) to display a clear visual confirmation indicator (check mark or similar) when a transfer request has been successfully posted to the blockchain API with a txid, and show an additional confirmed/completed indicator when the transaction reaches confirmed status on-chain.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Once transaction is posted on blockchain API app places a confirm check mark on sent attempt with transaction hash in app"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A check mark or success icon appears when blockchainTxId is present",
+        "An additional confirmation indicator appears when status is COMPLETED",
+        "Transaction hash is displayed prominently and is copyable",
+        "All user-facing text is in clear English"
+      ]
+    },
+    {
+      "id": "REQ-183",
+      "text": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Low-fee errors trigger automatic fee bump suggestions and retry logic",
+        "Duplicate transaction errors trigger on-chain confirmation checks",
+        "Connectivity errors trigger automatic retry with backoff",
+        "All error handling preserves audit trail with clear English diagnostics"
+      ]
+    },
+    {
+      "id": "REQ-184",
+      "text": "Update the frontend Send BTC and Admin Send BTC flows to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active, showing progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...').",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Real-time status messages appear during broadcast attempts",
+        "Troubleshooting progress is communicated to the user in English",
+        "Final outcome (success with txid or definitive failure) is clearly displayed",
+        "User can view detailed diagnostics via the troubleshooting page"
+      ]
+    },
+    {
+      "id": "REQ-185",
+      "text": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each troubleshooting retry is recorded with timestamp and parameters",
+        "Troubleshooting history is accessible via backend query for the request owner or admin",
+        "History is persisted across canister upgrades",
+        "No secrets or sensitive data are stored in troubleshooting logs"
       ]
     }
   ],
   "constraints": [
-    "Frontend immutable paths must not be edited: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
-    "Keep all user-facing text in clear English."
+    "Backend must remain single-actor architecture; all logic in backend/main.mo",
+    "Do not modify read-only frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, components/ui",
+    "All user-facing text must be in clear English",
+    "Do not store or display Bitcoin private keys in the app",
+    "AI troubleshooting must be deterministic rule-based logic, not external AI service calls"
   ],
   "nonGoals": [
-    "Do not change backend authentication logic or admin allowlist behavior.",
-    "Do not add new authentication providers; Internet Identity remains the only login method."
+    "Implementing external Bitcoin Core node connectivity",
+    "Storing private keys in the app",
+    "Automated RBF transaction replacement with new signatures",
+    "Real-time WebSocket connections for status updates",
+    "Integration with external AI/LLM APIs for troubleshooting"
   ],
   "imageRequirements": {
     "required": [],

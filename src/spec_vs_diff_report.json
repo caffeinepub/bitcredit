@@ -1,46 +1,54 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-18T12:13:33.620Z",
-  "summary": "REQ-173 and REQ-174 appear implemented via a new logged-out panel component that shows the existing logged-out message plus a prominent button labeled \"Sign in with Internet Identity\" that triggers the existing Internet Identity login flow. The diff also includes multiple unrelated feature additions/changes (e.g., AI Lottery route, admin behavior changes) that were not requested.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-19T00:07:18.290Z",
+  "summary": "The implementation demonstrates significant progress on flexible Bitcoin address validation (REQ-179), AI-assisted troubleshooting infrastructure (REQ-180, REQ-183, REQ-185), confirmation tracking (REQ-181), and frontend UI updates (REQ-182, REQ-184). However, several core automation features—particularly the automatic broadcast retry loop, periodic confirmation polling, and full troubleshooting attempt history persistence—are not evident in the diff, resulting in missing requirements.",
+  "missing_requirements": [
     {
-      "description": "Add AI Lottery page/route and related UI/navigation updates",
-      "reason": "Not requested (BuildRequest is only about adding a visible Internet Identity sign-in button on the logged-out screen).",
+      "id": "REQ-180",
+      "requirement": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues, and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
+      "reason": "The diff shows new types and infrastructure (AddressValidationResult, MempoolAnalysisResult, ConfirmationAnalysisResult) and frontend polling logic, but does not show backend code that implements an automatic retry loop. No evidence of backend logic that autonomously retries failed broadcasts with corrected parameters or executes a troubleshooting workflow without manual user intervention.",
       "evidence": [
-        "frontend/src/App.tsx (imports include AiLotteryPage; file summary mentions new /ai-lottery route)",
-        "frontend-file-summaries.txt (\"new /ai-lottery route\"; \"new AI Lottery link\")"
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Automatic 500-credit assignment for verified admins",
-      "reason": "Not requested and potentially conflicts with the non-goal of not changing backend authentication logic/admin behavior.",
+      "id": "REQ-181",
+      "requirement": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
+      "reason": "The diff shows new fields (confirmedBlockheight, lastStatusCheckTimestamp) and types related to confirmation tracking, but does not show backend timer or heartbeat logic that periodically checks IN_PROGRESS transfers and updates their status to COMPLETED. No evidence of automatic background polling or scheduled confirmation checks.",
       "evidence": [
-        "frontend-file-summaries.txt (\"automatic 500-credit assignment for verified admins\")"
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Admin guard/caching/token-detection behavior changes (e.g., caching admin status, denied screen token detection)",
-      "reason": "Not requested; BuildRequest explicitly scopes changes to the logged-out screen button and indicates no changes to admin allowlist behavior.",
+      "id": "REQ-183",
+      "requirement": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
+      "reason": "The diff shows types for fee analysis (MempoolAnalysisResult, FeeRateSufficiency) but does not show backend logic that implements automatic fee bump retry, duplicate transaction on-chain checks, or exponential backoff for connectivity errors. Frontend references suggest manual user-initiated retries rather than automatic backend retry logic.",
       "evidence": [
-        "frontend/src/App.tsx (AdminGuard uses adminStatusCache; tokenDetected via getSecretParameter('caffeineAdminToken'))",
-        "frontend-file-summaries.txt (describes admin guard changes and cache usage)"
+        "backend/main.mo",
+        "frontend/src/pages/TransferTroubleshootingPage.tsx"
       ]
     },
     {
-      "description": "Large set of unrelated UI/feature updates (USD estimate lines, transfer history enhancements, new troubleshooting components, theme/css expansions, additional queries)",
-      "reason": "Not requested by the BuildRequest (scope is limited to the mobile logged-out login button/label).",
+      "id": "REQ-185",
+      "requirement": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
+      "reason": "The diff shows diagnosticData and failureReason fields on SendBTCRequest, but does not show a dedicated troubleshooting history collection or array of retry attempts. No evidence of a persistent log structure that stores multiple retry events with timestamps and parameters per request.",
       "evidence": [
-        "frontend-file-summaries.txt (multiple entries: index.css theme/lottery classes, tailwind changes, many page/component behavior updates, new React Query hooks)"
+        "backend/main.mo"
       ]
     }
   ],
-  "confidence": 0.74,
+  "hallucinated_features": [],
+  "confidence": 0.75,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/auth/LoggedOutSignInPanel.tsx",
+    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
+    "frontend/src/pages/TransferTroubleshootingPage.tsx",
     "project_state.json"
   ]
 }

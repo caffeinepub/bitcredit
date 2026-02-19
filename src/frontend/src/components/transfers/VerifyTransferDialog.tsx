@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw, Wrench, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, AlertCircle, Loader2, Copy, Check, RefreshCw, Wrench, AlertTriangle, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface VerifyTransferDialogProps {
@@ -130,6 +130,7 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
   const statusInfo = getStatusInfo();
   const isFailed = transferRequest?.status === 'FAILED' || transferRequest?.status === 'EVICTED';
   const isInProgress = transferRequest?.status === 'IN_PROGRESS';
+  const isCompleted = transferRequest?.status === 'COMPLETED';
   const hasTxId = transferRequest?.blockchainTxId !== undefined && transferRequest?.blockchainTxId !== null;
 
   return (
@@ -159,6 +160,38 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
                 <br />
                 <span className="text-sm">
                   This transfer is in progress. Status updates automatically every 3 seconds until the transaction is confirmed or dropped from the mempool.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Broadcast Success Indicator */}
+          {hasTxId && (
+            <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                <strong className="flex items-center gap-1">
+                  <Check className="h-4 w-4" />
+                  Transaction Broadcast to Blockchain
+                </strong>
+                <span className="text-sm">
+                  This transaction has been successfully posted to the Bitcoin blockchain API.
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Confirmation Success Indicator */}
+          {isCompleted && (
+            <Alert className="border-emerald-600 bg-emerald-50 dark:bg-emerald-950/20">
+              <CheckCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+                <strong className="flex items-center gap-1">
+                  <CheckCheck className="h-4 w-4" />
+                  Transaction Confirmed On-Chain
+                </strong>
+                <span className="text-sm">
+                  This transaction has been confirmed on the Bitcoin blockchain. The transfer is complete.
                 </span>
               </AlertDescription>
             </Alert>
@@ -198,7 +231,7 @@ export default function VerifyTransferDialog({ open, onOpenChange, requestId }: 
 
               {transferRequest.blockchainTxId && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Transaction ID</p>
+                  <p className="text-sm font-medium">Blockchain Transaction ID</p>
                   <div className="flex items-center gap-2">
                     <code className="flex-1 text-xs bg-muted p-2 rounded font-mono break-all">
                       {transferRequest.blockchainTxId}

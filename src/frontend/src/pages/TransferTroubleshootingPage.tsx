@@ -18,7 +18,10 @@ import {
   Zap,
   TrendingUp,
   AlertTriangle,
-  Play
+  Play,
+  Check,
+  CheckCheck,
+  Copy
 } from 'lucide-react';
 import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
 import BestPracticesSection from '../components/transfers/BestPracticesSection';
@@ -29,6 +32,7 @@ export default function TransferTroubleshootingPage() {
   const navigate = useNavigate();
   const requestId = params.requestId ? BigInt(params.requestId) : null;
   const [forceFreshCheck, setForceFreshCheck] = useState(false);
+  const [copiedTxId, setCopiedTxId] = useState(false);
   
   const { data: transferRequest, isLoading, refetch, isFetching } = useGetTransferRequest(requestId, false);
   const { data: balance } = useGetCallerBalance();
@@ -82,6 +86,17 @@ export default function TransferTroubleshootingPage() {
 
   const handleBackToHistory = () => {
     navigate({ to: '/history' });
+  };
+
+  const handleCopyTxId = async (txid: string) => {
+    try {
+      await navigator.clipboard.writeText(txid);
+      setCopiedTxId(true);
+      toast.success('Transaction ID copied to clipboard');
+      setTimeout(() => setCopiedTxId(false), 2000);
+    } catch (error) {
+      toast.error('Failed to copy transaction ID');
+    }
   };
 
   const getStatusBadge = () => {
@@ -153,6 +168,7 @@ export default function TransferTroubleshootingPage() {
   }
 
   const isFailed = transferRequest.status === 'FAILED' || transferRequest.status === 'EVICTED';
+  const isCompleted = transferRequest.status === 'COMPLETED';
   const hasTxId = !!transferRequest.blockchainTxId;
 
   return (
@@ -180,6 +196,38 @@ export default function TransferTroubleshootingPage() {
           </span>
         </AlertDescription>
       </Alert>
+
+      {/* Broadcast Success Indicator */}
+      {hasTxId && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950/20">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong className="flex items-center gap-1">
+              <Check className="h-4 w-4" />
+              Transaction Broadcast to Blockchain
+            </strong>
+            <span className="text-sm">
+              This transaction has been successfully posted to the Bitcoin blockchain API.
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Confirmation Success Indicator */}
+      {isCompleted && (
+        <Alert className="border-emerald-600 bg-emerald-50 dark:bg-emerald-950/20">
+          <CheckCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+            <strong className="flex items-center gap-1">
+              <CheckCheck className="h-4 w-4" />
+              Transaction Confirmed On-Chain
+            </strong>
+            <span className="text-sm">
+              This transaction has been confirmed on the Bitcoin blockchain. The transfer is complete.
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="financial-card">
         <CardHeader>
@@ -220,297 +268,199 @@ export default function TransferTroubleshootingPage() {
               <p className="text-sm font-medium text-muted-foreground">Amount</p>
               <p className="font-semibold">{formatSatoshis(transferRequest.amount)} BTC</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Network Fee</p>
-              <p className="font-semibold">{formatSatoshis(transferRequest.networkFee)} BTC</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Total Cost</p>
-              <p className="font-semibold">{formatSatoshis(transferRequest.totalCost)} BTC</p>
-            </div>
           </div>
 
           {transferRequest.blockchainTxId && (
-            <>
-              <Separator />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Transaction ID (txid)</p>
-                <p className="font-mono text-xs break-all bg-muted p-2 rounded">
+            <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium">Blockchain Transaction ID</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs bg-background p-2 rounded font-mono break-all">
                   {transferRequest.blockchainTxId}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  View on{' '}
-                  <a
-                    href={`https://blockstream.info/tx/${transferRequest.blockchainTxId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    Blockstream Explorer
-                  </a>
-                </p>
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopyTxId(transferRequest.blockchainTxId!)}
+                >
+                  {copiedTxId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
               </div>
-            </>
+              <p className="text-xs text-muted-foreground">
+                View on{' '}
+                <a
+                  href={`https://blockstream.info/tx/${transferRequest.blockchainTxId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Blockstream Explorer
+                </a>
+              </p>
+            </div>
           )}
 
           {transferRequest.failureReason && (
-            <>
-              <Separator />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Failure Reason</p>
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-sm">
-                    {transferRequest.failureReason}
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Failure Reason:</strong>
+                <br />
+                {transferRequest.failureReason}
+              </AlertDescription>
+            </Alert>
           )}
 
           {transferRequest.diagnosticData && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Diagnostic Data</p>
-              <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono">
+              <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
                 {transferRequest.diagnosticData}
-              </p>
+              </pre>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Automated Analysis Section */}
-      <Card className="financial-card border-chart-2">
+      <Card className="financial-card">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-chart-2" />
-              <div>
-                <CardTitle>Automated Analysis</CardTitle>
-                <CardDescription>Built-in confirmation and fee analysis</CardDescription>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleForceFreshAnalysis}
-              disabled={refreshStatusMutation.isPending || analysisLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${(refreshStatusMutation.isPending || analysisLoading) ? 'animate-spin' : ''}`} />
-              Run Fresh Analysis
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-chart-2" />
+            Automated Analysis
+          </CardTitle>
+          <CardDescription>
+            Built-in status checks and fee analysis
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {analysisLoading || refreshStatusMutation.isPending ? (
-            <div className="flex items-center justify-center py-4">
+          {analysisLoading ? (
+            <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : analysisResult ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Derived Status</p>
-                  <div className="flex items-center gap-2">
-                    {analysisResult.status === 'COMPLETED' && (
-                      <Badge variant="default" className="gap-1 bg-chart-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Confirmed / Success
-                      </Badge>
-                    )}
-                    {analysisResult.status === 'IN_PROGRESS' && (
-                      <Badge variant="secondary" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        Pending
-                      </Badge>
-                    )}
-                    {analysisResult.status === 'FAILED' && (
-                      <Badge variant="destructive" className="gap-1">
-                        <XCircle className="h-3 w-3" />
-                        Failed
-                      </Badge>
-                    )}
-                    {analysisResult.status === 'EVICTED' && (
-                      <Badge variant="destructive" className="gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Dropped / Evicted
-                      </Badge>
-                    )}
-                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Analysis Status</p>
+                  <p className="font-semibold">{analysisResult.status}</p>
                 </div>
-
                 {analysisResult.confirmations !== undefined && analysisResult.confirmations !== null && (
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Confirmations</p>
                     <p className="font-semibold">{analysisResult.confirmations.toString()}</p>
                   </div>
                 )}
+                {analysisResult.expectedFee !== undefined && analysisResult.expectedFee !== null && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Expected Fee</p>
+                    <p className="font-semibold">{analysisResult.expectedFee.toString()} sats</p>
+                  </div>
+                )}
+                {analysisResult.suggestedFee !== undefined && analysisResult.suggestedFee !== null && (
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Suggested Fee</p>
+                    <p className="font-semibold text-chart-2">{analysisResult.suggestedFee.toString()} sats</p>
+                  </div>
+                )}
               </div>
 
               {analysisResult.feeDecryptorAnalysis && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-chart-2" />
-                      <p className="text-sm font-semibold">Fee & Mempool Analysis</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Current Fee Rate</p>
-                        <p className="font-mono text-sm">{formatSatoshis(analysisResult.feeDecryptorAnalysis.mempoolFeeRate)} BTC</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Recommended Fee Rate</p>
-                        <p className="font-mono text-sm">{formatSatoshis(analysisResult.feeDecryptorAnalysis.recommendedFeeRate)} BTC</p>
-                      </div>
-                    </div>
-
-                    {analysisResult.feeDecryptorAnalysis.recommendedNextBlockFeeRate && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Suggested Next-Block Fee Rate</p>
-                        <p className="font-mono text-sm">{formatSatoshis(analysisResult.feeDecryptorAnalysis.recommendedNextBlockFeeRate)} BTC</p>
-                      </div>
-                    )}
-
-                    {analysisResult.suggestedFee && (
-                      <Alert className="border-chart-2 bg-chart-2/5">
-                        <Info className="h-4 w-4 text-chart-2" />
-                        <AlertDescription className="text-sm">
-                          <strong>Suggested Bumped Fee (10% buffer):</strong>{' '}
-                          <span className="font-mono">{formatSatoshis(analysisResult.suggestedFee)} BTC</span>
-                          <br />
-                          <span className="text-xs text-muted-foreground mt-1 block">
-                            This is an informational suggestion. RBF (Replace-By-Fee) fee bumping requires creating a replacement transaction with a higher fee and re-signing it externally. 
-                            This app does not have access to private keys and cannot automatically re-sign transactions. 
-                            If your transaction is stuck with a low fee, you may need to wait for it to confirm or be dropped from the mempool, then create a new transfer request.
-                          </span>
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">Fee Sufficiency</p>
-                      <div className="flex items-center gap-2">
-                        {analysisResult.feeDecryptorAnalysis.feeRateSufficiency === 'SUFFICIENT' && (
-                          <Badge variant="default" className="bg-chart-1">Sufficient</Badge>
-                        )}
-                        {analysisResult.feeDecryptorAnalysis.feeRateSufficiency === 'BORDERLINE' && (
-                          <Badge variant="secondary">Borderline</Badge>
-                        )}
-                        {analysisResult.feeDecryptorAnalysis.feeRateSufficiency === 'INSUFFICIENT' && (
-                          <Badge variant="destructive">Insufficient</Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {analysisResult.feeDecryptorAnalysis.feeDescription && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">Analysis Description</p>
-                        <p className="text-sm text-muted-foreground">{analysisResult.feeDecryptorAnalysis.feeDescription}</p>
-                      </div>
-                    )}
-                  </div>
-                </>
+                <Alert className="border-chart-2 bg-chart-2/5">
+                  <TrendingUp className="h-4 w-4 text-chart-2" />
+                  <AlertDescription className="text-chart-2">
+                    <strong>Fee Analysis:</strong>
+                    <br />
+                    <span className="text-sm">{analysisResult.feeDecryptorAnalysis.feeDescription}</span>
+                    <br />
+                    <span className="text-xs text-muted-foreground">
+                      Mempool fee rate: {analysisResult.feeDecryptorAnalysis.mempoolFeeRate.toString()} sats | 
+                      Recommended: {analysisResult.feeDecryptorAnalysis.recommendedFeeRate.toString()} sats
+                    </span>
+                  </AlertDescription>
+                </Alert>
               )}
 
               {analysisResult.diagnosticData && (
-                <>
-                  <Separator />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Analysis Diagnostic Data</p>
-                    <p className="text-xs text-muted-foreground bg-muted p-2 rounded font-mono">
-                      {analysisResult.diagnosticData}
-                    </p>
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Analysis Diagnostic Data</p>
+                  <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                    {analysisResult.diagnosticData}
+                  </pre>
+                </div>
               )}
+
+              <Button
+                variant="outline"
+                onClick={handleForceFreshAnalysis}
+                disabled={refreshStatusMutation.isPending}
+                className="w-full"
+              >
+                {refreshStatusMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Running Fresh Analysis...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Run Fresh Analysis
+                  </>
+                )}
+              </Button>
             </>
           ) : (
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                No analysis data available. Click "Run Fresh Analysis" to perform automated status checks.
+                No analysis data available. Click "Run Fresh Analysis" to perform a new check.
               </AlertDescription>
             </Alert>
           )}
         </CardContent>
       </Card>
 
-      {/* Retry Broadcast Section - Only show when no txid exists */}
       {isFailed && !hasTxId && (
-        <Card className="financial-card border-amber-500">
+        <Card className="financial-card border-destructive">
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <Play className="h-5 w-5 text-amber-500" />
-              <div>
-                <CardTitle>Retry Broadcast</CardTitle>
-                <CardDescription>Create a new transfer request as a retry attempt</CardDescription>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Play className="h-5 w-5" />
+              Retry Broadcast
+            </CardTitle>
+            <CardDescription>
+              Create a new transfer request with the same parameters
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert className="border-amber-500 bg-amber-500/5">
-              <Info className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-sm">
-                <strong>What happens when you retry:</strong>
-                <br />
-                <span className="text-muted-foreground">
-                  A new transfer request will be created with the same destination and amount. 
-                  Your balance will be checked, and if sufficient, a new broadcast attempt will be made. 
-                  This will create a separate request in your history (not a duplicate of this one).
-                </span>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Important:</strong> This will create a new transfer request as a retry attempt. 
+                The original failed request will remain in your history for reference. 
+                Your current balance will be checked before creating the new request.
               </AlertDescription>
             </Alert>
-
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Retry Details</p>
-                <p className="text-xs text-muted-foreground">
-                  Destination: <span className="font-mono">{transferRequest.destinationAddress.slice(0, 20)}...</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Amount: <span className="font-mono">{formatSatoshis(transferRequest.amount)} BTC</span>
-                </p>
-              </div>
-              <Button
-                variant="default"
-                onClick={handleRetryBroadcast}
-                disabled={sendBTCMutation.isPending}
-              >
-                {sendBTCMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Retry Broadcast
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button
+              variant="default"
+              onClick={handleRetryBroadcast}
+              disabled={sendBTCMutation.isPending}
+              className="w-full"
+            >
+              {sendBTCMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Retry Request...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Retry Broadcast
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Info for transactions with txid */}
-      {hasTxId && (
-        <Alert className="border-chart-2 bg-chart-2/5">
-          <Info className="h-4 w-4 text-chart-2" />
-          <AlertDescription className="text-sm">
-            <strong>Transaction Already Broadcast</strong>
-            <br />
-            <span className="text-muted-foreground">
-              This transfer has a blockchain transaction ID, meaning it was successfully broadcast. 
-              The automated analysis above shows confirmation status and mempool information. 
-              Actions that require private keys (such as RBF fee bumping or transaction re-signing) must be done externally—never paste private keys into this app.
-            </span>
-          </AlertDescription>
-        </Alert>
-      )}
+      <Separator />
 
       <BroadcastingDetailsNote />
 

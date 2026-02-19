@@ -9,15 +9,14 @@ import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
 import Blob "mo:core/Blob";
 import Text "mo:core/Text";
-import Array "mo:core/Array";
 import OutCall "http-outcalls/outcall";
 import Iter "mo:core/Iter";
-
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
-
-
+// Apply migration using the with clause
+(with migration = Migration.run)
 actor {
   public type BitcoinAmount = Nat; // 1 Satoshi
 
@@ -28,6 +27,10 @@ actor {
   var outstandingIssuedCredits : Nat = 0;
   let transactionFeeRate : Nat = 50_000; // Satoshis per gigabyte
   let currentNetworkFee = 10 : BitcoinAmount;
+  var requestIdCounter : Nat = 0;
+  var reserveAdjustmentCounter : Nat = 0;
+  var btcApiDiagnosticsEnabled = false;
+  var reserveMultisigConfig : ?ReserveMultisigConfig = null;
 
   let balances = Map.empty<Principal, CreditBalance>();
   let transactions = List.empty<Transaction>();
@@ -37,14 +40,30 @@ actor {
   let withdrawalRequests = Map.empty<Nat, WithdrawalRequest>();
   let adminInitialCreditsIssued = Map.empty<Principal, Bool>();
   let reserveAdjustments = Map.empty<Nat, ExtendedReserveAdjustment>();
-  var requestIdCounter : Nat = 0;
-  var reserveAdjustmentCounter : Nat = 0;
-  var btcApiDiagnosticsEnabled = false;
-  var reserveMultisigConfig : ?ReserveMultisigConfig = null;
 
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
+  // New type for address validation result
+  public type AddressValidationResult = {
+    isValid : Bool;
+    addressType : ?AddressType;
+    error : ?Text;
+  };
+
+  public type AddressType = {
+    #P2PKH;
+    #P2SH;
+    #Bech32;
+    #Bech32m;
+  };
+
+  public type PeerConnectionStatus = {
+    connectedPeers : [Text];
+    networkHealth : Text;
+  };
+
+  // Extended SendBTCRequest with address validation
   public type SendBTCRequest = {
     id : Nat;
     owner : Principal;
@@ -54,13 +73,14 @@ actor {
     totalCost : BitcoinAmount;
     status : TransferStatus;
     timestamp : Time.Time;
-    tempStorageForBTCTransaction : ?[Nat8]; // New field for detached signed transaction (serialized binary format)
+    tempStorageForBTCTransaction : ?[Nat8];
     blockchainTxId : ?Text;
     failureReason : ?Text;
     diagnosticData : ?Text;
     confirmedBlockheight : ?Nat;
     evictedDetectedTimestamp : ?Time.Time;
     lastStatusCheckTimestamp : ?Time.Time;
+    addressValidation : ?AddressValidationResult;
   };
 
   public type TransferStatus = {
@@ -271,17 +291,22 @@ actor {
       Runtime.trap("Unauthorized: Only users can analyze confirmations");
     };
 
-    let preferredFreshBlockchainCheck = switch (forceFreshCheck, ?btcApiDiagnosticsEnabled) {
-      case (?true, _) { true };
-      case (_, ?true) { true };
-      case (_, _) { false };
-    };
-
     switch (transferRequests.get(requestId)) {
       case (null) {
         Runtime.trap("Request not found");
       };
       case (?request) {
+        // Authorization: Users can only analyze their own requests, admins can analyze any
+        if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Can only analyze your own transfer requests");
+        };
+
+        let preferredFreshBlockchainCheck = switch (forceFreshCheck, ?btcApiDiagnosticsEnabled) {
+          case (?true, _) { true };
+          case (_, ?true) { true };
+          case (_, _) { false };
+        };
+
         let requestFreshnessSufficient = false;
         let currentPenaltyFee = 5_000_000 : BitcoinAmount;
         let currentNetworkFee = 1_000 : BitcoinAmount;
@@ -342,6 +367,38 @@ actor {
     };
   };
 
+  func validateBitcoinAddress(destinationAddress : Text) : AddressValidationResult {
+    if (destinationAddress.startsWith(#char '1') or destinationAddress.startsWith(#char '3')) {
+      return {
+        isValid = true;
+        addressType = if (destinationAddress.startsWith(#char '1')) { ?#P2PKH } else { ?#P2SH };
+        error = null;
+      };
+    };
+
+    if (destinationAddress.startsWith(#text "bc1")) {
+      if (destinationAddress.contains(#char 'm')) {
+        return {
+          isValid = true;
+          addressType = ?#Bech32m;
+          error = null;
+        };
+      } else {
+        return {
+          isValid = true;
+          addressType = ?#Bech32;
+          error = null;
+        };
+      };
+    };
+
+    {
+      isValid = false;
+      addressType = null;
+      error = ?("Invalid Bitcoin mainnet address format. Please review the destination address: " # destinationAddress);
+    };
+  };
+
   func performBTCBroadcast(_requestId : Nat, _destination : Text, _amount : BitcoinAmount) : BroadcastResponse {
     {
       success = false;
@@ -359,8 +416,9 @@ actor {
     switch (transferRequests.get(requestId)) {
       case (null) { null };
       case (?request) {
+        // Authorization: Users can only refresh their own requests, admins can refresh any
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Can only view your own transfer requests");
+          Runtime.trap("Unauthorized: Can only refresh your own transfer requests");
         };
 
         switch (request.blockchainTxId) {
@@ -584,7 +642,7 @@ actor {
     transformImpl(input);
   };
 
-  public shared ({ caller }) func sendBTC(destination : Text, amount : BitcoinAmount) : async Nat {
+  public shared ({ caller }) func sendBTC(destinationAddress : Text, amount : BitcoinAmount) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send BTC");
     };
@@ -603,6 +661,9 @@ actor {
     if (totalCost > reserveStatus.reserveBtcBalance) {
       Runtime.trap("Insufficient backend reserves for transaction");
     };
+
+    // Perform address validation. Always run, regardless of profile presence.
+    let addressValidation = ?validateBitcoinAddress(destinationAddress);
 
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
@@ -632,7 +693,7 @@ actor {
     let newRequest : SendBTCRequest = {
       id = requestId;
       owner = caller;
-      destinationAddress = destination;
+      destinationAddress;
       amount;
       networkFee = currentNetworkFee;
       totalCost;
@@ -645,6 +706,7 @@ actor {
       confirmedBlockheight = null;
       evictedDetectedTimestamp = null;
       lastStatusCheckTimestamp = null;
+      addressValidation;
     };
 
     transferRequests.add(requestId, newRequest);
@@ -658,7 +720,7 @@ actor {
     };
     transactions.add(transaction);
 
-    let submitResult = await broadcastTransactionToBlockchain(requestId, destination, amount);
+    let submitResult = await broadcastTransactionToBlockchain(requestId, destinationAddress, amount);
 
     if (not submitResult.success) {
       updateRequestOnFailure(requestId, caller, totalCost, submitResult.error, submitResult.diagnosticData);
@@ -820,7 +882,7 @@ actor {
       case (null) { null };
       case (?request) {
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Only users can view your own withdrawal requests");
+          Runtime.trap("Unauthorized: Can only view your own withdrawal requests");
         };
         ?request;
       };
@@ -829,7 +891,7 @@ actor {
 
   public query ({ caller }) func getUserWithdrawalRequests(user : Principal) : async [WithdrawalRequest] {
     if (user != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only users can view your own withdrawal requests");
+      Runtime.trap("Unauthorized: Can only view your own withdrawal requests");
     };
     let userRequests = withdrawalRequests.values().toArray().filter(
       func(request) { request.owner == user }
