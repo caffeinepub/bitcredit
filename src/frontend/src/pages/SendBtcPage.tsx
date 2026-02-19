@@ -11,14 +11,6 @@ import type { SendBTCRequest } from '../backend';
 import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
 import { normalizeSendBTCError } from '../utils/errors';
 
-// Bitcoin mainnet address validation regex
-// Supports Legacy (P2PKH starting with 1), P2SH (starting with 3), and Bech32 (starting with bc1)
-const BITCOIN_MAINNET_ADDRESS_REGEX = /^(bc1|[13])[a-km-zA-HJ-NP-Z1-9]{25,87}$/;
-
-function isValidBitcoinMainnetAddress(address: string): boolean {
-  return BITCOIN_MAINNET_ADDRESS_REGEX.test(address.trim());
-}
-
 export default function SendBtcPage() {
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
@@ -63,7 +55,6 @@ export default function SendBtcPage() {
 
   const requestedAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
   const trimmedDestination = destination.trim();
-  const isValidAddress = trimmedDestination ? isValidBitcoinMainnetAddress(trimmedDestination) : true;
   
   const { data: estimatedFee, isLoading: feeLoading, error: feeError } = useGetEstimatedNetworkFee(
     trimmedDestination,
@@ -78,10 +69,6 @@ export default function SendBtcPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isValidAddress) {
-      return;
-    }
     
     if (trimmedDestination && amount && Number(amount) > 0 && !insufficientFunds && !feeError) {
       setBroadcastStatus('Submitting transfer request...');
@@ -335,23 +322,13 @@ export default function SendBtcPage() {
               <Input
                 id="destination"
                 type="text"
-                placeholder="Enter Bitcoin mainnet address (e.g., bc1q... or 1... or 3...)"
+                placeholder="Enter Bitcoin mainnet address (any format)"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                className={`font-mono text-sm ${!isValidAddress && trimmedDestination ? 'border-destructive' : ''}`}
+                className="font-mono text-sm"
               />
-              {!isValidAddress && trimmedDestination && (
-                <p className="text-xs text-destructive">
-                  Please enter a valid Bitcoin mainnet address. Supported formats: Legacy (1...), P2SH (3...), or Bech32 (bc1...)
-                </p>
-              )}
-              {isValidAddress && trimmedDestination && (
-                <p className="text-xs text-green-600 dark:text-green-400">
-                  ✓ Valid Bitcoin mainnet address format
-                </p>
-              )}
               <p className="text-xs text-muted-foreground">
-                Any valid Bitcoin mainnet address — recipient does not need an account in this app
+                Any Bitcoin mainnet address — the blockchain API will validate the format
               </p>
             </div>
 
@@ -421,7 +398,6 @@ export default function SendBtcPage() {
               disabled={
                 isPending ||
                 !trimmedDestination ||
-                !isValidAddress ||
                 !amount ||
                 Number(amount) <= 0 ||
                 insufficientFunds ||
@@ -432,12 +408,12 @@ export default function SendBtcPage() {
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Broadcasting Transaction...
+                  Processing Transfer...
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Send Bitcoin
+                  Send {amount || '0'} BTC
                 </>
               )}
             </Button>

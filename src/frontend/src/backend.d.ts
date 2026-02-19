@@ -7,9 +7,20 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface UserProfile {
-    bitcoinWallet?: BitcoinWallet;
-    name: string;
+export interface MempoolAnalysisResult {
+    mempoolDepthBytes?: BitcoinAmount;
+    recommendedFeeRate: BitcoinAmount;
+    diagnosticData?: string;
+    feeDescription: string;
+    txid: string;
+    feeRateSufficiency: FeeRateSufficiency;
+    timestamp: Time;
+    recommendedNextBlockFeeRate?: BitcoinAmount;
+    mempoolFeeRate: BitcoinAmount;
+}
+export interface BitcoinWallet {
+    publicKey: Uint8Array;
+    address: string;
 }
 export interface TransformationOutput {
     status: bigint;
@@ -17,6 +28,20 @@ export interface TransformationOutput {
     headers: Array<http_header>;
 }
 export type Time = bigint;
+export interface ReserveDepositValidationRequest {
+    txid: string;
+    amount: BitcoinAmount;
+}
+export type ReserveManagementAction = {
+    __kind__: "withdraw";
+    withdraw: BitcoinAmount;
+} | {
+    __kind__: "deposit";
+    deposit: BitcoinAmount;
+} | {
+    __kind__: "correction";
+    correction: BitcoinAmount;
+};
 export interface ReserveMultisigConfig {
     threshold: bigint;
     redeemScript?: string;
@@ -34,6 +59,15 @@ export interface CoverageDetails {
     adjustedCoverageRatio: number;
     pendingOutflow: bigint;
     pendingOutflowWithFees: bigint;
+}
+export interface http_header {
+    value: string;
+    name: string;
+}
+export interface http_request_result {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
 }
 export interface Transaction {
     id: string;
@@ -63,7 +97,6 @@ export interface TransformationInput {
 export interface SendBTCRequest {
     id: bigint;
     status: TransferStatus;
-    addressValidation?: AddressValidationResult;
     failureReason?: string;
     diagnosticData?: string;
     owner: Principal;
@@ -78,35 +111,6 @@ export interface SendBTCRequest {
     amount: BitcoinAmount;
     lastStatusCheckTimestamp?: Time;
 }
-export type BitcoinAmount = bigint;
-export interface ReserveDepositValidationRequest {
-    txid: string;
-    amount: BitcoinAmount;
-}
-export type ReserveManagementAction = {
-    __kind__: "withdraw";
-    withdraw: BitcoinAmount;
-} | {
-    __kind__: "deposit";
-    deposit: BitcoinAmount;
-} | {
-    __kind__: "correction";
-    correction: BitcoinAmount;
-};
-export interface AddressValidationResult {
-    error?: string;
-    addressType?: AddressType;
-    isValid: boolean;
-}
-export interface http_header {
-    value: string;
-    name: string;
-}
-export interface http_request_result {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
 export interface ReserveStatus {
     reserveBtcBalance: BitcoinAmount;
     coverageDetails?: CoverageDetails;
@@ -114,6 +118,7 @@ export interface ReserveStatus {
     timestamp: Time;
     coverageRatio?: number;
 }
+export type BitcoinAmount = bigint;
 export interface WithdrawalRequest {
     id: bigint;
     status: WithdrawalStatus;
@@ -124,26 +129,9 @@ export interface WithdrawalRequest {
     timestamp: Time;
     amount: BitcoinAmount;
 }
-export interface MempoolAnalysisResult {
-    mempoolDepthBytes?: BitcoinAmount;
-    recommendedFeeRate: BitcoinAmount;
-    diagnosticData?: string;
-    feeDescription: string;
-    txid: string;
-    feeRateSufficiency: FeeRateSufficiency;
-    timestamp: Time;
-    recommendedNextBlockFeeRate?: BitcoinAmount;
-    mempoolFeeRate: BitcoinAmount;
-}
-export interface BitcoinWallet {
-    publicKey: Uint8Array;
-    address: string;
-}
-export enum AddressType {
-    P2PKH = "P2PKH",
-    P2SH = "P2SH",
-    Bech32m = "Bech32m",
-    Bech32 = "Bech32"
+export interface UserProfile {
+    bitcoinWallet?: BitcoinWallet;
+    name: string;
 }
 export enum FeeRateSufficiency {
     BORDERLINE = "BORDERLINE",

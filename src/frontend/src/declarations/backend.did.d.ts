@@ -10,15 +10,6 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export type AddressType = { 'P2PKH' : null } |
-  { 'P2SH' : null } |
-  { 'Bech32m' : null } |
-  { 'Bech32' : null };
-export interface AddressValidationResult {
-  'error' : [] | [string],
-  'addressType' : [] | [AddressType],
-  'isValid' : boolean,
-}
 export type BitcoinAmount = bigint;
 export interface BitcoinWallet { 'publicKey' : Uint8Array, 'address' : string }
 export interface ConfirmationAnalysisResult {
@@ -87,7 +78,6 @@ export interface ReserveStatus {
 export interface SendBTCRequest {
   'id' : bigint,
   'status' : TransferStatus,
-  'addressValidation' : [] | [AddressValidationResult],
   'failureReason' : [] | [string],
   'diagnosticData' : [] | [string],
   'owner' : Principal,

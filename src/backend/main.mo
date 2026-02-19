@@ -10,10 +10,10 @@ import Runtime "mo:core/Runtime";
 import Blob "mo:core/Blob";
 import Text "mo:core/Text";
 import OutCall "http-outcalls/outcall";
+import Migration "migration";
 import Iter "mo:core/Iter";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
 // Apply migration using the with clause
 (with migration = Migration.run)
@@ -44,26 +44,12 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // New type for address validation result
-  public type AddressValidationResult = {
-    isValid : Bool;
-    addressType : ?AddressType;
-    error : ?Text;
-  };
-
-  public type AddressType = {
-    #P2PKH;
-    #P2SH;
-    #Bech32;
-    #Bech32m;
-  };
-
   public type PeerConnectionStatus = {
     connectedPeers : [Text];
     networkHealth : Text;
   };
 
-  // Extended SendBTCRequest with address validation
+  // Extended SendBTCRequest (AddressValidationResult/AddressType will be removed)
   public type SendBTCRequest = {
     id : Nat;
     owner : Principal;
@@ -80,7 +66,6 @@ actor {
     confirmedBlockheight : ?Nat;
     evictedDetectedTimestamp : ?Time.Time;
     lastStatusCheckTimestamp : ?Time.Time;
-    addressValidation : ?AddressValidationResult;
   };
 
   public type TransferStatus = {
@@ -367,38 +352,6 @@ actor {
     };
   };
 
-  func validateBitcoinAddress(destinationAddress : Text) : AddressValidationResult {
-    if (destinationAddress.startsWith(#char '1') or destinationAddress.startsWith(#char '3')) {
-      return {
-        isValid = true;
-        addressType = if (destinationAddress.startsWith(#char '1')) { ?#P2PKH } else { ?#P2SH };
-        error = null;
-      };
-    };
-
-    if (destinationAddress.startsWith(#text "bc1")) {
-      if (destinationAddress.contains(#char 'm')) {
-        return {
-          isValid = true;
-          addressType = ?#Bech32m;
-          error = null;
-        };
-      } else {
-        return {
-          isValid = true;
-          addressType = ?#Bech32;
-          error = null;
-        };
-      };
-    };
-
-    {
-      isValid = false;
-      addressType = null;
-      error = ?("Invalid Bitcoin mainnet address format. Please review the destination address: " # destinationAddress);
-    };
-  };
-
   func performBTCBroadcast(_requestId : Nat, _destination : Text, _amount : BitcoinAmount) : BroadcastResponse {
     {
       success = false;
@@ -642,6 +595,7 @@ actor {
     transformImpl(input);
   };
 
+  // Address validation removed from this method!
   public shared ({ caller }) func sendBTC(destinationAddress : Text, amount : BitcoinAmount) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can send BTC");
@@ -661,9 +615,6 @@ actor {
     if (totalCost > reserveStatus.reserveBtcBalance) {
       Runtime.trap("Insufficient backend reserves for transaction");
     };
-
-    // Perform address validation. Always run, regardless of profile presence.
-    let addressValidation = ?validateBitcoinAddress(destinationAddress);
 
     let currentAdjustments = switch (balances.get(caller)) {
       case (null) { [] };
@@ -706,7 +657,6 @@ actor {
       confirmedBlockheight = null;
       evictedDetectedTimestamp = null;
       lastStatusCheckTimestamp = null;
-      addressValidation;
     };
 
     transferRequests.add(requestId, newRequest);

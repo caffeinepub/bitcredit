@@ -10,9 +10,14 @@ export function normalizeSendBTCError(error: Error): string {
     return 'Unable to process transfer. Please ensure you have entered a valid Bitcoin mainnet address. The recipient does not need to be registered in this app.';
   }
   
-  // Check for invalid address format
+  // Check for invalid address format - now from blockchain API
   if (message.includes('invalid') && (message.includes('address') || message.includes('destination'))) {
-    return 'Invalid Bitcoin address format. Please enter a valid Bitcoin mainnet address (starting with 1, 3, or bc1).';
+    return 'The blockchain API rejected this address as invalid. Please verify the Bitcoin address format and try again.';
+  }
+  
+  // Check for address format errors from blockchain API
+  if (message.includes('address') && (message.includes('format') || message.includes('not recognized'))) {
+    return 'The Bitcoin address format was not recognized by the blockchain network. Please verify the address and try again.';
   }
   
   // Check for insufficient on-chain funds in app wallet

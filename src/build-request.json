@@ -1,156 +1,95 @@
 {
   "kind": "build_request",
-  "title": "Implement flexible Bitcoin address validation, AI-assisted broadcast troubleshooting, and on-chain confirmation tracking",
-  "projectName": "Bitcoin Credit Transfer",
+  "title": "Remove Bitcoin address format validation and post all addresses directly to blockchain API",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-179",
-      "text": "Update the backend sendBTC flow to accept any valid Bitcoin mainnet address format (P2PKH, P2SH, Bech32, Bech32m) without requiring the destination address to be registered in the app's user profile/wallet registry, and ensure validation checks only verify Bitcoin mainnet address format correctness (not app account existence).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-last"
-        ],
-        "quotes": [
-          "App accepts any bitcoin send wallet format and attempts to make transfer to mainnet api"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend accepts any valid Bitcoin mainnet address format as a destination",
-        "No 'account not registered' or similar error is raised for unregistered addresses",
-        "Address validation checks only Bitcoin mainnet format correctness",
-        "Send BTC flow successfully creates transfer requests for any valid mainnet address"
-      ]
-    },
-    {
-      "id": "REQ-180",
-      "text": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues (invalid address, connectivity, insufficient funds, fee-too-low, mempool congestion), and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-last"
-        ],
-        "quotes": [
-          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend automatically retries failed broadcasts when issues are recoverable (e.g., temporary connectivity)",
-        "System diagnoses and surfaces clear English failure reasons for non-recoverable issues",
-        "Troubleshooting loop continues until broadcast succeeds or definitively fails",
-        "All retry attempts and diagnostics are logged without exposing secrets"
-      ]
-    },
-    {
-      "id": "REQ-181",
-      "text": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-last"
-        ],
-        "quotes": [
-          "Once transaction is posted on blockchain API app places a confirm check mark on sent attempt with transaction hash in app"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend periodically checks blockchain API for confirmation status of IN_PROGRESS transfers",
-        "Transfer request status is updated to COMPLETED once blockchain confirmation is detected",
-        "Confirmation state is persisted and survives canister upgrades",
-        "Blockchain txid is retained and displayed throughout the confirmation lifecycle"
-      ]
-    },
-    {
-      "id": "REQ-182",
-      "text": "Update the frontend transfer details UI (VerifyTransferDialog and TransferTroubleshootingPage) to display a clear visual confirmation indicator (check mark or similar) when a transfer request has been successfully posted to the blockchain API with a txid, and show an additional confirmed/completed indicator when the transaction reaches confirmed status on-chain.",
+      "id": "REQ-186",
+      "text": "Remove all Bitcoin address format validation checks from the frontend Send BTC form (frontend/src/pages/SendBtcPage.tsx) so that any user-provided destination address text is accepted without pre-validation and submitted directly to the backend sendBTC method.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "Once transaction is posted on blockchain API app places a confirm check mark on sent attempt with transaction hash in app"
+          "remove format check to mainnet wallet transfer requests"
         ]
       },
       "acceptanceCriteria": [
-        "A check mark or success icon appears when blockchainTxId is present",
-        "An additional confirmation indicator appears when status is COMPLETED",
-        "Transaction hash is displayed prominently and is copyable",
-        "All user-facing text is in clear English"
+        "The Send BTC form accepts any text string in the destination address field without displaying 'invalid format' errors",
+        "Form submission is not blocked by address format validation",
+        "The destination address is passed as-is to the backend sendBTC call"
       ]
     },
     {
-      "id": "REQ-183",
-      "text": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
+      "id": "REQ-187",
+      "text": "Remove all Bitcoin address format validation checks from the backend sendBTC flow (backend/main.mo) so that the provided destination address is passed directly to the blockchain API broadcast method without pre-validation, allowing the blockchain API to determine address validity.",
       "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+          "Post any wallet address user inputs to blockchain api for transfer"
         ]
       },
       "acceptanceCriteria": [
-        "Low-fee errors trigger automatic fee bump suggestions and retry logic",
-        "Duplicate transaction errors trigger on-chain confirmation checks",
-        "Connectivity errors trigger automatic retry with backoff",
-        "All error handling preserves audit trail with clear English diagnostics"
+        "Backend sendBTC method does not perform Bitcoin address format validation",
+        "Destination addresses are passed directly to broadcastTransactionToBlockchain without format checks",
+        "Invalid addresses are rejected by the blockchain API, not by app-side validation",
+        "The blockchain API response determines whether the address was valid"
       ]
     },
     {
-      "id": "REQ-184",
-      "text": "Update the frontend Send BTC and Admin Send BTC flows to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active, showing progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...').",
+      "id": "REQ-188",
+      "text": "Update the frontend Send BTC error handling (frontend/src/pages/SendBtcPage.tsx and frontend/src/utils/errors.ts) to display clear English error messages when the blockchain API rejects an address as invalid, explaining that the address format was not recognized by the blockchain API.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+          "Post any wallet address user inputs to blockchain api for transfer"
         ]
       },
       "acceptanceCriteria": [
-        "Real-time status messages appear during broadcast attempts",
-        "Troubleshooting progress is communicated to the user in English",
-        "Final outcome (success with txid or definitive failure) is clearly displayed",
-        "User can view detailed diagnostics via the troubleshooting page"
+        "When the blockchain API returns an address-related error, the UI shows a clear English message",
+        "The error message indicates the blockchain API could not process the address",
+        "Users understand the address was rejected by the blockchain, not by app validation"
       ]
     },
     {
-      "id": "REQ-185",
-      "text": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
-      "target": "backend",
+      "id": "REQ-189",
+      "text": "Remove all Bitcoin address format validation checks from the Admin Send BTC to Mainnet Wallet form (frontend/src/pages/AdminPage.tsx) so admins can submit any destination address text directly to the blockchain API without pre-validation.",
+      "target": "frontend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "With ai troubleshooting any errors or issues until transaction is broadcast on blockchain api from app transfer request"
+          "remove format check to mainnet wallet transfer requests"
         ]
       },
       "acceptanceCriteria": [
-        "Each troubleshooting retry is recorded with timestamp and parameters",
-        "Troubleshooting history is accessible via backend query for the request owner or admin",
-        "History is persisted across canister upgrades",
-        "No secrets or sensitive data are stored in troubleshooting logs"
+        "The Admin Send BTC form accepts any text string in the destination address field",
+        "Admin submissions are not blocked by address format validation",
+        "The destination address is passed as-is to the backend sendBTC call"
       ]
     }
   ],
   "constraints": [
-    "Backend must remain single-actor architecture; all logic in backend/main.mo",
-    "Do not modify read-only frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, components/ui",
-    "All user-facing text must be in clear English",
-    "Do not store or display Bitcoin private keys in the app",
-    "AI troubleshooting must be deterministic rule-based logic, not external AI service calls"
+    "Do not modify frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useInternetIdentity.tsx",
+    "Do not modify frontend/src/hooks/useActor.ts",
+    "Do not modify frontend/src/main.tsx",
+    "Do not modify files in frontend/src/components/ui",
+    "Preserve all existing transfer request auditability and ledger accounting",
+    "Preserve the existing safe rollback behavior when broadcasts fail"
   ],
   "nonGoals": [
-    "Implementing external Bitcoin Core node connectivity",
-    "Storing private keys in the app",
-    "Automated RBF transaction replacement with new signatures",
-    "Real-time WebSocket connections for status updates",
-    "Integration with external AI/LLM APIs for troubleshooting"
+    "Adding new address validation logic or rules",
+    "Implementing blockchain API endpoint configuration changes",
+    "Modifying the blockchain API broadcast implementation itself",
+    "Adding address whitelisting or blacklisting features"
   ],
   "imageRequirements": {
     "required": [],

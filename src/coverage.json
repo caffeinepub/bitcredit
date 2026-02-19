@@ -1,77 +1,56 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T00:07:18.297Z",
+  "generatedAt": "2026-02-19T00:31:39.248Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 2,
+    "total": 4,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-179",
-        "summary": "Update the backend sendBTC flow to accept any valid Bitcoin mainnet address format (P2PKH, P2SH, Bech32, Bech32m) without requiring the destination address to be registered in the app's user profile/wallet registry, and ensure validation checks only verify Bitcoin mainnet address format correctness (not app account existence).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-180",
-        "summary": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues (invalid address, connectivity, insufficient funds, fee-too-low, mempool congestion), and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-181",
-        "summary": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-182",
-        "summary": "Update the frontend transfer details UI (VerifyTransferDialog and TransferTroubleshootingPage) to display a clear visual confirmation indicator (check mark or similar) when a transfer request has been successfully posted to the blockchain API with a txid, and show an additional confirmed/completed indicator when the transaction reaches confirmed status on-chain.",
+        "id": "REQ-186",
+        "summary": "Remove all Bitcoin address format validation checks from the frontend Send BTC form (frontend/src/pages/SendBtcPage.tsx) so that any user-provided destination address text is accepted without pre-validation and submitted directly to the backend sendBTC method.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-          "frontend/src/pages/TransferTroubleshootingPage.tsx"
+          "frontend/src/pages/SendBtcPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-          "frontend/src/pages/TransferTroubleshootingPage.tsx"
+          "frontend/src/pages/SendBtcPage.tsx"
         ]
       },
       {
-        "id": "REQ-183",
-        "summary": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
+        "id": "REQ-187",
+        "summary": "Remove all Bitcoin address format validation checks from the backend sendBTC flow (backend/main.mo) so that the provided destination address is passed directly to the blockchain API broadcast method without pre-validation, allowing the blockchain API to determine address validity.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-184",
-        "summary": "Update the frontend Send BTC and Admin Send BTC flows to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active, showing progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...').",
+        "id": "REQ-188",
+        "summary": "Update the frontend Send BTC error handling (frontend/src/pages/SendBtcPage.tsx and frontend/src/utils/errors.ts) to display clear English error messages when the blockchain API rejects an address as invalid, explaining that the address format was not recognized by the blockchain API.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/utils/errors.ts",
+          "frontend/src/pages/SendBtcPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx",
-          "frontend/src/pages/AdminPage.tsx",
-          "frontend/src/hooks/useQueries.ts"
+          "frontend/src/utils/errors.ts",
+          "frontend/src/pages/SendBtcPage.tsx"
         ]
       },
       {
-        "id": "REQ-185",
-        "summary": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "id": "REQ-189",
+        "summary": "Remove all Bitcoin address format validation checks from the Admin Send BTC to Mainnet Wallet form (frontend/src/pages/AdminPage.tsx) so admins can submit any destination address text directly to the blockchain API without pre-validation.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/AdminPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/AdminPage.tsx"
+        ]
       }
     ]
   },
@@ -84,13 +63,11 @@
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
     "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/pages/TransferTroubleshootingPage.tsx",
+    "frontend/src/utils/errors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

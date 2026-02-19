@@ -448,11 +448,13 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
+          <ReserveMultisigConfigPanel />
+
           <Card className="financial-card">
             <CardHeader>
               <CardTitle>Reserve Adjustment History</CardTitle>
               <CardDescription>
-                All reserve deposits, withdrawals, and adjustments
+                All manual and validated reserve balance changes
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -464,7 +466,7 @@ export default function AdminPage() {
                         <TableHead>ID</TableHead>
                         <TableHead>Amount</TableHead>
                         <TableHead>Reason</TableHead>
-                        <TableHead>Txid</TableHead>
+                        <TableHead>Transaction ID</TableHead>
                         <TableHead>Timestamp</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -478,21 +480,21 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell>
                             {adjustment.transactionId ? (
-                              <div className="flex items-center gap-1">
-                                <code className="text-xs font-mono">
-                                  {adjustment.transactionId.slice(0, 8)}...
+                              <div className="flex items-center gap-2">
+                                <code className="font-mono text-xs truncate max-w-[200px]">
+                                  {adjustment.transactionId}
                                 </code>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0"
                                   onClick={() => handleCopyTxid(adjustment.transactionId!)}
+                                  className="h-6 w-6 p-0"
                                 >
                                   <Copy className="h-3 w-3" />
                                 </Button>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">N/A</span>
+                              <span className="text-muted-foreground text-xs">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
@@ -509,7 +511,6 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <ReserveMultisigConfigPanel />
           <ReserveMultisigSetupExternalNote />
           <ExternalAiReserveManagerMiningPoolNote />
           <BitcoinCoreReserveBalanceExternalNote />
@@ -519,16 +520,85 @@ export default function AdminPage() {
         <TabsContent value="payouts" className="space-y-6">
           <AdminWithdrawalStatusDashboard 
             requests={allWithdrawalRequests || []} 
-            onScrollToInbox={handleScrollToInbox}
+            onScrollToInbox={handleScrollToInbox} 
           />
+
+          <Card className="financial-card">
+            <CardHeader>
+              <CardTitle>Test Withdrawal Request (Admin)</CardTitle>
+              <CardDescription>
+                Submit a test withdrawal request as an admin user
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmitWithdrawal} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="withdrawAmount">Amount (BTC)</Label>
+                  <Input
+                    id="withdrawAmount"
+                    type="number"
+                    placeholder="0.00000000"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    step="0.00000001"
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="withdrawMethod">Payout Method</Label>
+                  <Input
+                    id="withdrawMethod"
+                    type="text"
+                    placeholder="e.g., PayPal, Stripe, Bank Transfer"
+                    value={withdrawMethod}
+                    onChange={(e) => setWithdrawMethod(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="withdrawAccount">Account/Email (optional)</Label>
+                  <Input
+                    id="withdrawAccount"
+                    type="text"
+                    placeholder="e.g., user@example.com"
+                    value={withdrawAccount}
+                    onChange={(e) => setWithdrawAccount(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" disabled={withdrawPending} className="w-full">
+                  {withdrawPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Submit Withdrawal Request
+                    </>
+                  )}
+                </Button>
+              </form>
+              {withdrawalRequestId && (
+                <Alert className="mt-4">
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Withdrawal request created with ID: <code className="font-mono">{withdrawalRequestId.toString()}</code>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
           <div ref={approvalInboxRef}>
             <AdminWithdrawalRequestsTable requests={allWithdrawalRequests || []} />
           </div>
+
           <ExternalPayoutApisDeveloperNote context="admin" />
         </TabsContent>
 
         <TabsContent value="transfers" className="space-y-6">
-          {/* Real-time broadcast status */}
+          <BroadcastingDetailsNote />
+
           {broadcastStatus && (
             <Alert className="border-chart-1 bg-chart-1/10">
               <Loader2 className="h-4 w-4 animate-spin text-chart-1" />
@@ -542,27 +612,28 @@ export default function AdminPage() {
 
           {transferOutcome && getTransferOutcomeAlert()}
 
-          <BroadcastingDetailsNote />
-
           <Card className="financial-card">
             <CardHeader>
-              <CardTitle>Admin Send BTC</CardTitle>
+              <CardTitle>Send BTC to Mainnet Wallet</CardTitle>
               <CardDescription>
-                Send Bitcoin from your admin wallet to any mainnet address
+                Transfer Bitcoin from admin balance to any Bitcoin mainnet address
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSendBTC} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="destination">Destination Address</Label>
+                  <Label htmlFor="destination">Destination Bitcoin Address</Label>
                   <Input
                     id="destination"
                     type="text"
-                    placeholder="Enter Bitcoin mainnet address"
+                    placeholder="Enter Bitcoin mainnet address (any format)"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
                     className="font-mono text-sm"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Any Bitcoin mainnet address — the blockchain API will validate the format
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sendAmount">Amount (BTC)</Label>
@@ -577,10 +648,20 @@ export default function AdminPage() {
                   />
                 </div>
                 {estimatedFee !== undefined && (
-                  <div className="p-3 bg-muted rounded-lg text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Estimated network fee:</span>
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Amount:</span>
+                      <span className="font-semibold">{sendAmount || '0'} BTC</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Network fee:</span>
                       <span className="font-semibold">{estimatedFee.toString()} BTC</span>
+                    </div>
+                    <div className="border-t pt-2 flex justify-between">
+                      <span className="font-semibold">Total:</span>
+                      <span className="font-bold text-primary">
+                        {(BigInt(sendAmount || '0') + estimatedFee).toString()} BTC
+                      </span>
                     </div>
                   </div>
                 )}
@@ -588,16 +669,59 @@ export default function AdminPage() {
                   {sendPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Broadcasting Transaction...
+                      Sending...
                     </>
                   ) : (
                     <>
                       <Send className="mr-2 h-4 w-4" />
-                      Send Bitcoin
+                      Send BTC
                     </>
                   )}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          <Card className="financial-card">
+            <CardHeader>
+              <CardTitle>Recent Transactions</CardTitle>
+              <CardDescription>All system transactions (admin view)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {transactions && transactions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Timestamp</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.slice(0, 10).map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="font-mono text-xs">{tx.id}</TableCell>
+                          <TableCell className="font-mono text-xs truncate max-w-[150px]">
+                            {tx.user.toString()}
+                          </TableCell>
+                          <TableCell className="font-semibold">{tx.amount.toString()} BTC</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{tx.transactionType}</Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(Number(tx.timestamp) / 1_000_000).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No transactions yet</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

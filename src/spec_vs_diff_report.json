@@ -1,54 +1,26 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T00:07:18.290Z",
-  "summary": "The implementation demonstrates significant progress on flexible Bitcoin address validation (REQ-179), AI-assisted troubleshooting infrastructure (REQ-180, REQ-183, REQ-185), confirmation tracking (REQ-181), and frontend UI updates (REQ-182, REQ-184). However, several core automation features—particularly the automatic broadcast retry loop, periodic confirmation polling, and full troubleshooting attempt history persistence—are not evident in the diff, resulting in missing requirements.",
-  "missing_requirements": [
+  "generatedAt": "2026-02-19T00:31:39.240Z",
+  "summary": "The diff removes Bitcoin address format validation from both frontend forms (SendBtcPage.tsx, AdminPage.tsx) and backend (main.mo), passes addresses directly to the blockchain API, and implements enhanced error handling for blockchain API address rejections. The changes align closely with requirements REQ-186, REQ-187, REQ-188, and REQ-189. A migration module was added to handle the data model change removing addressValidation fields from SendBTCRequest records.",
+  "missing_requirements": [],
+  "hallucinated_features": [
     {
-      "id": "REQ-180",
-      "requirement": "Implement a deterministic AI-assisted troubleshooting system in the backend that automatically analyzes broadcast failures, diagnoses common issues, and retries the broadcast with corrected parameters or provides a clear English failure reason when the issue cannot be automatically resolved.",
-      "reason": "The diff shows new types and infrastructure (AddressValidationResult, MempoolAnalysisResult, ConfirmationAnalysisResult) and frontend polling logic, but does not show backend code that implements an automatic retry loop. No evidence of backend logic that autonomously retries failed broadcasts with corrected parameters or executes a troubleshooting workflow without manual user intervention.",
+      "description": "Migration module (backend/migration.mo) was implemented to convert legacy SendBTCRequest records with addressValidation fields to new records without that field",
+      "reason": "The BuildRequest explicitly states 'Preserve all existing transfer request auditability and ledger accounting' as a constraint, but does not request or specify implementing a migration module to handle the schema change. While this is a reasonable implementation decision to preserve data during the schema change, it was not explicitly requested in the requirements.",
       "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-181",
-      "requirement": "Add backend logic to automatically detect when a broadcasted transaction (with txid) has been confirmed on the Bitcoin blockchain via the configured blockchain API, and update the transfer request status from IN_PROGRESS to COMPLETED with a persistent confirmation indicator.",
-      "reason": "The diff shows new fields (confirmedBlockheight, lastStatusCheckTimestamp) and types related to confirmation tracking, but does not show backend timer or heartbeat logic that periodically checks IN_PROGRESS transfers and updates their status to COMPLETED. No evidence of automatic background polling or scheduled confirmation checks.",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-183",
-      "requirement": "Extend the backend AI troubleshooting system to handle specific Bitcoin broadcast error patterns including: (1) 'insufficient priority' or 'fee too low' errors by suggesting a higher fee and offering a retry path, (2) 'transaction already in blockchain' or 'duplicate' errors by checking on-chain status and marking as COMPLETED if confirmed, and (3) 'unable to connect' or timeout errors by retrying with exponential backoff up to a maximum retry count.",
-      "reason": "The diff shows types for fee analysis (MempoolAnalysisResult, FeeRateSufficiency) but does not show backend logic that implements automatic fee bump retry, duplicate transaction on-chain checks, or exponential backoff for connectivity errors. Frontend references suggest manual user-initiated retries rather than automatic backend retry logic.",
-      "evidence": [
-        "backend/main.mo",
-        "frontend/src/pages/TransferTroubleshootingPage.tsx"
-      ]
-    },
-    {
-      "id": "REQ-185",
-      "requirement": "Add a backend persistence layer for AI troubleshooting attempt history per transfer request, storing each retry attempt with timestamp, attempted parameters (e.g., adjusted fee), error encountered, and resolution action taken, so the full troubleshooting sequence is auditable from the app UI.",
-      "reason": "The diff shows diagnosticData and failureReason fields on SendBTCRequest, but does not show a dedicated troubleshooting history collection or array of retry attempts. No evidence of a persistent log structure that stores multiple retry events with timestamps and parameters per request.",
-      "evidence": [
-        "backend/main.mo"
+        "backend/migration.mo"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.75,
+  "confidence": 0.92,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-    "frontend/src/hooks/useQueries.ts",
     "frontend/src/pages/AdminPage.tsx",
     "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/pages/TransferTroubleshootingPage.tsx",
+    "frontend/src/utils/errors.ts",
     "project_state.json"
   ]
 }

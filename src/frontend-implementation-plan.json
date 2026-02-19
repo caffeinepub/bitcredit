@@ -1,54 +1,58 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Implement flexible Bitcoin address validation, AI-assisted broadcast troubleshooting, and on-chain confirmation tracking - Frontend",
+  "title": "Remove Bitcoin Address Validation and Delegate to Blockchain API",
   "requirements": [
     {
-      "id": "REQ-182",
-      "summary": "Display visual confirmation indicators for broadcasted and confirmed transfers in VerifyTransferDialog and TransferTroubleshootingPage",
+      "id": "REQ-186",
+      "summary": "Remove all Bitcoin address format validation from the frontend Send BTC form so any user-provided address is accepted and submitted directly to the backend",
       "acceptanceCriteria": [
-        "A check mark or success icon appears when blockchainTxId is present",
-        "An additional confirmation indicator appears when status is COMPLETED",
-        "Transaction hash is displayed prominently and is copyable",
-        "All user-facing text is in clear English"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/transfers/VerifyTransferDialog.tsx",
-          "operation": "modify",
-          "description": "Add visual confirmation indicators to display a check mark or success icon when blockchainTxId is present in the transfer request, and show an additional confirmed/completed indicator when status is COMPLETED. Ensure the transaction hash is displayed prominently with copy-to-clipboard functionality. Update status badge styling to clearly differentiate between broadcasted (IN_PROGRESS with txid) and confirmed (COMPLETED) states using appropriate icons and colors."
-        },
-        {
-          "path": "frontend/src/pages/TransferTroubleshootingPage.tsx",
-          "operation": "modify",
-          "description": "Add confirmation status indicators showing a check mark when the transfer has been broadcasted (blockchainTxId exists) and an additional confirmation badge when the status is COMPLETED. Display the blockchain transaction ID prominently with copy functionality. Update the UI to clearly communicate the difference between 'broadcasted to blockchain API' and 'confirmed on-chain' states using distinct visual indicators and English labels."
-        }
-      ]
-    },
-    {
-      "id": "REQ-184",
-      "summary": "Display real-time broadcast and troubleshooting status updates during AI-assisted broadcast attempts in Send BTC flows",
-      "acceptanceCriteria": [
-        "Real-time status messages appear during broadcast attempts",
-        "Troubleshooting progress is communicated to the user in English",
-        "Final outcome (success with txid or definitive failure) is clearly displayed",
-        "User can view detailed diagnostics via the troubleshooting page"
+        "The Send BTC form accepts any text string in the destination address field without displaying 'invalid format' errors",
+        "Form submission is not blocked by address format validation",
+        "The destination address is passed as-is to the backend sendBTC call"
       ],
       "file_operations": [
         {
           "path": "frontend/src/pages/SendBtcPage.tsx",
           "operation": "modify",
-          "description": "Add real-time status messaging during the sendBTC operation to display progress updates in clear English such as 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', and 'Transaction posted to blockchain, awaiting confirmation...'. Implement polling or periodic status checks after submission to fetch updated transfer request status and diagnostic data from the backend. Display the current broadcast attempt status and any troubleshooting progress messages. On final success (txid received), show a success message with the transaction ID and a link to the troubleshooting page for detailed diagnostics. On definitive failure, display the failure reason clearly and provide a link to troubleshooting."
+          "description": "Remove the addressError state and all Bitcoin address format validation logic from the destination address input field. Remove any regex patterns, checksum validation, or format checking that prevents form submission. Ensure the destination address value is passed directly to the sendBTC backend method without client-side validation. Keep all other validations (amount, balance checks) intact."
+        }
+      ]
+    },
+    {
+      "id": "REQ-188",
+      "summary": "Update frontend error handling to display clear messages when the blockchain API rejects an invalid address",
+      "acceptanceCriteria": [
+        "When the blockchain API returns an address-related error, the UI shows a clear English message",
+        "The error message indicates the blockchain API could not process the address",
+        "Users understand the address was rejected by the blockchain, not by app validation"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/utils/errors.ts",
+          "operation": "modify",
+          "description": "Update the normalizeSendBtcError function to handle blockchain API address rejection errors. Add clear English error messages that explain when the blockchain API could not process the provided address (e.g., 'The blockchain API rejected this address as invalid' or 'The address format was not recognized by the Bitcoin network'). Ensure error messages clearly indicate the rejection came from the blockchain API, not from app-side validation."
         },
+        {
+          "path": "frontend/src/pages/SendBtcPage.tsx",
+          "operation": "modify",
+          "description": "Update error display logic to show the normalized error messages from the blockchain API. Ensure that when sendBTC fails due to an invalid address, the error message from normalizeSendBtcError is displayed to the user in a clear, user-friendly format. Remove any client-side address validation error messages that would conflict with blockchain API error feedback."
+        }
+      ]
+    },
+    {
+      "id": "REQ-189",
+      "summary": "Remove all Bitcoin address format validation from the Admin Send BTC to Mainnet Wallet form so admins can submit any address directly to the blockchain API",
+      "acceptanceCriteria": [
+        "The Admin Send BTC form accepts any text string in the destination address field",
+        "Admin submissions are not blocked by address format validation",
+        "The destination address is passed as-is to the backend sendBTC call"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/pages/AdminPage.tsx",
           "operation": "modify",
-          "description": "Update the Admin Send BTC tab to display real-time broadcast and troubleshooting status updates while the AI-assisted broadcast loop is active in the backend. Show progress messages in clear English (e.g., 'Attempting broadcast...', 'Broadcast failed, analyzing issue...', 'Retrying with adjusted parameters...', 'Transaction posted to blockchain, awaiting confirmation...'). Implement status polling after initiating a transfer to fetch updated request status and diagnostic data. Display the final outcome prominently with either the blockchain transaction ID on success or a clear failure reason with link to troubleshooting."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a new React Query hook for polling transfer request status during active broadcast attempts, such as useTransferRequestStatus(requestId, { enabled, refetchInterval }). This hook should call the backend refreshTransferRequestStatus or getTransferRequest method periodically to fetch updated status, diagnosticData, and blockchainTxId. Ensure the hook can be enabled/disabled based on transfer state (e.g., only poll while status is PENDING or IN_PROGRESS) and stops polling once status reaches COMPLETED, FAILED, or EVICTED."
+          "description": "Remove all Bitcoin address format validation logic from the Admin Send BTC to Mainnet Wallet form within the AdminPage component. Remove any addressError state, regex validation, or format checking for the destination address input in the admin section. Ensure the destination address value is passed directly to the sendBTC backend method without client-side validation. Keep amount validation and other admin-specific checks intact."
         }
       ]
     }
