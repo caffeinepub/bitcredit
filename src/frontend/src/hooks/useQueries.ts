@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
 import { Principal } from '@dfinity/principal';
-import type { Transaction, UserProfile, WithdrawalRequest, PeerTransferRequest, BitcoinPurchaseRecord, BitcoinPurchaseRecordInput, VerificationRequest, VerificationRequestId } from '../backend';
+import type { Transaction, UserProfile, WithdrawalRequest, PeerTransferRequest, BitcoinPurchaseRecord, BitcoinPurchaseRecordInput, VerificationRequest, VerificationRequestId, BitcoinAmount } from '../backend';
 import type { MainnetTransaction } from '../types/mainnet';
 import { toast } from 'sonner';
 
@@ -33,10 +33,23 @@ export function useSaveCallerUserProfile() {
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.saveCallerUserProfile(profile);
+      
+      // Validate profile has required fields
+      if (!profile.name || profile.name.trim() === '') {
+        throw new Error('Name is required');
+      }
+
+      // Call backend with the complete profile object
+      await actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
+      // Invalidate the profile query to trigger a refetch
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      toast.success('Profile created successfully!');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to save profile:', error);
+      toast.error(error.message || 'Failed to save profile');
     },
   });
 }
@@ -157,6 +170,7 @@ export function useSendCreditsToPeer() {
       queryClient.invalidateQueries({ queryKey: ['callerBalance'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['callerPeerTransfers'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
     },
   });
 }
@@ -179,14 +193,14 @@ export function useRequestWithdrawal() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ amount, method, account }: { amount: bigint; method: string; account: string }) => {
+    mutationFn: async ({ amount, method, account }: { amount: bigint; method: string; account: string | null }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.requestWithdrawal(amount, method, account);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['callerBalance'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['callerWithdrawalRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }
@@ -201,11 +215,13 @@ export function useGetCallerWithdrawalRequests() {
       return actor.getCallerWithdrawalRequests();
     },
     enabled: !!actor && !isFetching,
+    refetchOnWindowFocus: true,
   });
 }
 
 export function useGetAllWithdrawalRequests() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<WithdrawalRequest[]>({
     queryKey: ['allWithdrawalRequests'],
@@ -213,7 +229,8 @@ export function useGetAllWithdrawalRequests() {
       if (!actor) return [];
       return actor.getAllWithdrawalRequests();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -229,6 +246,7 @@ export function useMarkWithdrawalAsPaid() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWithdrawalRequests'] });
       queryClient.invalidateQueries({ queryKey: ['callerWithdrawalRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }
@@ -245,12 +263,46 @@ export function useRejectWithdrawal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWithdrawalRequests'] });
       queryClient.invalidateQueries({ queryKey: ['callerWithdrawalRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['callerBalance'] });
+    },
+  });
+}
+
+export function useGetAllUsers() {
+  const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  return useQuery<Array<[Principal, UserProfile]>>({
+    queryKey: ['allUsers'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUsers();
+    },
+    enabled: !!actor && !isFetching && !!isAdmin,
+  });
+}
+
+export function useCreditBtc() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ user, amount }: { user: Principal; amount: bigint }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.creditBtc(user, amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['callerBalance'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
     },
   });
 }
 
 export function useGetBitcoinPurchases() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<Array<[string, BitcoinPurchaseRecord]>>({
     queryKey: ['bitcoinPurchases'],
@@ -258,7 +310,7 @@ export function useGetBitcoinPurchases() {
       if (!actor) return [];
       return actor.getBitcoinPurchases();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
@@ -273,61 +325,42 @@ export function useRecordBitcoinPurchase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
-      toast.success('Bitcoin purchase verified successfully');
-    },
-    onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to record Bitcoin purchase';
-      if (errorMessage.includes('already exists')) {
-        toast.error('This transaction ID has already been verified');
-      } else if (errorMessage.includes('Unauthorized')) {
-        toast.error('You do not have permission to verify Bitcoin purchases');
-      } else {
-        toast.error(errorMessage);
-      }
     },
   });
 }
 
-export function useSubmitVerification() {
+export function useSubmitVerificationRequest() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
-  const { identity } = useInternetIdentity();
 
   return useMutation({
-    mutationFn: async ({ transactionId, amount }: { transactionId: string; amount: bigint }) => {
+    mutationFn: async ({ transactionId, amount }: { transactionId: string; amount: BitcoinAmount }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.submitVerificationRequest(transactionId, amount);
     },
     onSuccess: () => {
-      const principalId = identity?.getPrincipal().toString();
-      queryClient.invalidateQueries({ queryKey: ['verificationRequests', principalId] });
-      toast.success('Verification request submitted successfully');
-    },
-    onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to submit verification request';
-      toast.error(errorMessage);
+      queryClient.invalidateQueries({ queryKey: ['userVerificationRequests'] });
     },
   });
 }
 
-export function useUserVerificationRequests() {
+export function useGetUserVerificationRequests() {
   const { actor, isFetching } = useActor();
   const { identity } = useInternetIdentity();
 
-  const principalId = identity?.getPrincipal();
-
   return useQuery<VerificationRequest[]>({
-    queryKey: ['verificationRequests', principalId?.toString()],
+    queryKey: ['userVerificationRequests'],
     queryFn: async () => {
-      if (!actor || !principalId) return [];
-      return actor.getUserVerificationRequests(principalId);
+      if (!actor || !identity) return [];
+      return actor.getUserVerificationRequests(identity.getPrincipal());
     },
-    enabled: !!actor && !isFetching && !!principalId,
+    enabled: !!actor && !isFetching && !!identity,
   });
 }
 
 export function useAdminVerificationRequests() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<Array<[VerificationRequestId, VerificationRequest]>>({
     queryKey: ['allVerificationRequests'],
@@ -335,31 +368,28 @@ export function useAdminVerificationRequests() {
       if (!actor) return [];
       return actor.getAllVerificationRequests();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
+    refetchOnWindowFocus: true,
   });
 }
 
-export function useApproveVerification() {
+export function useApproveVerificationRequest() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ requestId, comment }: { requestId: VerificationRequestId; comment?: string }) => {
+    mutationFn: async ({ requestId, comment }: { requestId: VerificationRequestId; comment: string | null }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.approveVerificationRequest(requestId, comment || null);
+      return actor.approveVerificationRequest(requestId, comment);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allVerificationRequests'] });
-      toast.success('Verification request approved');
-    },
-    onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to approve verification request';
-      toast.error(errorMessage);
+      queryClient.invalidateQueries({ queryKey: ['userVerificationRequests'] });
     },
   });
 }
 
-export function useRejectVerification() {
+export function useRejectVerificationRequest() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
@@ -370,11 +400,27 @@ export function useRejectVerification() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allVerificationRequests'] });
-      toast.success('Verification request rejected');
+      queryClient.invalidateQueries({ queryKey: ['userVerificationRequests'] });
     },
-    onError: (error: any) => {
-      const errorMessage = error?.message || 'Failed to reject verification request';
-      toast.error(errorMessage);
+  });
+}
+
+export function useGetAllPeerTransfers() {
+  const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  return useQuery<PeerTransferRequest[]>({
+    queryKey: ['allPeerTransfers'],
+    queryFn: async () => {
+      if (!actor) return [];
+      const result = await actor.getAllPeerTransfers();
+      if (result.__kind__ === 'success') {
+        return result.success.transfers.map(([_, transfer]) => transfer);
+      } else {
+        throw new Error(result.failedToRetrieveTransfers.errorMessage);
+      }
     },
+    enabled: !!actor && !isFetching && !!isAdmin,
+    refetchOnWindowFocus: true,
   });
 }

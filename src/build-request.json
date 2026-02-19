@@ -1,61 +1,47 @@
 {
   "kind": "build_request",
-  "title": "Enable manual Bitcoin transaction verification for users",
+  "title": "Fix username not persisting during profile creation",
   "projectName": "Bitcoin Credit Transfer",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
-      "target": "frontend",
+      "text": "Investigate and fix the issue where the username entered in the ProfileSetupModal is not being saved when the user clicks the save button. Verify that the createProfile mutation is being called correctly and that the backend is persisting the username.",
+      "target": "both",
       "source": {
         "messageIds": [
           "msg-latest"
         ],
         "quotes": [
-          "Give users ability for manual bitcoin transaction verification"
+          "User name isn't going past save point to create profile please troubleshoot issue"
         ]
       },
       "acceptanceCriteria": [
-        "Non-admin authenticated users can navigate to /verify-transaction",
-        "Page includes a form similar to AdminManualVerificationPage but for regular users",
-        "Form accepts transaction ID (64-character hex) and BTC amount (up to 8 decimals)"
+        "Username entered in ProfileSetupModal successfully persists to the backend",
+        "Profile creation completes without errors",
+        "User can proceed past the profile setup modal after entering a valid username",
+        "Backend returns the created profile with the correct username"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add backend method submitVerificationRequest that allows regular users to submit transaction verification requests with status tracking",
-      "target": "backend",
+      "text": "Add error handling and user feedback in ProfileSetupModal to display any errors that occur during profile creation, including network errors, validation errors, or backend failures.",
+      "target": "frontend",
       "source": {
         "messageIds": [
           "msg-latest"
         ]
       },
       "acceptanceCriteria": [
-        "Method stores verification requests with fields: txid, amount, requester principal, submission timestamp, status (pending/approved/rejected)",
-        "Only authenticated users can call this method",
-        "Returns request ID for tracking"
+        "ProfileSetupModal displays error messages if profile creation fails",
+        "User receives clear feedback about what went wrong",
+        "Modal shows loading state while profile is being created",
+        "User can retry profile creation if an error occurs"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Admin-only page displaying table of verification requests",
-        "Shows txid, amount, requester principal, submission date, and status",
-        "Includes approve and reject buttons for pending requests",
-        "Links to blockchain explorer for transaction verification"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Add backend methods approveVerificationRequest and rejectVerificationRequest that allow admins to process user verification submissions",
+      "text": "Verify that the backend createProfile method correctly validates and stores the username, and returns appropriate error responses for invalid inputs or system failures.",
       "target": "backend",
       "source": {
         "messageIds": [
@@ -63,87 +49,22 @@
         ]
       },
       "acceptanceCriteria": [
-        "approveVerificationRequest credits the user's balance and updates request status to approved",
-        "rejectVerificationRequest updates status to rejected without crediting balance",
-        "Both methods record the admin principal who processed the request",
-        "Both methods require admin privileges to execute"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Navigation item labeled 'Verify Transaction' or 'Submit Transaction'",
-        "Only visible to authenticated users who are not admins",
-        "Positioned logically within existing navigation menu"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add navigation link to /admin/verification-requests in admin section navigation",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Navigation card on AdminPage linking to verification requests",
-        "Shows count of pending verification requests",
-        "Only visible to admin users"
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Create user verification history view showing all verification requests submitted by the current user with their status",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Displays on user verification page below submission form",
-        "Shows transaction ID, amount, submission date, status (pending/approved/rejected)",
-        "Includes link to blockchain explorer for each transaction",
-        "Updates in real-time when new requests are submitted"
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "text": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-latest"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Hooks follow existing patterns in useQueries.ts",
-        "Mutations invalidate relevant queries on success",
-        "Error handling follows existing error normalization patterns"
+        "Backend validates username is not empty and meets any length requirements",
+        "Profile is correctly stored with the principal and username",
+        "Backend returns success response with created profile data",
+        "Backend returns descriptive error messages for validation failures"
       ]
     }
   ],
   "constraints": [
+    "Do not modify the useInternetIdentity hook or authentication flow",
     "Maintain single-actor architecture in backend/main.mo",
-    "Do not modify immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, frontend/src/components/ui",
-    "Use existing ManualVerificationForm and VerificationHistoryTable components as reference patterns",
-    "Follow existing authentication and admin access patterns",
-    "Preserve existing recordPurchase admin-only functionality as separate from new user verification flow"
+    "Do not change the ProfileSetupModal component structure, only fix the save logic"
   ],
   "nonGoals": [
-    "Automatic blockchain verification of transactions",
-    "Integration with external Bitcoin APIs for transaction validation",
-    "Modification of existing admin manual verification page (AdminManualVerificationPage)",
-    "Changes to withdrawal or peer transfer systems",
-    "Real-time blockchain monitoring or webhook integration"
+    "Adding additional profile fields beyond username",
+    "Implementing profile editing functionality",
+    "Changing the authentication system"
   ],
   "imageRequirements": {
     "required": [],

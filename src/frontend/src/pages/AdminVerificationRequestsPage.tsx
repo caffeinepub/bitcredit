@@ -2,14 +2,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import AdminVerificationRequestsTable from '../components/verification/AdminVerificationRequestsTable';
-import { useAdminVerificationRequests, useApproveVerification, useRejectVerification } from '../hooks/useQueries';
+import { useAdminVerificationRequests, useApproveVerificationRequest, useRejectVerificationRequest } from '../hooks/useQueries';
 import { VerificationStatus } from '../backend';
 import type { VerificationRequestId } from '../backend';
 
 export default function AdminVerificationRequestsPage() {
   const { data: requests, isLoading } = useAdminVerificationRequests();
-  const approveVerification = useApproveVerification();
-  const rejectVerification = useRejectVerification();
+  const approveVerification = useApproveVerificationRequest();
+  const rejectVerification = useRejectVerificationRequest();
 
   const allRequests = requests?.map(([id, request]) => ({ ...request, id })) || [];
   const pendingCount = allRequests.filter(r => r.status === VerificationStatus.pending).length;
@@ -17,7 +17,7 @@ export default function AdminVerificationRequestsPage() {
   const rejectedCount = allRequests.filter(r => r.status === VerificationStatus.rejected).length;
 
   const handleApprove = async (requestId: VerificationRequestId, comment?: string) => {
-    await approveVerification.mutateAsync({ requestId, comment });
+    await approveVerification.mutateAsync({ requestId, comment: comment || null });
   };
 
   const handleReject = async (requestId: VerificationRequestId, comment: string) => {

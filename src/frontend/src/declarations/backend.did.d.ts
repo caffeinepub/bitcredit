@@ -104,6 +104,18 @@ export interface _SERVICE {
   >,
   'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'creditBtc' : ActorMethod<[Principal, BitcoinAmount], undefined>,
+  'getAllPeerTransfers' : ActorMethod<
+    [],
+    {
+        'success' : {
+          'totalTransfers' : bigint,
+          'transfers' : Array<[PeerTransferId, PeerTransferRequest]>,
+        }
+      } |
+      { 'failedToRetrieveTransfers' : { 'errorMessage' : string } }
+  >,
+  'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
   'getAllVerificationRequests' : ActorMethod<
     [],
     Array<[VerificationRequestId, VerificationRequest]>

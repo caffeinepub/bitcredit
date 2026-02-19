@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-create-a-user-accessible-page-at-route-verify-transaction-that-allows-non-admin-users-to-manually-submit-bitcoin-transaction-details-for-verification",
-      "featureTitle": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
+      "featureId": "feature-investigate-and-fix-the-issue-where-the-username-entered-in-the-profilesetupmodal-is-not-being-saved-when-the-user-clicks-the-save-button-verify-that-the-createprofile-mutation-is-being-called-correctly-and-that-the-backend-is-persisting-the-username",
+      "featureTitle": "Investigate and fix the issue where the username entered in the ProfileSetupModal is not being saved when the user clicks the save button. Verify that the createProfile mutation is being called correctly and that the backend is persisting the username.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/pages/UserVerifyTransactionPage.tsx"
+        "frontend/src/components/auth/ProfileSetupModal.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -23,12 +23,10 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-create-adminverificationrequestspage-at-route-admin-verification-requests-showing-all-user-submitted-verification-requests-with-approve-reject-actions",
-      "featureTitle": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
+      "featureId": "feature-add-error-handling-and-user-feedback-in-profilesetupmodal-to-display-any-errors-that-occur-during-profile-creation-including-network-errors-validation-errors-or-backend-failures",
+      "featureTitle": "Add error handling and user feedback in ProfileSetupModal to display any errors that occur during profile creation, including network errors, validation errors, or backend failures.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-        "frontend/src/pages/AdminVerificationRequestsPage.tsx"
+        "frontend/src/components/auth/ProfileSetupModal.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -40,88 +38,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-navigation-link-to-verify-transaction-in-applayout-navigation-menu-for-authenticated-non-admin-users",
-      "featureTitle": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
-      "files": [
-        "frontend/src/components/layout/AppLayout.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-navigation-link-to-admin-verification-requests-in-admin-section-navigation",
-      "featureTitle": "Add navigation link to /admin/verification-requests in admin section navigation",
-      "files": [
-        "frontend/src/pages/AdminPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-user-verification-history-view-showing-all-verification-requests-submitted-by-the-current-user-with-their-status",
-      "featureTitle": "Create user verification history view showing all verification requests submitted by the current user with their status",
-      "files": [
-        "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
-        "frontend/src/pages/UserVerifyTransactionPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-react-query-hooks-for-user-verification-operations-usesubmitverification-useuserverificationrequests-useapproveverification-userejectverification-and-useadminverificationrequests",
-      "featureTitle": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
-      "files": [
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-8"
+        "REQ-2"
       ],
       "confidence": "high"
     }

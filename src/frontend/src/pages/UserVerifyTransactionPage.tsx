@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSubmitVerification, useUserVerificationRequests } from '../hooks/useQueries';
+import { useSubmitVerificationRequest, useGetUserVerificationRequests } from '../hooks/useQueries';
 import { Loader2 } from 'lucide-react';
 import UserVerificationHistoryTable from '../components/verification/UserVerificationHistoryTable';
 
@@ -14,8 +14,8 @@ export default function UserVerifyTransactionPage() {
   const [amount, setAmount] = useState('');
   const [errors, setErrors] = useState<{ txid?: string; amount?: string }>({});
 
-  const submitVerification = useSubmitVerification();
-  const { data: verificationRequests, isLoading: requestsLoading } = useUserVerificationRequests();
+  const submitVerification = useSubmitVerificationRequest();
+  const { data: verificationRequests, isLoading: requestsLoading } = useGetUserVerificationRequests();
 
   const validateTxid = (value: string): boolean => {
     const txidRegex = /^[0-9a-fA-F]{64}$/;

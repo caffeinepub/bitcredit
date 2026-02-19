@@ -15,13 +15,44 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const VerificationStatus = IDL.Variant({
+export const BitcoinAmount = IDL.Nat;
+export const PeerTransferId = IDL.Nat;
+export const PeerTransferStatus = IDL.Variant({
+  'deleted' : IDL.Null,
   'pending' : IDL.Null,
   'approved' : IDL.Null,
   'rejected' : IDL.Null,
 });
 export const Time = IDL.Int;
-export const BitcoinAmount = IDL.Nat;
+export const PeerTransferRequest = IDL.Record({
+  'id' : PeerTransferId,
+  'status' : PeerTransferStatus,
+  'deleted' : IDL.Bool,
+  'createdAt' : Time,
+  'rejectionReason' : IDL.Opt(IDL.Text),
+  'lastUpdated' : Time,
+  'recipient' : IDL.Principal,
+  'approvalTimestamp' : IDL.Opt(Time),
+  'sender' : IDL.Principal,
+  'approver' : IDL.Opt(IDL.Principal),
+  'rejectionTimestamp' : IDL.Opt(Time),
+  'amount' : BitcoinAmount,
+});
+export const SegwitMetadata = IDL.Record({ 'p2wpkhStatus' : IDL.Bool });
+export const BitcoinWallet = IDL.Record({
+  'publicKey' : IDL.Vec(IDL.Nat8),
+  'address' : IDL.Text,
+  'segwitMetadata' : SegwitMetadata,
+});
+export const UserProfile = IDL.Record({
+  'bitcoinWallet' : IDL.Opt(BitcoinWallet),
+  'name' : IDL.Text,
+});
+export const VerificationStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
 export const VerificationRequest = IDL.Record({
   'id' : VerificationRequestId,
   'status' : VerificationStatus,
@@ -54,37 +85,6 @@ export const BitcoinPurchaseRecord = IDL.Record({
   'verifiedBy' : IDL.Principal,
   'transactionId' : IDL.Text,
 });
-export const PeerTransferId = IDL.Nat;
-export const PeerTransferStatus = IDL.Variant({
-  'deleted' : IDL.Null,
-  'pending' : IDL.Null,
-  'approved' : IDL.Null,
-  'rejected' : IDL.Null,
-});
-export const PeerTransferRequest = IDL.Record({
-  'id' : PeerTransferId,
-  'status' : PeerTransferStatus,
-  'deleted' : IDL.Bool,
-  'createdAt' : Time,
-  'rejectionReason' : IDL.Opt(IDL.Text),
-  'lastUpdated' : Time,
-  'recipient' : IDL.Principal,
-  'approvalTimestamp' : IDL.Opt(Time),
-  'sender' : IDL.Principal,
-  'approver' : IDL.Opt(IDL.Principal),
-  'rejectionTimestamp' : IDL.Opt(Time),
-  'amount' : BitcoinAmount,
-});
-export const SegwitMetadata = IDL.Record({ 'p2wpkhStatus' : IDL.Bool });
-export const BitcoinWallet = IDL.Record({
-  'publicKey' : IDL.Vec(IDL.Nat8),
-  'address' : IDL.Text,
-  'segwitMetadata' : SegwitMetadata,
-});
-export const UserProfile = IDL.Record({
-  'bitcoinWallet' : IDL.Opt(BitcoinWallet),
-  'name' : IDL.Text,
-});
 export const TransactionType = IDL.Variant({
   'adjustment' : IDL.Null,
   'withdrawalRejected' : IDL.Null,
@@ -114,6 +114,29 @@ export const idlService = IDL.Service({
     ),
   'approveWithdrawal' : IDL.Func([WithdrawalRequestId], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'creditBtc' : IDL.Func([IDL.Principal, BitcoinAmount], [], []),
+  'getAllPeerTransfers' : IDL.Func(
+      [],
+      [
+        IDL.Variant({
+          'success' : IDL.Record({
+            'totalTransfers' : IDL.Nat,
+            'transfers' : IDL.Vec(
+              IDL.Tuple(PeerTransferId, PeerTransferRequest)
+            ),
+          }),
+          'failedToRetrieveTransfers' : IDL.Record({
+            'errorMessage' : IDL.Text,
+          }),
+        }),
+      ],
+      ['query'],
+    ),
+  'getAllUsers' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+      ['query'],
+    ),
   'getAllVerificationRequests' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(VerificationRequestId, VerificationRequest))],
@@ -210,13 +233,44 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const VerificationStatus = IDL.Variant({
+  const BitcoinAmount = IDL.Nat;
+  const PeerTransferId = IDL.Nat;
+  const PeerTransferStatus = IDL.Variant({
+    'deleted' : IDL.Null,
     'pending' : IDL.Null,
     'approved' : IDL.Null,
     'rejected' : IDL.Null,
   });
   const Time = IDL.Int;
-  const BitcoinAmount = IDL.Nat;
+  const PeerTransferRequest = IDL.Record({
+    'id' : PeerTransferId,
+    'status' : PeerTransferStatus,
+    'deleted' : IDL.Bool,
+    'createdAt' : Time,
+    'rejectionReason' : IDL.Opt(IDL.Text),
+    'lastUpdated' : Time,
+    'recipient' : IDL.Principal,
+    'approvalTimestamp' : IDL.Opt(Time),
+    'sender' : IDL.Principal,
+    'approver' : IDL.Opt(IDL.Principal),
+    'rejectionTimestamp' : IDL.Opt(Time),
+    'amount' : BitcoinAmount,
+  });
+  const SegwitMetadata = IDL.Record({ 'p2wpkhStatus' : IDL.Bool });
+  const BitcoinWallet = IDL.Record({
+    'publicKey' : IDL.Vec(IDL.Nat8),
+    'address' : IDL.Text,
+    'segwitMetadata' : SegwitMetadata,
+  });
+  const UserProfile = IDL.Record({
+    'bitcoinWallet' : IDL.Opt(BitcoinWallet),
+    'name' : IDL.Text,
+  });
+  const VerificationStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
   const VerificationRequest = IDL.Record({
     'id' : VerificationRequestId,
     'status' : VerificationStatus,
@@ -249,37 +303,6 @@ export const idlFactory = ({ IDL }) => {
     'verifiedBy' : IDL.Principal,
     'transactionId' : IDL.Text,
   });
-  const PeerTransferId = IDL.Nat;
-  const PeerTransferStatus = IDL.Variant({
-    'deleted' : IDL.Null,
-    'pending' : IDL.Null,
-    'approved' : IDL.Null,
-    'rejected' : IDL.Null,
-  });
-  const PeerTransferRequest = IDL.Record({
-    'id' : PeerTransferId,
-    'status' : PeerTransferStatus,
-    'deleted' : IDL.Bool,
-    'createdAt' : Time,
-    'rejectionReason' : IDL.Opt(IDL.Text),
-    'lastUpdated' : Time,
-    'recipient' : IDL.Principal,
-    'approvalTimestamp' : IDL.Opt(Time),
-    'sender' : IDL.Principal,
-    'approver' : IDL.Opt(IDL.Principal),
-    'rejectionTimestamp' : IDL.Opt(Time),
-    'amount' : BitcoinAmount,
-  });
-  const SegwitMetadata = IDL.Record({ 'p2wpkhStatus' : IDL.Bool });
-  const BitcoinWallet = IDL.Record({
-    'publicKey' : IDL.Vec(IDL.Nat8),
-    'address' : IDL.Text,
-    'segwitMetadata' : SegwitMetadata,
-  });
-  const UserProfile = IDL.Record({
-    'bitcoinWallet' : IDL.Opt(BitcoinWallet),
-    'name' : IDL.Text,
-  });
   const TransactionType = IDL.Variant({
     'adjustment' : IDL.Null,
     'withdrawalRejected' : IDL.Null,
@@ -309,6 +332,29 @@ export const idlFactory = ({ IDL }) => {
       ),
     'approveWithdrawal' : IDL.Func([WithdrawalRequestId], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'creditBtc' : IDL.Func([IDL.Principal, BitcoinAmount], [], []),
+    'getAllPeerTransfers' : IDL.Func(
+        [],
+        [
+          IDL.Variant({
+            'success' : IDL.Record({
+              'totalTransfers' : IDL.Nat,
+              'transfers' : IDL.Vec(
+                IDL.Tuple(PeerTransferId, PeerTransferRequest)
+              ),
+            }),
+            'failedToRetrieveTransfers' : IDL.Record({
+              'errorMessage' : IDL.Text,
+            }),
+          }),
+        ],
+        ['query'],
+      ),
+    'getAllUsers' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, UserProfile))],
+        ['query'],
+      ),
     'getAllVerificationRequests' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(VerificationRequestId, VerificationRequest))],

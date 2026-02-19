@@ -1,18 +1,20 @@
-import Map "mo:core/Map";
 import List "mo:core/List";
+import Map "mo:core/Map";
 import Time "mo:core/Time";
 import Float "mo:core/Float";
-import Nat "mo:core/Nat";
-import Int "mo:core/Int";
-import Blob "mo:core/Blob";
 import Text "mo:core/Text";
+import Nat "mo:core/Nat";
+import Blob "mo:core/Blob";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+import Iter "mo:core/Iter";
 
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   type BitcoinAmount = Nat; // 1 Satoshi = 0.00000001 BTC
 
@@ -103,6 +105,13 @@ actor {
       transactionType = txType;
     };
     transactions.add(tx);
+  };
+
+  public query ({ caller }) func getAllUsers() : async [(Principal, UserProfile)] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
+    userProfiles.toArray();
   };
 
   public query ({ caller }) func getTransactionHistory() : async [Transaction] {
@@ -524,6 +533,41 @@ actor {
         entry.1;
       }
     ).toArray();
+  };
+
+  public shared ({ caller }) func creditBtc(user : Principal, amount : BitcoinAmount) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can credit BTC");
+    };
+
+    let currentBalance = switch (balances.get(user)) {
+      case (?cb) { cb.balance };
+      case null { 0 };
+    };
+
+    updateBalance(user, currentBalance + amount);
+    addTransaction(user, amount, #creditPurchase);
+  };
+
+  public query ({ caller }) func getAllPeerTransfers() : async {
+    #success : {
+      totalTransfers : Nat;
+      transfers : [(PeerTransferId, PeerTransferRequest)];
+    };
+    #failedToRetrieveTransfers : {
+      errorMessage : Text;
+    };
+  } {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      return #failedToRetrieveTransfers {
+        errorMessage = "Unauthorized: Only admins can view all peer transfers";
+      };
+    };
+    let entries = peerTransferRequests.toArray();
+    #success {
+      totalTransfers = peerTransferRequests.size();
+      transfers = entries;
+    };
   };
 
   public type BitcoinPurchaseRecord = {

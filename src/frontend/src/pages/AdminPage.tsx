@@ -1,8 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useGetAllWithdrawalRequests, useGetTransactionHistory, useAdminVerificationRequests } from '../hooks/useQueries';
-import { AlertCircle, FileText, Wallet, CheckCircle, ClipboardCheck } from 'lucide-react';
+import { useGetAllWithdrawalRequests, useGetTransactionHistory, useAdminVerificationRequests, useGetAllPeerTransfers } from '../hooks/useQueries';
+import { AlertCircle, FileText, Wallet, CheckCircle, ClipboardCheck, Coins, UserPlus, ArrowLeftRight } from 'lucide-react';
 import AdminReserveStatusMonitor from '../components/reserve/AdminReserveStatusMonitor';
 import { WithdrawalStatus, VerificationStatus } from '../backend';
 
@@ -10,6 +10,7 @@ export default function AdminPage() {
   const { data: withdrawalRequests, isLoading: withdrawalsLoading } = useGetAllWithdrawalRequests();
   const { data: transactions, isLoading: transactionsLoading } = useGetTransactionHistory();
   const { data: verificationRequests, isLoading: verificationsLoading } = useAdminVerificationRequests();
+  const { data: peerTransfers, isLoading: peerTransfersLoading } = useGetAllPeerTransfers();
 
   const pendingWithdrawals = withdrawalRequests?.filter(r => r.status === WithdrawalStatus.PENDING) || [];
   const recentTransactions = transactions?.slice(0, 10) || [];
@@ -85,6 +86,28 @@ export default function AdminPage() {
           </Card>
         </Link>
 
+        <Link to="/admin/peer-transfers">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle>Peer-to-Peer Transfers</CardTitle>
+              <CardDescription>Monitor peer-to-peer credit transfers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Button className="w-full" variant="outline">
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />
+                  View All Transfers
+                </Button>
+                {!peerTransfersLoading && peerTransfers && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {peerTransfers.length} total transfer{peerTransfers.length !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link to="/admin/credentials">
           <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
             <CardHeader>
@@ -132,6 +155,36 @@ export default function AdminPage() {
                   {pendingVerifications.length} pending request{pendingVerifications.length !== 1 ? 's' : ''}
                 </p>
               )}
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/send-credits">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle>Send Credits to Users</CardTitle>
+              <CardDescription>Credit BTC directly to user accounts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="outline">
+                <Coins className="mr-2 h-4 w-4" />
+                Send Credits
+              </Button>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link to="/admin/send-to-user">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <CardTitle>Send to User</CardTitle>
+              <CardDescription>Select a user and distribute BTC credits</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="outline">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Send to User
+              </Button>
             </CardContent>
           </Card>
         </Link>

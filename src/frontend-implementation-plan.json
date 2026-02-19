@@ -1,123 +1,44 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Enable manual Bitcoin transaction verification for users",
+  "title": "Fix username not persisting during profile creation",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Create user-accessible verification page at /verify-transaction",
+      "summary": "Fix ProfileSetupModal to ensure username persists when saving profile",
       "acceptanceCriteria": [
-        "Non-admin authenticated users can navigate to /verify-transaction",
-        "Page includes a form similar to AdminManualVerificationPage but for regular users",
-        "Form accepts transaction ID (64-character hex) and BTC amount (up to 8 decimals)"
+        "Username entered in ProfileSetupModal successfully persists to the backend",
+        "Profile creation completes without errors",
+        "User can proceed past the profile setup modal after entering a valid username",
+        "Backend returns the created profile with the correct username"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UserVerifyTransactionPage.tsx",
-          "operation": "create",
-          "description": "Create a new page component for regular users to submit Bitcoin transaction verification requests. Include a form section (reusing ManualVerificationForm pattern but calling submitVerificationRequest instead of recordPurchase) and a history section showing the user's verification request status. Wire in useSubmitVerification mutation and useUserVerificationRequests query. Display both sections in a two-column or stacked layout."
+          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "operation": "modify",
+          "description": "Review and fix the profile save logic to ensure the username value from the input field is correctly passed to the saveCallerUserProfile mutation. Verify the mutation is being called with the correct profile structure matching the UserProfile type from backend.d.ts. Ensure the form submission handler prevents default behavior and properly awaits the mutation result before proceeding."
         },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Add a new route definition for /verify-transaction that renders UserVerifyTransactionPage wrapped in AuthenticatedRoute (not AdminRoute). Place it alongside other authenticated user routes like /send, /withdraw, and /history."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Create AdminVerificationRequestsPage for reviewing user submissions",
-      "acceptanceCriteria": [
-        "Admin-only page displaying table of verification requests",
-        "Shows txid, amount, requester principal, submission date, and status",
-        "Includes approve and reject buttons for pending requests",
-        "Links to blockchain explorer for transaction verification"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-          "operation": "create",
-          "description": "Create a table component displaying all user verification requests with columns: request ID, transaction ID (with copy and explorer link), BTC amount, requester principal (with copy), submission timestamp, status badge (pending/approved/rejected), and review timestamp/comment if applicable. Include approve and reject action buttons for pending requests that trigger onApprove and onReject callback props. Follow the pattern from AdminWithdrawalRequestsTable with sortable columns and status filtering."
-        },
-        {
-          "path": "frontend/src/pages/AdminVerificationRequestsPage.tsx",
-          "operation": "create",
-          "description": "Create an admin-only page that displays AdminVerificationRequestsTable. Wire in useAdminVerificationRequests query for data and useApproveVerification/useRejectVerification mutations for actions. Include summary cards showing counts of pending/approved/rejected requests. Add a prompt dialog for rejection comments using a shadcn/ui Dialog component."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Add a new route definition for /admin/verification-requests that renders AdminVerificationRequestsPage wrapped in AdminRoute. Place it alongside other admin routes like /admin/manual-verification and /admin/withdrawals."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Add navigation link to user verification page",
-      "acceptanceCriteria": [
-        "Navigation item labeled 'Verify Transaction' or 'Submit Transaction'",
-        "Only visible to authenticated users who are not admins",
-        "Positioned logically within existing navigation menu"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Add a new navigation link to /verify-transaction labeled 'Verify Transaction' in the main navigation menu. Position it after the 'History' link. Ensure the link is visible when isAuthenticated is true. Do not add admin-specific conditional logic here; the link should be available to all authenticated users."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Add admin navigation to verification requests page",
-      "acceptanceCriteria": [
-        "Navigation card on AdminPage linking to verification requests",
-        "Shows count of pending verification requests",
-        "Only visible to admin users"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminPage.tsx",
-          "operation": "modify",
-          "description": "Add a new navigation card linking to /admin/verification-requests. Display the count of pending verification requests using useAdminVerificationRequests query filtered to status 'pending'. Style the card consistently with existing admin navigation cards for withdrawals and manual verification. Position it logically in the admin dashboard grid."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Create user verification history view",
-      "acceptanceCriteria": [
-        "Displays on user verification page below submission form",
-        "Shows transaction ID, amount, submission date, status (pending/approved/rejected)",
-        "Includes link to blockchain explorer for each transaction",
-        "Updates in real-time when new requests are submitted"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
-          "operation": "create",
-          "description": "Create a table component displaying the current user's verification request history. Include columns: request ID, transaction ID (with copy and Blockstream explorer link), BTC amount, submission timestamp, status badge (pending/approved/rejected), and review comment if present. Sort by submission date descending. Follow the pattern from VerificationHistoryTable but adapt for VerificationRequest type instead of BitcoinPurchaseRecord."
-        },
-        {
-          "path": "frontend/src/pages/UserVerifyTransactionPage.tsx",
-          "operation": "modify",
-          "description": "Integrate UserVerificationHistoryTable component below the submission form section. Pass verification requests data from useUserVerificationRequests query. The table will automatically update when the mutation invalidates the query after a successful submission."
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Add React Query hooks for verification operations",
-      "acceptanceCriteria": [
-        "Hooks follow existing patterns in useQueries.ts",
-        "Mutations invalidate relevant queries on success",
-        "Error handling follows existing error normalization patterns"
-      ],
-      "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add five new hooks: useSubmitVerification (mutation calling submitVerificationRequest with txid and amount, invalidating ['verificationRequests', principal]), useUserVerificationRequests (query calling getUserVerificationRequests for current user's requests), useApproveVerification (mutation calling approveVerificationRequest with requestId and optional comment, invalidating ['allVerificationRequests'] and ['verificationRequests', requester]), useRejectVerification (mutation calling rejectVerificationRequest with requestId and comment, same invalidations), and useAdminVerificationRequests (query calling getAllVerificationRequests for admin view). Follow existing mutation/query patterns with error normalization and appropriate queryKey structures."
+          "description": "Review the saveCallerUserProfile mutation implementation to ensure it correctly calls actor.saveCallerUserProfile with the profile parameter. Verify the mutation invalidates the 'currentUserProfile' query key upon success to trigger a refetch. Add proper error handling to catch and expose backend errors to the UI component."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Add comprehensive error handling and user feedback to ProfileSetupModal",
+      "acceptanceCriteria": [
+        "ProfileSetupModal displays error messages if profile creation fails",
+        "User receives clear feedback about what went wrong",
+        "Modal shows loading state while profile is being created",
+        "User can retry profile creation if an error occurs"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "operation": "modify",
+          "description": "Add error state display by checking mutation.error and mutation.isError from the saveCallerUserProfile hook. Show a loading spinner or disabled state on the save button while mutation.isPending is true. Display user-friendly error messages extracted from mutation.error using appropriate error normalization. Ensure the form remains open on error to allow retry, and clears error state when user modifies input. Add validation feedback for empty username before submission."
         }
       ]
     }

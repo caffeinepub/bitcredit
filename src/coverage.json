@@ -1,123 +1,57 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T06:07:59.862Z",
+  "generatedAt": "2026-02-19T07:18:10.746Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 8,
-    "implemented": 6,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
+        "summary": "Investigate and fix the issue where the username entered in the ProfileSetupModal is not being saved when the user clicks the save button. Verify that the createProfile mutation is being called correctly and that the backend is persisting the username.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/UserVerifyTransactionPage.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/UserVerifyTransactionPage.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/auth/ProfileSetupModal.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add backend method submitVerificationRequest that allows regular users to submit transaction verification requests with status tracking",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Add error handling and user feedback in ProfileSetupModal to display any errors that occur during profile creation, including network errors, validation errors, or backend failures.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/auth/ProfileSetupModal.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/auth/ProfileSetupModal.tsx"
+        ]
       },
       {
         "id": "REQ-3",
-        "summary": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-          "frontend/src/pages/AdminVerificationRequestsPage.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-          "frontend/src/pages/AdminVerificationRequestsPage.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Add backend methods approveVerificationRequest and rejectVerificationRequest that allow admins to process user verification submissions",
+        "summary": "Verify that the backend createProfile method correctly validates and stores the username, and returns appropriate error responses for invalid inputs or system failures.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/layout/AppLayout.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/layout/AppLayout.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add navigation link to /admin/verification-requests in admin section navigation",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Create user verification history view showing all verification requests submitted by the current user with their status",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
-          "frontend/src/pages/UserVerifyTransactionPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
-          "frontend/src/pages/UserVerifyTransactionPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-    "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/components/auth/ProfileSetupModal.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/AdminVerificationRequestsPage.tsx",
-    "frontend/src/pages/UserVerifyTransactionPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

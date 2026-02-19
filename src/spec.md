@@ -1,15 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Enable regular users to submit Bitcoin transaction verification requests and allow admins to approve or reject them.
+**Goal:** Fix the profile creation bug where usernames are not being saved when users complete the ProfileSetupModal.
 
 **Planned changes:**
-- Add /verify-transaction page where authenticated users can submit transaction details (txid and BTC amount) for manual verification
-- Create backend method submitVerificationRequest to store user verification requests with pending status
-- Add AdminVerificationRequestsPage at /admin/verification-requests displaying all user-submitted requests with approve/reject actions
-- Implement backend methods approveVerificationRequest and rejectVerificationRequest for admins to process submissions
-- Add navigation links: "Verify Transaction" for regular users and "Verification Requests" for admins
-- Display user's verification history on their verification page showing all submitted requests and their status
-- Create React Query hooks for all verification operations following existing patterns
+- Debug and fix the username persistence issue in the ProfileSetupModal save flow
+- Verify the createProfile mutation is correctly calling the backend
+- Add error handling and user feedback to display profile creation errors
+- Add loading state indicator during profile creation
+- Verify backend validation and storage of username in createProfile method
+- Ensure backend returns appropriate success/error responses
 
-**User-visible outcome:** Regular users can submit Bitcoin transactions for manual verification and track their request status, while admins can review and approve/reject these requests from a dedicated management page.
+**User-visible outcome:** Users can successfully create their profile by entering a username, see loading feedback during save, and receive clear error messages if something goes wrong. The username will persist correctly and users can proceed past the profile setup.

@@ -1,85 +1,42 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Bitcoin transaction verification application",
-  "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "summary": "P2P transfer app with user profile creation",
+  "architectural_notes": [
+    "User profile creation with username save functionality"
+  ],
+  "known_issues": [
+    "Username not persisting past save point during profile creation"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-create-a-user-accessible-page-at-route-verify-transaction-that-allows-non-admin-users-to-manually-submit-bitcoin-transaction-details-for-verification",
-      "title": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
+      "id": "feature-investigate-and-fix-the-issue-where-the-username-entered-in-the-profilesetupmodal-is-not-being-saved-when-the-user-clicks-the-save-button-verify-that-the-createprofile-mutation-is-being-called-correctly-and-that-the-backend-is-persisting-the-username",
+      "title": "Investigate and fix the issue where the username entered in the ProfileSetupModal is not being saved when the user clicks the save button. Verify that the createProfile mutation is being called correctly and that the backend is persisting the username.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-create-adminverificationrequestspage-at-route-admin-verification-requests-showing-all-user-submitted-verification-requests-with-approve-reject-actions",
-      "title": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
+      "id": "feature-add-error-handling-and-user-feedback-in-profilesetupmodal-to-display-any-errors-that-occur-during-profile-creation-including-network-errors-validation-errors-or-backend-failures",
+      "title": "Add error handling and user feedback in ProfileSetupModal to display any errors that occur during profile creation, including network errors, validation errors, or backend failures.",
       "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-navigation-link-to-verify-transaction-in-applayout-navigation-menu-for-authenticated-non-admin-users",
-      "title": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-navigation-link-to-admin-verification-requests-in-admin-section-navigation",
-      "title": "Add navigation link to /admin/verification-requests in admin section navigation",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-create-user-verification-history-view-showing-all-verification-requests-submitted-by-the-current-user-with-their-status",
-      "title": "Create user verification history view showing all verification requests submitted by the current user with their status",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-react-query-hooks-for-user-verification-operations-usesubmitverification-useuserverificationrequests-useapproveverification-userejectverification-and-useadminverificationrequests",
-      "title": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
-      "reqIds": [
-        "REQ-8"
+        "REQ-2"
       ],
       "version": 1
     }
   ],
   "new_feature_requests": [
     {
-      "id": "AR-1",
-      "summary": "Manual Bitcoin transaction verification",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
       "id": "AR-3",
-      "summary": "Add backend method submitVerificationRequest that allows regular users to submit transaction verification requests with status tracking",
+      "summary": "Verify that the backend createProfile method correctly validates and stores the username, and returns appropriate error responses for invalid inputs or system failures.",
       "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Add backend methods approveVerificationRequest and rejectVerificationRequest that allow admins to process user verification submissions",
-      "reqIds": [
-        "REQ-4"
+        "REQ-3"
       ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
   "projectName": "Bitcoin Credit Transfer",
   "clarification_mode": "instant",
   "clarification_rounds": 0

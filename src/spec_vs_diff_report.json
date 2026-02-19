@@ -1,45 +1,25 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T06:07:59.858Z",
-  "summary": "The implementation successfully delivers all 8 requirements for manual Bitcoin transaction verification. Backend methods (submitVerificationRequest, approveVerificationRequest, rejectVerificationRequest) are implemented in backend/main.mo with proper status tracking and admin controls. Frontend includes user verification page at /verify-transaction with form and history table, admin verification requests page at /admin/verification-requests with approve/reject actions, navigation links in both user and admin sections, and all required React Query hooks in useQueries.ts. All acceptance criteria appear to be met based on the diff evidence.",
+  "generatedAt": "2026-02-19T07:18:10.743Z",
+  "summary": "The diff shows comprehensive implementation of profile creation functionality with error handling and validation. All three requirements (REQ-1, REQ-2, REQ-3) appear to be addressed through changes to ProfileSetupModal.tsx, useQueries.ts hooks, and backend main.mo. The implementation includes validation, error handling, loading states, toast notifications, and proper data structure matching between frontend and backend.",
   "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Admin comment field for approval actions",
-      "reason": "REQ-4 specifies that both methods should record the admin principal who processed the request, but does not mention recording comments. The implementation adds optional comment parameter to approveVerificationRequest and required comment to rejectVerificationRequest.",
+      "description": "Migration module added in backend/migration.mo with complex Bitcoin-related state management including BTC price tracking, reserve balances, transaction fees, multisig configuration, and blockchain API configuration",
+      "reason": "The BuildRequest is specifically about fixing username persistence in profile creation with explicit constraints to maintain single-actor architecture and not modify authentication. A migration module with extensive Bitcoin financial infrastructure was not requested and appears unrelated to the profile username persistence issue.",
       "evidence": [
-        "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-        "frontend/src/pages/AdminVerificationRequestsPage.tsx"
-      ]
-    },
-    {
-      "description": "Status filtering UI in AdminVerificationRequestsTable",
-      "reason": "REQ-3 requests a table showing verification requests with approve/reject actions, but does not specify filtering capabilities by status.",
-      "evidence": [
-        "frontend/src/components/verification/AdminVerificationRequestsTable.tsx"
-      ]
-    },
-    {
-      "description": "Statistics cards showing pending/approved/rejected counts on AdminVerificationRequestsPage",
-      "reason": "REQ-3 specifies showing a table with approve/reject buttons but does not request summary statistics or count displays.",
-      "evidence": [
-        "frontend/src/pages/AdminVerificationRequestsPage.tsx"
+        "backend/migration.mo"
       ]
     }
   ],
   "confidence": 0.92,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/components/verification/AdminVerificationRequestsTable.tsx",
-    "frontend/src/components/verification/UserVerificationHistoryTable.tsx",
+    "frontend/src/components/auth/ProfileSetupModal.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/AdminVerificationRequestsPage.tsx",
-    "frontend/src/pages/UserVerifyTransactionPage.tsx",
     "project_state.json"
   ]
 }

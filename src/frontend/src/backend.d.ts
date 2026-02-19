@@ -109,6 +109,20 @@ export interface backendInterface {
     approveVerificationRequest(requestId: VerificationRequestId, comment: string | null): Promise<void>;
     approveWithdrawal(requestId: WithdrawalRequestId): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    creditBtc(user: Principal, amount: BitcoinAmount): Promise<void>;
+    getAllPeerTransfers(): Promise<{
+        __kind__: "success";
+        success: {
+            totalTransfers: bigint;
+            transfers: Array<[PeerTransferId, PeerTransferRequest]>;
+        };
+    } | {
+        __kind__: "failedToRetrieveTransfers";
+        failedToRetrieveTransfers: {
+            errorMessage: string;
+        };
+    }>;
+    getAllUsers(): Promise<Array<[Principal, UserProfile]>>;
     getAllVerificationRequests(): Promise<Array<[VerificationRequestId, VerificationRequest]>>;
     getAllWithdrawalRequests(): Promise<Array<WithdrawalRequest>>;
     getBitcoinPurchase(transactionId: string): Promise<BitcoinPurchaseRecord | null>;

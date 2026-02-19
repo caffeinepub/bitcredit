@@ -1,8 +1,9 @@
 import { Link } from '@tanstack/react-router';
 import AppHeader from './AppHeader';
 import AdminTroubleshootingCard from '../auth/AdminTroubleshootingCard';
-import { Heart, Home, Send, Users, ArrowDownRight, History, CheckCircle } from 'lucide-react';
+import { Heart, Home, Send, Users, ArrowDownRight, History, CheckCircle, Shield, UserPlus, ArrowLeftRight } from 'lucide-react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { useIsCallerAdmin } from '../../hooks/useQueries';
 import { Button } from '@/components/ui/button';
 
 interface AppLayoutProps {
@@ -11,6 +12,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { identity } = useInternetIdentity();
+  const { data: isAdmin } = useIsCallerAdmin();
   const isAuthenticated = !!identity;
 
   const appIdentifier = typeof window !== 'undefined' 
@@ -61,6 +63,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   Verify Transaction
                 </Button>
               </Link>
+              {isAdmin && (
+                <>
+                  <Link to="/admin">
+                    <Button variant="ghost" size="sm">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                  <Link to="/admin/send-to-user">
+                    <Button variant="ghost" size="sm">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Send to User
+                    </Button>
+                  </Link>
+                  <Link to="/admin/peer-transfers">
+                    <Button variant="ghost" size="sm">
+                      <ArrowLeftRight className="h-4 w-4 mr-2" />
+                      Peer Transfers
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </nav>
