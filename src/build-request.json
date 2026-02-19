@@ -1,55 +1,91 @@
 {
   "kind": "build_request",
-  "title": "Remove user registration validation from Send BTC flow",
-  "priority": "normal",
+  "title": "Add mainnet wallet transfer signing, blockchain transaction posting, and Segwit transaction broadcasting",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-202",
-      "text": "Remove all backend code in the sendBTC method (backend/main.mo) that validates whether the destination Bitcoin address corresponds to a registered user account or user profile, so that any Bitcoin mainnet address can be used as a transfer destination without triggering a 'user not registered' error.",
+      "id": "REQ-5",
+      "text": "Implement cryptographic signing of mainnet Bitcoin wallet transfers for recipients, ensuring the application can sign transactions on behalf of users with proper key management",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-final"
+          "msg-recent"
         ],
         "quotes": [
-          "Remove user not registered error"
+          "Add ability for app to sign mainnet wallet transfer for recipient"
         ]
       },
       "acceptanceCriteria": [
-        "The backend sendBTC method accepts any destination address text without checking user registration status",
-        "No 'user not registered' or 'account not found' errors are generated based on destination address lookup",
-        "The destination address is passed directly to the blockchain broadcast API without intermediate user profile validation",
-        "Existing balance checks and access control (caller authentication) remain enforced",
-        "The change does not affect credit purchase, withdrawal, or other account-based flows"
+        "Application can cryptographically sign Bitcoin transactions for mainnet",
+        "Signing process properly handles recipient wallet addresses",
+        "Private key management is secure and follows best practices"
       ]
     },
     {
-      "id": "REQ-203",
-      "text": "Update any backend error handling or validation logic in the sendBTC flow to ensure that address format validation (if any remains) only checks Bitcoin mainnet address syntax via the blockchain API, not app user registry existence.",
+      "id": "REQ-6",
+      "text": "Implement AI-powered transaction posting to blockchain network with automatic confirmation monitoring",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-final"
+          "msg-recent"
+        ],
+        "quotes": [
+          "Add ability for app ai to Post and confirm transaction on blockchain network"
         ]
       },
       "acceptanceCriteria": [
-        "Address validation errors (if any) come from the blockchain API response, not from app user registry checks",
-        "Clear English error messages are returned when the blockchain API rejects an address as invalid",
-        "No error messages reference user account registration requirements for recipients"
+        "Application can post signed transactions to the Bitcoin mainnet",
+        "System monitors and confirms transaction inclusion in blocks",
+        "AI component tracks transaction status and handles confirmation logic"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Add support for sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation and reserve-funded fee coverage",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ],
+        "quotes": [
+          "Add app ability to for app to send mainnet transactions to Segwit bitcoin wallets built in mainnet transfer request and broadcast transactions on blockchain network using reserve to cover estimated fees"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Application supports Segwit (P2WPKH and P2WSH) address formats",
+        "Transactions include proper fee estimation for mainnet broadcast",
+        "Reserve balance is used to cover transaction fees automatically",
+        "Transactions are successfully broadcast to the Bitcoin blockchain network"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Update frontend transaction status tracking to display signing, posting, and confirmation states for mainnet Segwit transactions",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-recent"
+        ]
+      },
+      "acceptanceCriteria": [
+        "UI shows transaction signing status",
+        "UI displays blockchain posting status",
+        "UI tracks and shows confirmation progress",
+        "Segwit transaction details are properly displayed"
       ]
     }
   ],
   "constraints": [
-    "Do not remove caller authentication or balance verification checks",
-    "Preserve the existing transfer request creation and ledger accounting logic",
-    "Keep the blockchain API broadcast integration intact",
-    "Maintain audit trail for all transfer attempts"
+    "Must maintain compatibility with existing Bitcoin credit transfer system",
+    "Must preserve existing transaction history and balance tracking",
+    "Private key handling must follow security best practices for mainnet operations",
+    "Reserve balance must be sufficient before covering transaction fees"
   ],
   "nonGoals": [
-    "Changing the blockchain API integration",
-    "Modifying the frontend Send BTC form validation",
-    "Altering the transfer request data model",
-    "Changing admin access controls"
+    "Support for non-Segwit legacy address formats beyond what already exists",
+    "Integration with third-party wallet services",
+    "Support for other cryptocurrencies besides Bitcoin",
+    "Manual fee selection by users"
   ],
   "imageRequirements": {
     "required": [],

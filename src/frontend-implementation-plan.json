@@ -1,6 +1,79 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove user registration validation from Send BTC flow",
-  "requirements": []
+  "title": "Add mainnet wallet transfer signing, blockchain transaction posting, and Segwit transaction broadcasting - Frontend Updates",
+  "requirements": [
+    {
+      "id": "REQ-8",
+      "summary": "Update frontend transaction status tracking to display signing, posting, and confirmation states for mainnet Segwit transactions",
+      "acceptanceCriteria": [
+        "UI shows transaction signing status",
+        "UI displays blockchain posting status",
+        "UI tracks and shows confirmation progress",
+        "Segwit transaction details are properly displayed"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/backend.d.ts",
+          "operation": "modify",
+          "description": "Extend Transaction interface to include new status fields for tracking mainnet transaction lifecycle: signingStatus (pending/signed/failed), broadcastStatus (pending/broadcast/confirmed/failed), confirmationCount (number), txHash (optional string for blockchain transaction ID), and segwitAddressType (P2WPKH/P2WSH/null). Add new TransactionType enum values for mainnet operations if needed."
+        },
+        {
+          "path": "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+          "operation": "create",
+          "description": "Create a new component that displays transaction status badges with appropriate styling for different states: signing (pending/signed/failed), broadcasting (pending/broadcast/confirmed), and confirmation progress. Include visual indicators for Segwit transaction types (P2WPKH/P2WSH) when applicable. Use shadcn/ui Badge component for consistent styling."
+        },
+        {
+          "path": "frontend/src/components/transfers/TransactionConfirmationProgress.tsx",
+          "operation": "create",
+          "description": "Create a component that displays blockchain confirmation progress with a progress bar or step indicator showing the number of confirmations received (e.g., 0/6 confirmations). Include estimated time remaining and link to blockchain explorer when txHash is available. Use shadcn/ui Progress component for visual feedback."
+        },
+        {
+          "path": "frontend/src/components/transfers/SegwitTransactionDetails.tsx",
+          "operation": "create",
+          "description": "Create a component that displays Segwit-specific transaction details including address type (P2WPKH or P2WSH), destination address, estimated fee covered by reserve, and transaction hash with copy functionality. Format Bitcoin amounts properly and include warnings about mainnet operations."
+        },
+        {
+          "path": "frontend/src/components/transfers/TransferHistoryTable.tsx",
+          "operation": "modify",
+          "description": "Enhance the transaction history table to display new mainnet transaction status columns. Add columns for signing status, broadcast status, and confirmation count. Integrate TransactionStatusBadge component for status display. Add expandable row details that show SegwitTransactionDetails and TransactionConfirmationProgress components when relevant. Ensure the table remains responsive and handles both legacy and new transaction formats."
+        },
+        {
+          "path": "frontend/src/pages/SendBtcPage.tsx",
+          "operation": "modify",
+          "description": "Update the SendBtcPage to display real-time transaction status updates after submission. Add a transaction status tracking section that appears after initiating a transfer, showing signing progress, broadcasting status, and confirmation tracking using the new TransactionStatusBadge and TransactionConfirmationProgress components. Include automatic refresh/polling to update status as the backend processes the transaction. Add alerts explaining that mainnet transactions are now signed and broadcast by the application with reserve-funded fees."
+        },
+        {
+          "path": "frontend/src/pages/HistoryPage.tsx",
+          "operation": "modify",
+          "description": "Update the HistoryPage to display enhanced transaction status information including signing, broadcasting, and confirmation states. Update summary statistics to differentiate between pending mainnet transactions and completed ones. Ensure the TransferHistoryTable integration properly displays all new status fields."
+        },
+        {
+          "path": "frontend/src/pages/TransferTroubleshootingPage.tsx",
+          "operation": "modify",
+          "description": "Add new troubleshooting sections specific to mainnet signing, broadcasting, and Segwit transactions. Include guidance on checking signing failures, broadcast timeouts, confirmation delays, and Segwit address format issues. Update the page to reflect that the backend now handles signing and broadcasting, removing outdated external signing references."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add or update React Query hooks to support polling/refetching transaction status for pending mainnet transactions. Create a useTransactionStatus hook that automatically polls the backend for status updates on transactions in signing or broadcasting state. Ensure efficient query invalidation and caching strategies for frequently updated transaction data."
+        },
+        {
+          "path": "frontend/src/utils/transactionStatus.ts",
+          "operation": "create",
+          "description": "Create utility functions for handling transaction status logic: determining if a transaction is pending, formatting status messages, calculating estimated confirmation time, and identifying which transactions need status polling. Include helper functions for Segwit address validation and formatting."
+        },
+        {
+          "path": "frontend/src/components/transfers/MainnetTransactionAlert.tsx",
+          "operation": "create",
+          "description": "Create an alert component that displays important information about mainnet transactions, including warnings about irreversibility, explanation of reserve-funded fees, Segwit address support, and expected confirmation times. Use shadcn/ui Alert component with appropriate severity level."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Add CSS utility classes for transaction status indicators: status badges with appropriate colors for signing/broadcast/confirmation states, progress indicators for confirmation tracking, and styling for Segwit-specific UI elements. Ensure consistency with the existing OKLCH color system and support both light and dark modes."
+        }
+      ]
+    }
+  ]
 }

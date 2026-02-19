@@ -1,40 +1,94 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T01:09:57.747Z",
+  "generatedAt": "2026-02-19T05:20:23.146Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 0,
+    "total": 4,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-202",
-        "summary": "Remove all backend code in the sendBTC method (backend/main.mo) that validates whether the destination Bitcoin address corresponds to a registered user account or user profile, so that any Bitcoin mainnet address can be used as a transfer destination without triggering a 'user not registered' error.",
+        "id": "REQ-5",
+        "summary": "Implement cryptographic signing of mainnet Bitcoin wallet transfers for recipients, ensuring the application can sign transactions on behalf of users with proper key management",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-203",
-        "summary": "Update any backend error handling or validation logic in the sendBTC flow to ensure that address format validation (if any remains) only checks Bitcoin mainnet address syntax via the blockchain API, not app user registry existence.",
+        "id": "REQ-6",
+        "summary": "Implement AI-powered transaction posting to blockchain network with automatic confirmation monitoring",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Add support for sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation and reserve-funded fee coverage",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Update frontend transaction status tracking to display signing, posting, and confirmation states for mainnet Segwit transactions",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/backend.d.ts",
+          "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+          "frontend/src/components/transfers/TransactionConfirmationProgress.tsx",
+          "frontend/src/components/transfers/SegwitTransactionDetails.tsx",
+          "frontend/src/components/transfers/TransferHistoryTable.tsx",
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/HistoryPage.tsx",
+          "frontend/src/pages/TransferTroubleshootingPage.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/utils/transactionStatus.ts",
+          "frontend/src/components/transfers/MainnetTransactionAlert.tsx",
+          "frontend/src/index.css"
+        ],
+        "matchedFiles": [
+          "frontend/src/backend.d.ts",
+          "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+          "frontend/src/components/transfers/TransactionConfirmationProgress.tsx",
+          "frontend/src/components/transfers/SegwitTransactionDetails.tsx",
+          "frontend/src/components/transfers/TransferHistoryTable.tsx",
+          "frontend/src/pages/SendBtcPage.tsx",
+          "frontend/src/pages/HistoryPage.tsx",
+          "frontend/src/pages/TransferTroubleshootingPage.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/utils/transactionStatus.ts",
+          "frontend/src/components/transfers/MainnetTransactionAlert.tsx",
+          "frontend/src/index.css"
+        ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/transfers/MainnetTransactionAlert.tsx",
+    "frontend/src/components/transfers/SegwitTransactionDetails.tsx",
+    "frontend/src/components/transfers/TransactionConfirmationProgress.tsx",
+    "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+    "frontend/src/components/transfers/TransferHistoryTable.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/index.css",
+    "frontend/src/pages/HistoryPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
+    "frontend/src/pages/TransferTroubleshootingPage.tsx",
+    "frontend/src/types/mainnet.ts",
+    "frontend/src/utils/transactionStatus.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

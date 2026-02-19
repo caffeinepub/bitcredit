@@ -1,30 +1,53 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T01:09:57.741Z",
-  "summary": "The diff provides only truncated views of backend/main.mo and project_state.json. The truncated backend/main.mo snippet shows type definitions and data structures for the sendBTC flow (SendBTCRequest, TransferStatus, etc.) but does not include the actual sendBTC method implementation where user registration validation would be removed. Without visibility into the sendBTC method code or error handling logic, it is impossible to verify whether REQ-202 (removal of user registration checks) or REQ-203 (updated error handling to rely only on blockchain API validation) have been implemented.",
+  "generatedAt": "2026-02-19T05:20:23.143Z",
+  "summary": "The diff implements comprehensive frontend UI components for mainnet transaction tracking (REQ-8) with signing status, broadcast status, and confirmation progress displays. However, critical backend functionality for REQ-5, REQ-6, and REQ-7 is missing or not evident in the truncated backend files. The backend code shows type definitions and migration logic but no clear implementation of cryptographic signing, blockchain posting, or Segwit address handling.",
   "missing_requirements": [
     {
-      "id": "REQ-202",
-      "requirement": "Remove all backend code in the sendBTC method that validates whether the destination Bitcoin address corresponds to a registered user account or user profile",
-      "reason": "The diff of backend/main.mo is truncated and does not show the sendBTC method implementation. No evidence of removed user registration validation code is visible in the provided snippet, which only contains type definitions and state variables.",
+      "id": "REQ-5",
+      "requirement": "Implement cryptographic signing of mainnet Bitcoin wallet transfers",
+      "reason": "No evidence of cryptographic signing implementation in backend/main.mo. The file shows type definitions and state variables but the actual signing logic is not visible in the truncated content. The frontend references a sendBTC method that should exist but implementation details are absent.",
       "evidence": [
         "backend/main.mo"
       ]
     },
     {
-      "id": "REQ-203",
-      "requirement": "Update backend error handling or validation logic in the sendBTC flow to ensure address format validation only checks Bitcoin mainnet address syntax via the blockchain API, not app user registry existence",
-      "reason": "The diff of backend/main.mo is truncated and does not show error handling logic or validation code within the sendBTC flow. No evidence of updated error handling that references blockchain API validation instead of user registry checks is visible.",
+      "id": "REQ-6",
+      "requirement": "Implement AI-powered transaction posting to blockchain network with automatic confirmation monitoring",
+      "reason": "No evidence of blockchain posting implementation or AI-powered confirmation monitoring logic in the backend diff. The TransactionBroadcastStatus type and transactionBroadcastMap are defined but actual posting and monitoring code is not shown.",
       "evidence": [
         "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "Add support for sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation",
+      "reason": "While SegwitMetadata type is defined and frontend has Segwit address validation (isSegwitAddress, getSegwitAddressType), there is no evidence in the backend of actual Segwit transaction construction, fee estimation algorithms, or reserve balance checking before transaction execution.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/utils/transactionStatus.ts"
       ]
     }
   ],
   "hallucinated_features": [],
-  "confidence": 0.3,
+  "confidence": 0.65,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/transfers/MainnetTransactionAlert.tsx",
+    "frontend/src/components/transfers/SegwitTransactionDetails.tsx",
+    "frontend/src/components/transfers/TransactionConfirmationProgress.tsx",
+    "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+    "frontend/src/components/transfers/TransferHistoryTable.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/index.css",
+    "frontend/src/pages/HistoryPage.tsx",
+    "frontend/src/pages/SendBtcPage.tsx",
+    "frontend/src/pages/TransferTroubleshootingPage.tsx",
+    "frontend/src/types/mainnet.ts",
+    "frontend/src/utils/transactionStatus.ts",
     "project_state.json"
   ]
 }

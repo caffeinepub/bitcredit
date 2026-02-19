@@ -1,199 +1,163 @@
-import { useState, useEffect } from 'react';
-import type { Transaction } from '../../backend';
+import { useState } from 'react';
+import { useGetTransactionHistory } from '../../hooks/useQueries';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, Info } from 'lucide-react';
-import VerifyTransferDialog from './VerifyTransferDialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import UsdEstimateLine from '../balance/UsdEstimateLine';
-import { useGetCurrentBtcPriceUsd } from '../../hooks/useQueries';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import TransactionStatusBadge from './TransactionStatusBadge';
+import SegwitTransactionDetails from './SegwitTransactionDetails';
+import TransactionConfirmationProgress from './TransactionConfirmationProgress';
+import type { Transaction } from '../../backend';
+import type { MainnetTransaction } from '../../types/mainnet';
 
 interface TransferHistoryTableProps {
-  transactions: Transaction[];
   initialRequestId?: bigint | null;
 }
 
-export default function TransferHistoryTable({ transactions, initialRequestId }: TransferHistoryTableProps) {
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [selectedRequestId, setSelectedRequestId] = useState<bigint | null>(null);
-  const { data: btcPriceUsd, isLoading: priceLoading } = useGetCurrentBtcPriceUsd();
+export default function TransferHistoryTable({ initialRequestId }: TransferHistoryTableProps) {
+  const { data: transactions = [], isLoading } = useGetTransactionHistory();
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Auto-open dialog if initialRequestId is provided
-    if (initialRequestId !== undefined && initialRequestId !== null) {
-      setSelectedRequestId(initialRequestId);
-      setVerifyDialogOpen(true);
-    }
-  }, [initialRequestId]);
-
-  const formatTimestamp = (timestamp: bigint) => {
-    const date = new Date(Number(timestamp) / 1_000_000);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getTransactionTypeLabel = (type: string) => {
-    switch (type) {
-      case 'creditPurchase':
-        return 'Credit Purchase';
-      case 'debit':
-        return 'Bitcoin Mainnet Transfer';
-      case 'adjustment':
-        return 'Adjustment';
-      case 'withdrawalRequested':
-        return 'Withdrawal Requested';
-      case 'withdrawalPaid':
-        return 'Withdrawal Paid';
-      case 'withdrawalRejected':
-        return 'Withdrawal Rejected';
-      default:
-        return type;
-    }
-  };
-
-  const getTypeVariant = (type: string): 'default' | 'secondary' | 'outline' => {
-    switch (type) {
-      case 'creditPurchase':
-        return 'default';
-      case 'debit':
-        return 'secondary';
-      case 'adjustment':
-        return 'outline';
-      case 'withdrawalRequested':
-      case 'withdrawalPaid':
-      case 'withdrawalRejected':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  const handleDetailsClick = (requestId: string) => {
-    try {
-      setSelectedRequestId(BigInt(requestId));
-      setVerifyDialogOpen(true);
-    } catch (error) {
-      console.error('Invalid request ID:', error);
-    }
-  };
+  if (isLoading) {
+    return <div className="text-center py-8 text-muted-foreground">Loading transactions...</div>;
+  }
 
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-          <Clock className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">No transactions yet</h3>
-        <p className="text-muted-foreground text-sm">
-          Your transaction history will appear here once you purchase credits, create transfers, or request withdrawals
-        </p>
+      <div className="text-center py-8 text-muted-foreground">
+        No transactions found
       </div>
     );
   }
 
-  return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {transactions.map((tx) => (
-              <TableRow key={`${tx.id}-${tx.timestamp}`}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={getTypeVariant(tx.transactionType)}>
-                      {getTransactionTypeLabel(tx.transactionType)}
-                    </Badge>
-                    {tx.transactionType === 'debit' && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="max-w-xs">
-                            <p className="text-xs">
-                              On-chain Bitcoin mainnet transfer. Click Details to view status, txid, and troubleshoot if the transaction did not appear on mainnet.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
-                  {formatTimestamp(tx.timestamp)}
-                </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate">
-                  {tx.id}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src="/assets/generated/credit-coin-icon.dim_128x128.png"
-                        alt="Credit"
-                        className="h-4 w-4"
-                      />
-                      <span
-                        className={`font-semibold ${
-                          tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' || tx.transactionType === 'withdrawalRejected'
-                            ? 'text-chart-1'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        {tx.transactionType === 'creditPurchase' || tx.transactionType === 'adjustment' || tx.transactionType === 'withdrawalRejected'
-                          ? '+'
-                          : '-'}
-                        {tx.amount.toString()}
-                      </span>
-                    </div>
-                    <UsdEstimateLine 
-                      btcAmount={tx.amount} 
-                      btcPriceUsd={btcPriceUsd} 
-                      isLoading={priceLoading}
-                    />
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  {tx.transactionType === 'debit' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDetailsClick(tx.id)}
-                      className="gap-1"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      View Details
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+  const getTransactionTypeBadge = (type: string) => {
+    switch (type) {
+      case 'creditPurchase':
+        return <Badge variant="default">Credit Purchase</Badge>;
+      case 'debit':
+        return <Badge variant="destructive">Debit</Badge>;
+      case 'adjustment':
+        return <Badge variant="outline">Adjustment</Badge>;
+      case 'withdrawalRequested':
+        return <Badge className="bg-amber-500">Withdrawal Requested</Badge>;
+      case 'withdrawalPaid':
+        return <Badge className="bg-emerald-600">Withdrawal Paid</Badge>;
+      case 'withdrawalRejected':
+        return <Badge variant="destructive">Withdrawal Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{type}</Badge>;
+    }
+  };
 
-      {selectedRequestId !== null && (
-        <VerifyTransferDialog
-          open={verifyDialogOpen}
-          onOpenChange={setVerifyDialogOpen}
-          requestId={selectedRequestId}
-        />
-      )}
-    </>
+  const formatTimestamp = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) / 1000000);
+    return date.toLocaleString();
+  };
+
+  const toggleRow = (txId: string) => {
+    setExpandedRow(expandedRow === txId ? null : txId);
+  };
+
+  const hasMainnetDetails = (tx: Transaction): tx is MainnetTransaction => {
+    const mtx = tx as MainnetTransaction;
+    return !!(
+      mtx.signingStatus || mtx.broadcastStatus || mtx.confirmationCount || mtx.txHash || mtx.segwitAddressType
+    );
+  };
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-12"></TableHead>
+            <TableHead>ID</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Timestamp</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {transactions.map((tx: Transaction) => {
+            const isMainnet = hasMainnetDetails(tx);
+            const mtx = tx as MainnetTransaction;
+            
+            return (
+              <>
+                <TableRow key={tx.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableCell>
+                    {isMainnet && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleRow(tx.id)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {expandedRow === tx.id ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{tx.id}</TableCell>
+                  <TableCell>{getTransactionTypeBadge(tx.transactionType)}</TableCell>
+                  <TableCell>
+                    {isMainnet ? (
+                      <TransactionStatusBadge
+                        signingStatus={mtx.signingStatus}
+                        broadcastStatus={mtx.broadcastStatus}
+                        confirmationCount={mtx.confirmationCount}
+                      />
+                    ) : (
+                      <Badge variant="outline">Completed</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className={
+                    tx.transactionType === 'creditPurchase' || tx.transactionType === 'withdrawalRejected'
+                      ? 'text-emerald-600 font-semibold'
+                      : 'text-red-600 font-semibold'
+                  }>
+                    {tx.transactionType === 'creditPurchase' || tx.transactionType === 'withdrawalRejected' ? '+' : '-'}
+                    {tx.amount.toString()} sats
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatTimestamp(tx.timestamp)}
+                  </TableCell>
+                </TableRow>
+                {expandedRow === tx.id && isMainnet && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="bg-muted/30 p-4">
+                      <div className="space-y-4">
+                        {/* Segwit Transaction Details */}
+                        {(mtx.segwitAddressType || mtx.txHash) && (
+                          <SegwitTransactionDetails
+                            destinationAddress="(Address from transaction)"
+                            amount={tx.amount}
+                            estimatedFee={BigInt(10000)}
+                            segwitAddressType={mtx.segwitAddressType}
+                            txHash={mtx.txHash}
+                          />
+                        )}
+                        
+                        {/* Confirmation Progress */}
+                        {(mtx.confirmationCount !== undefined || mtx.txHash) && (
+                          <TransactionConfirmationProgress
+                            confirmationCount={mtx.confirmationCount}
+                            txHash={mtx.txHash}
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

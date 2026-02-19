@@ -33,6 +33,12 @@
         --chart-3: 0.45 0.12 35;
         --chart-4: 0.70 0.20 75;
         --chart-5: 0.60 0.16 55;
+        /* Transaction status colors */
+        --status-pending: 0.70 0.15 55;
+        --status-signing: 0.75 0.18 65;
+        --status-broadcast: 0.65 0.20 220;
+        --status-confirmed: 0.60 0.18 145;
+        --status-failed: 0.55 0.22 25;
     }
 
     .dark {
@@ -61,6 +67,12 @@
         --chart-3: 0.55 0.14 35;
         --chart-4: 0.80 0.22 75;
         --chart-5: 0.70 0.18 55;
+        /* Transaction status colors - dark mode */
+        --status-pending: 0.75 0.17 55;
+        --status-signing: 0.80 0.20 65;
+        --status-broadcast: 0.70 0.22 220;
+        --status-confirmed: 0.65 0.20 145;
+        --status-failed: 0.60 0.24 25;
     }
 
     * {
@@ -83,6 +95,43 @@
     
     .stat-label {
         @apply text-sm text-muted-foreground font-medium;
+    }
+
+    /* Transaction Status Indicators */
+    .status-badge-pending {
+        background: oklch(var(--status-pending) / 0.15);
+        color: oklch(var(--status-pending));
+        border: 1px solid oklch(var(--status-pending) / 0.3);
+    }
+
+    .status-badge-signing {
+        background: oklch(var(--status-signing) / 0.15);
+        color: oklch(var(--status-signing));
+        border: 1px solid oklch(var(--status-signing) / 0.3);
+    }
+
+    .status-badge-broadcast {
+        background: oklch(var(--status-broadcast) / 0.15);
+        color: oklch(var(--status-broadcast));
+        border: 1px solid oklch(var(--status-broadcast) / 0.3);
+    }
+
+    .status-badge-confirmed {
+        background: oklch(var(--status-confirmed) / 0.15);
+        color: oklch(var(--status-confirmed));
+        border: 1px solid oklch(var(--status-confirmed) / 0.3);
+    }
+
+    .status-badge-failed {
+        background: oklch(var(--status-failed) / 0.15);
+        color: oklch(var(--status-failed));
+        border: 1px solid oklch(var(--status-failed) / 0.3);
+    }
+
+    /* Segwit Transaction Styling */
+    .segwit-address-display {
+        @apply font-mono text-xs bg-muted px-3 py-2 rounded break-all;
+        word-break: break-all;
     }
 
     /* AI Lottery Page Styles */

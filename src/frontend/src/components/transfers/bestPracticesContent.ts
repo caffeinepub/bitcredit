@@ -70,7 +70,7 @@ export const bestPracticesContent: BestPracticeEntry[] = [
     id: 'wrong-network',
     title: 'Wrong Network or Invalid Address Format',
     category: 'Network',
-    keywords: ['invalid address', 'wrong network', 'testnet', 'mainnet', 'address format', 'invalid', 'format'],
+    keywords: ['invalid address', 'wrong network', 'testnet', 'mainnet', 'address format', 'invalid', 'format', 'address rejected', 'api rejected'],
     body: `**Problem:** The destination address is invalid or belongs to a different Bitcoin network (testnet vs mainnet).
 
 **Why:** Bitcoin addresses have different formats for mainnet and testnet. Sending to an address from the wrong network will fail validation.
@@ -173,6 +173,109 @@ Any RBF re-signing must be performed externally using your own secure tools. Nev
 - Verify the transaction status on a blockchain explorer
 - If confirmed as evicted, create a new transfer request with an appropriate fee
 - Use the Agent Analysis section above to see suggested fee rates for successful confirmation`,
+  },
+  {
+    id: 'all-apis-rejected',
+    title: 'All APIs Rejected - Multi-Provider Failure',
+    category: 'Provider',
+    keywords: ['all apis', 'all providers', 'multiple failures', 'all rejected', 'every api', 'all attempts failed'],
+    body: `**Problem:** The system attempted to broadcast your transaction using multiple blockchain API providers, but all of them rejected the request.
+
+**Why:** When all configured API providers reject a transaction, it typically indicates one of these issues:
+- The destination address format is invalid or not recognized by any provider
+- The transaction parameters violate Bitcoin protocol rules
+- All providers are experiencing simultaneous outages (rare)
+- The backend configuration has an issue affecting all providers
+
+**Solution:**
+- **Address Format Issues:** If all APIs rejected with address-related errors, verify the destination address is valid for Bitcoin mainnet
+- **Connectivity Issues:** If all APIs timed out or failed to connect, check network status and retry after a few minutes
+- **Rate Limiting:** If all APIs returned rate limit errors, wait a few minutes before retrying
+
+**Next Steps:**
+- Review the "Multi-API Broadcast Attempts" section above to see specific errors from each provider
+- Check the "API Error Analysis" section to understand the error pattern
+- If all errors are address-related, verify the destination address with the recipient
+- If all errors are connectivity-related, wait and retry
+- Your credits have been restored and you can create a new transfer request once the issue is resolved`,
+  },
+  {
+    id: 'address-format-across-providers',
+    title: 'Address Format Issues Across Multiple Providers',
+    category: 'Network',
+    keywords: ['address format', 'multiple providers', 'all rejected address', 'invalid address multiple', 'format error'],
+    body: `**Problem:** Multiple blockchain API providers rejected the destination address, indicating a consistent address format issue.
+
+**Why:** Different API providers may have varying levels of address validation, but when multiple providers reject the same address, it strongly suggests:
+- The address is for a different Bitcoin network (testnet instead of mainnet)
+- The address contains typos or formatting errors
+- The address uses an unsupported or deprecated format
+- The address checksum is invalid
+
+**Solution:**
+1. **Verify Network:** Ensure the address is for Bitcoin mainnet (not testnet or other networks)
+2. **Check Format:** Valid mainnet addresses start with:
+   - \`1\` (P2PKH - Legacy)
+   - \`3\` (P2SH - Script Hash)
+   - \`bc1\` (Bech32 - SegWit)
+3. **Validate Checksum:** Use a Bitcoin address validator tool to verify the address checksum
+4. **Confirm with Recipient:** Double-check the address with the recipient to ensure it's correct
+
+**Next Steps:**
+- Review the exact address you entered in the transfer request
+- Use a blockchain explorer to verify the address format
+- If the address is incorrect, create a new transfer request with the corrected address
+- Your credits have been restored for the failed transfer`,
+  },
+  {
+    id: 'connectivity-failures',
+    title: 'Connectivity Failures Across Multiple APIs',
+    category: 'Connectivity',
+    keywords: ['connectivity', 'multiple timeouts', 'network error multiple', 'connection failed multiple', 'all timed out'],
+    body: `**Problem:** Multiple blockchain API providers experienced connectivity failures when attempting to broadcast your transaction.
+
+**Why:** Simultaneous connectivity failures across multiple providers can indicate:
+- Temporary network issues between the Internet Computer and external APIs
+- Internet Computer subnet experiencing connectivity problems
+- Widespread API provider outages (rare)
+- Firewall or network configuration issues
+
+**Solution:**
+- **Wait and Retry:** Most connectivity issues are temporary. Wait 5-10 minutes and retry the transfer
+- **Check Status Pages:** Visit the status pages of major blockchain API providers to check for known outages
+- **Monitor IC Status:** Check the Internet Computer status dashboard for any reported network issues
+- **Try Different Time:** If the issue persists, try again during off-peak hours
+
+**Next Steps:**
+- Wait a few minutes for network conditions to improve
+- Use the "Retry Transfer" button to create a new transfer request
+- If the issue persists after multiple attempts, contact support with the request ID and diagnostic data
+- Your credits have been restored and remain available in your balance`,
+  },
+  {
+    id: 'rate-limiting',
+    title: 'Rate Limiting Across Multiple APIs',
+    category: 'Provider',
+    keywords: ['rate limit', 'too many requests', 'quota exceeded', 'api limit', 'throttled'],
+    body: `**Problem:** One or more blockchain API providers returned rate limit errors, indicating too many requests in a short period.
+
+**Why:** Blockchain API providers implement rate limiting to prevent abuse and ensure fair usage:
+- Free tier APIs have lower rate limits
+- Multiple users sharing the same backend may hit collective limits
+- Rapid retry attempts can trigger rate limiting
+- Some providers have stricter limits during high-traffic periods
+
+**Solution:**
+- **Wait Before Retrying:** Most rate limits reset after a few minutes (typically 1-5 minutes)
+- **Avoid Rapid Retries:** Don't repeatedly retry failed transfers immediately
+- **Check Provider Limits:** Review the rate limit policies of the configured API providers
+- **Consider Paid Tiers:** For high-volume usage, consider upgrading to paid API tiers with higher limits
+
+**Next Steps:**
+- Wait at least 5 minutes before retrying the transfer
+- If you need to make multiple transfers, space them out over time
+- Contact the administrator if rate limiting is a recurring issue (may need API tier upgrade)
+- Your credits have been restored and you can retry once the rate limit window has passed`,
   },
   {
     id: 'general-troubleshooting',

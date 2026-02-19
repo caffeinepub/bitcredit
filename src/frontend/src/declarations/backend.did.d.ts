@@ -11,87 +11,12 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export type BitcoinAmount = bigint;
-export interface BitcoinWallet { 'publicKey' : Uint8Array, 'address' : string }
-export interface ConfirmationAnalysisResult {
-  'confirmations' : [] | [bigint],
-  'status' : TransferStatus,
-  'diagnosticData' : [] | [string],
-  'forceFreshCheck' : [] | [boolean],
-  'expectedFee' : [] | [BitcoinAmount],
-  'suggestedFee' : [] | [BitcoinAmount],
-  'feeDecryptorAnalysis' : [] | [MempoolAnalysisResult],
-  'statusTimestamp' : Time,
+export interface BitcoinWallet {
+  'publicKey' : Uint8Array,
+  'address' : string,
+  'segwitMetadata' : SegwitMetadata,
 }
-export interface CoverageDetails {
-  'adjustedCoverageRatio' : number,
-  'pendingOutflow' : bigint,
-  'pendingOutflowWithFees' : bigint,
-}
-export interface ExtendedReserveAdjustment {
-  'performedBy' : Principal,
-  'timestamp' : Time,
-  'amount' : BitcoinAmount,
-  'transactionId' : [] | [string],
-  'reason' : ReserveChangeReason,
-}
-export type FeeRateSufficiency = { 'BORDERLINE' : null } |
-  { 'SUFFICIENT' : null } |
-  { 'INSUFFICIENT' : null };
-export interface MempoolAnalysisResult {
-  'mempoolDepthBytes' : [] | [BitcoinAmount],
-  'recommendedFeeRate' : BitcoinAmount,
-  'diagnosticData' : [] | [string],
-  'feeDescription' : string,
-  'txid' : string,
-  'feeRateSufficiency' : FeeRateSufficiency,
-  'timestamp' : Time,
-  'recommendedNextBlockFeeRate' : [] | [BitcoinAmount],
-  'mempoolFeeRate' : BitcoinAmount,
-}
-export type ReserveChangeReason = { 'adjustment' : null } |
-  { 'deposit' : null } |
-  { 'withdrawal' : null };
-export interface ReserveDepositValidationRequest {
-  'txid' : string,
-  'amount' : BitcoinAmount,
-}
-export interface ReserveDepositValidationResult {
-  'confirmedDeposit' : boolean,
-  'success' : boolean,
-}
-export type ReserveManagementAction = { 'withdraw' : BitcoinAmount } |
-  { 'deposit' : BitcoinAmount } |
-  { 'correction' : BitcoinAmount };
-export interface ReserveMultisigConfig {
-  'threshold' : bigint,
-  'redeemScript' : [] | [string],
-  'address' : [] | [string],
-  'pubkeys' : Array<Uint8Array>,
-}
-export interface ReserveStatus {
-  'reserveBtcBalance' : BitcoinAmount,
-  'coverageDetails' : [] | [CoverageDetails],
-  'outstandingIssuedCredits' : BitcoinAmount,
-  'timestamp' : Time,
-  'coverageRatio' : [] | [number],
-}
-export interface SendBTCRequest {
-  'id' : bigint,
-  'status' : TransferStatus,
-  'failureReason' : [] | [string],
-  'diagnosticData' : [] | [string],
-  'owner' : Principal,
-  'destinationAddress' : string,
-  'confirmedBlockheight' : [] | [bigint],
-  'totalCost' : BitcoinAmount,
-  'networkFee' : BitcoinAmount,
-  'evictedDetectedTimestamp' : [] | [Time],
-  'tempStorageForBTCTransaction' : [] | [Uint8Array],
-  'timestamp' : Time,
-  'blockchainTxId' : [] | [string],
-  'amount' : BitcoinAmount,
-  'lastStatusCheckTimestamp' : [] | [Time],
-}
+export interface SegwitMetadata { 'p2wpkhStatus' : boolean }
 export type Time = bigint;
 export interface Transaction {
   'id' : string,
@@ -106,21 +31,6 @@ export type TransactionType = { 'adjustment' : null } |
   { 'withdrawalRequested' : null } |
   { 'creditPurchase' : null } |
   { 'debit' : null };
-export type TransferStatus = { 'COMPLETED' : null } |
-  { 'VERIFIED' : null } |
-  { 'IN_PROGRESS' : null } |
-  { 'FAILED' : null } |
-  { 'PENDING' : null } |
-  { 'EVICTED' : null };
-export interface TransformationInput {
-  'context' : Uint8Array,
-  'response' : http_request_result,
-}
-export interface TransformationOutput {
-  'status' : bigint,
-  'body' : Uint8Array,
-  'headers' : Array<http_header>,
-}
 export interface UserProfile {
   'bitcoinWallet' : [] | [BitcoinWallet],
   'name' : string,
@@ -128,84 +38,15 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export interface WithdrawalRequest {
-  'id' : bigint,
-  'status' : WithdrawalStatus,
-  'method' : string,
-  'failureReason' : [] | [string],
-  'owner' : Principal,
-  'account' : [] | [string],
-  'timestamp' : Time,
-  'amount' : BitcoinAmount,
-}
-export type WithdrawalStatus = { 'REJECTED' : null } |
-  { 'PAID' : null } |
-  { 'PENDING' : null };
-export interface http_header { 'value' : string, 'name' : string }
-export interface http_request_result {
-  'status' : bigint,
-  'body' : Uint8Array,
-  'headers' : Array<http_header>,
-}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'analyzeSendBTCRequestConfirmation' : ActorMethod<
-    [bigint, [] | [boolean]],
-    ConfirmationAnalysisResult
-  >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createCallerBitcoinWallet' : ActorMethod<[], undefined>,
-  'getAllReserveAdjustments' : ActorMethod<
-    [],
-    Array<[bigint, ExtendedReserveAdjustment]>
-  >,
-  'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
-  'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
-  'getCallerBitcoinWallet' : ActorMethod<[], [] | [BitcoinWallet]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCurrentBtcPriceUsd' : ActorMethod<[], [] | [number]>,
-  'getEstimatedNetworkFee' : ActorMethod<
-    [string, BitcoinAmount],
-    BitcoinAmount
-  >,
-  'getReserveMultisigConfig' : ActorMethod<[], [] | [ReserveMultisigConfig]>,
-  'getReserveStatus' : ActorMethod<[], ReserveStatus>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
-  'getTransferRequest' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getUserWithdrawalRequests' : ActorMethod<
-    [Principal],
-    Array<WithdrawalRequest>
-  >,
-  'getWithdrawalRequest' : ActorMethod<[bigint], [] | [WithdrawalRequest]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'isReserveMultisigConfigSet' : ActorMethod<[], boolean>,
-  'manageReserve' : ActorMethod<
-    [ReserveManagementAction, [] | [string]],
-    undefined
-  >,
-  'markWithdrawalPaid' : ActorMethod<[bigint], undefined>,
-  'purchaseCredits' : ActorMethod<[string, BitcoinAmount], undefined>,
-  'refreshBtcPrice' : ActorMethod<[], [] | [number]>,
-  'refreshTransferRequestStatus' : ActorMethod<[bigint], [] | [SendBTCRequest]>,
-  'rejectWithdrawalRequest' : ActorMethod<[bigint, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'sendBTC' : ActorMethod<[string, BitcoinAmount], bigint>,
-  'submitWithdrawalRequest' : ActorMethod<
-    [BitcoinAmount, string, [] | [string]],
-    bigint
-  >,
-  'toggleApiDiagnostics' : ActorMethod<[], boolean>,
-  'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
-  'updateReserveMultisigConfig' : ActorMethod<
-    [bigint, Array<Uint8Array>, [] | [string], [] | [string]],
-    undefined
-  >,
-  'validateReserveDeposit' : ActorMethod<
-    [ReserveDepositValidationRequest],
-    ReserveDepositValidationResult
-  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

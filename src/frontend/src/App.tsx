@@ -1,28 +1,18 @@
-import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet, redirect } from '@tanstack/react-router';
+import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from 'next-themes';
-import { useInternetIdentity } from './hooks/useInternetIdentity';
-import { useActor } from './hooks/useActor';
-import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import AppLayout from './components/layout/AppLayout';
-import DashboardPage from './pages/DashboardPage';
-import BuyCreditsPage from './pages/BuyCreditsPage';
 import SendBtcPage from './pages/SendBtcPage';
 import HistoryPage from './pages/HistoryPage';
-import AdminPage from './pages/AdminPage';
-import AdminCredentialsPage from './pages/AdminCredentialsPage';
-import PuzzleRewardsPage from './pages/PuzzleRewardsPage';
-import WithdrawPage from './pages/WithdrawPage';
 import TransferTroubleshootingPage from './pages/TransferTroubleshootingPage';
 import AiLotteryPage from './pages/AiLotteryPage';
+import { useInternetIdentity } from './hooks/useInternetIdentity';
+import { useIsCallerAdmin } from './hooks/useQueries';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
-import AdminAccessLoadingScreen from './components/auth/AdminAccessLoadingScreen';
+import { useGetCallerUserProfile } from './hooks/useQueries';
 import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
 import LoggedOutSignInPanel from './components/auth/LoggedOutSignInPanel';
-import { adminStatusCache } from './utils/adminStatusCache';
-import { getSecretParameter } from './utils/urlParams';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,16 +23,21 @@ const queryClient = new QueryClient({
   },
 });
 
-function AuthGate({ children }: { children: React.ReactNode }) {
+function Layout() {
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
+  );
+}
+
+function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   const { identity, isInitializing } = useInternetIdentity();
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
   }
@@ -54,186 +49,89 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { identity } = useInternetIdentity();
-  const { actor, isFetching: actorFetching } = useActor();
-  const [isVerifying, setIsVerifying] = useState(true);
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { identity, isInitializing } = useInternetIdentity();
+  const { data: isAdmin, isLoading: isAdminLoading, isFetched } = useIsCallerAdmin();
 
-  const principalId = identity?.getPrincipal().toString();
-  const cachedStatus = principalId ? adminStatusCache.get(principalId) : null;
-
-  const { data: isAdmin, isFetching, isFetched } = useQuery<boolean>({
-    queryKey: ['isAdmin', principalId],
-    queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      const result = await actor.isCallerAdmin();
-      if (principalId) {
-        adminStatusCache.set(principalId, result);
-      }
-      return result;
-    },
-    enabled: !!actor && !actorFetching && !!principalId,
-    retry: 1,
-    staleTime: 0,
-    initialData: cachedStatus !== null ? cachedStatus : undefined,
-  });
-
-  useEffect(() => {
-    if (isFetched && !isFetching) {
-      setIsVerifying(false);
-    }
-  }, [isFetched, isFetching]);
-
-  if (actorFetching || isFetching || isVerifying) {
-    return <AdminAccessLoadingScreen principal={principalId} />;
+  if (isInitializing || isAdminLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Verifying admin access...</div>
+      </div>
+    );
   }
 
-  if (!isAdmin) {
-    const tokenDetected = !!getSecretParameter('caffeineAdminToken');
-    return <AdminAccessDeniedScreen tokenDetected={tokenDetected} />;
+  if (!identity) {
+    return <LoggedOutSignInPanel />;
+  }
+
+  if (isFetched && !isAdmin) {
+    return <AdminAccessDeniedScreen />;
   }
 
   return <>{children}</>;
 }
 
-function AppContent() {
-  const { identity } = useInternetIdentity();
-  const { actor, isFetching: actorFetching } = useActor();
-  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
-
-  const principalId = identity?.getPrincipal().toString();
-
-  const { data: isAdmin, isFetched: adminFetched } = useQuery<boolean>({
-    queryKey: ['isAdmin', principalId],
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerAdmin();
-    },
-    enabled: !!actor && !actorFetching && !!principalId,
-    retry: false,
-  });
-
-  const { data: userProfile, isLoading: profileLoading, isFetched: profileFetched } = useQuery({
-    queryKey: ['currentUserProfile'],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getCallerUserProfile();
-    },
-    enabled: !!actor && !actorFetching && !!identity,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (adminFetched) {
-      setAdminCheckComplete(true);
-    }
-  }, [adminFetched]);
-
-  const showProfileSetup = identity && !profileLoading && profileFetched && userProfile === null && !isAdmin;
-
-  return (
-    <>
-      <Outlet />
-      {showProfileSetup && <ProfileSetupModal />}
-    </>
-  );
-}
-
 const rootRoute = createRootRoute({
-  component: () => (
-    <AuthGate>
-      <AppLayout>
-        <AppContent />
-      </AppLayout>
-    </AuthGate>
-  ),
+  component: Layout,
 });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: DashboardPage,
-});
-
-const buyCreditsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/buy-credits',
-  component: BuyCreditsPage,
+  component: () => (
+    <AuthenticatedRoute>
+      <SendBtcPage />
+    </AuthenticatedRoute>
+  ),
 });
 
 const sendBtcRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/send-btc',
-  component: SendBtcPage,
+  component: () => (
+    <AuthenticatedRoute>
+      <SendBtcPage />
+    </AuthenticatedRoute>
+  ),
 });
 
 const historyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/history',
-  component: HistoryPage,
-});
-
-const puzzleRewardsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/puzzle-rewards',
-  component: PuzzleRewardsPage,
-});
-
-const withdrawRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/withdraw',
-  component: WithdrawPage,
+  component: () => (
+    <AuthenticatedRoute>
+      <HistoryPage />
+    </AuthenticatedRoute>
+  ),
 });
 
 const aiLotteryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ai-lottery',
-  component: AiLotteryPage,
-});
-
-const troubleshootingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/transfer/$requestId/troubleshoot',
-  component: TransferTroubleshootingPage,
-});
-
-const adminRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin',
   component: () => (
-    <AdminGuard>
-      <AdminPage />
-    </AdminGuard>
+    <AuthenticatedRoute>
+      <AiLotteryPage />
+    </AuthenticatedRoute>
   ),
-  beforeLoad: async () => {
-    const hasToken = !!getSecretParameter('caffeineAdminToken');
-    if (!hasToken) {
-      throw redirect({ to: '/' });
-    }
-  },
 });
 
-const adminCredentialsRoute = createRoute({
+const transferTroubleshootingRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/admin/credentials',
+  path: '/transfer-troubleshooting/$requestId',
   component: () => (
-    <AdminGuard>
-      <AdminCredentialsPage />
-    </AdminGuard>
+    <AuthenticatedRoute>
+      <TransferTroubleshootingPage />
+    </AuthenticatedRoute>
   ),
 });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  buyCreditsRoute,
   sendBtcRoute,
   historyRoute,
-  puzzleRewardsRoute,
-  withdrawRoute,
   aiLotteryRoute,
-  troubleshootingRoute,
-  adminRoute,
-  adminCredentialsRoute,
+  transferTroubleshootingRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -244,13 +142,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
+function AppContent() {
+  const { identity } = useInternetIdentity();
+  const { data: isAdmin } = useIsCallerAdmin();
+  const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
+
+  const isAuthenticated = !!identity;
+  const showProfileSetup = isAuthenticated && !profileLoading && isFetched && userProfile === null && !isAdmin;
+
+  return (
+    <>
+      <RouterProvider router={router} />
+      {showProfileSetup && <ProfileSetupModal />}
+      <Toaster />
+    </>
+  );
+}
+
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <RouterProvider router={router} />
-        <Toaster />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <AppContent />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
