@@ -1,67 +1,54 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T08:13:03.114Z",
-  "summary": "The diff contains only frontend changes that provide user-facing documentation and error messaging about the missing backend sendBTC implementation. However, the BuildRequest explicitly requires backend diagnosis (REQ-1) and backend implementation fixes (REQ-2) in main.mo, which are completely absent from the diff. The frontend error handling improvements (REQ-3) are partially implemented but rely on backend error messages that don't exist yet.",
+  "generatedAt": "2026-02-19T10:12:46.021Z",
+  "summary": "The diff shows modifications to backend/main.mo, but the content is truncated at ~4000 chars, making it impossible to verify if the Bitcoin-specific functionality (sendBitcoin, buildTransaction, getTxId functions, Bitcoin/Result imports, SendRequest type) was implemented. The visible portion shows existing wallet/credit functionality but no evidence of the requested Bitcoin transaction sending features. All five requirements appear to be missing from the visible diff content.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Diagnose why the sendBtc function fails when attempting to broadcast Bitcoin transactions to mainnet by examining backend main.mo implementation for HTTP outcall errors, API endpoint issues, or network configuration problems",
-      "reason": "No backend files were modified. The diff contains only frontend changes. There is no evidence of diagnostic work on backend/main.mo, HTTP outcall analysis, or investigation of mainnet broadcasting failures.",
-      "evidence": []
+      "requirement": "Implement the sendBitcoin function that accepts SendRequest, builds a raw Bitcoin transaction, sends it to testnet using Bitcoin.send_transaction, and returns Result<Text, Text>",
+      "reason": "No sendBitcoin function implementation visible in the truncated diff. The visible portion shows existing actor code but no Bitcoin transaction sending logic",
+      "evidence": [
+        "backend/main.mo"
+      ]
     },
     {
       "id": "REQ-2",
-      "requirement": "Fix the backend sendBtc implementation to successfully broadcast signed Bitcoin transactions to mainnet using Internet Computer HTTP outcalls to public blockchain APIs",
-      "reason": "No backend implementation changes exist in the diff. The frontend changes document that sendBTC is 'not implemented', but REQ-2 requires actually implementing and fixing the backend functionality in main.mo.",
+      "requirement": "Implement the buildTransaction helper function that constructs a properly formatted raw Bitcoin transaction in hexadecimal format",
+      "reason": "No buildTransaction function visible in the truncated diff content",
       "evidence": [
-        "frontend/src/pages/SendBtcPage.tsx",
-        "frontend/src/pages/TransferTroubleshootingPage.tsx"
+        "backend/main.mo"
       ]
     },
     {
       "id": "REQ-3",
-      "requirement": "Update frontend SendBtcPage error handling to provide clear feedback when mainnet broadcasting fails, using improved error messages from the fixed backend implementation",
-      "reason": "While frontend error handling was added, it describes the missing backend implementation rather than handling actual backend error responses. The acceptance criteria require distinguishing between signing and broadcasting issues from backend errors, but no backend exists to provide those errors yet.",
+      "requirement": "Implement the getTxId helper function that extracts and returns the transaction ID from a raw Bitcoin transaction",
+      "reason": "No getTxId function visible in the truncated diff content",
       "evidence": [
-        "frontend/src/pages/SendBtcPage.tsx",
-        "frontend/src/utils/errors.ts"
-      ]
-    }
-  ],
-  "hallucinated_features": [
-    {
-      "description": "Comprehensive troubleshooting documentation and best practices content for sendBTC failures including HTTP outcall issues, localhost connectivity problems, rate limiting, and API provider diagnostics",
-      "reason": "The BuildRequest does not ask for documentation, troubleshooting guides, or best practices content. It requests backend diagnosis, backend fixes, and frontend error handling for actual backend responses. The extensive documentation in bestPracticesContent.ts and BestPracticesSection.tsx was not requested.",
-      "evidence": [
-        "frontend/src/components/transfers/bestPracticesContent.ts",
-        "frontend/src/components/transfers/BestPracticesSection.tsx",
-        "frontend/src/pages/TransferTroubleshootingPage.tsx"
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Auto-suggestion system that analyzes transfer failure patterns to recommend relevant troubleshooting topics",
-      "reason": "The BuildRequest does not mention implementing intelligent failure pattern analysis or auto-suggestion systems. REQ-3 only requires clear error feedback when broadcasting fails.",
+      "id": "REQ-4",
+      "requirement": "Import the Bitcoin base library (mo:base/Bitcoin) and Result library (mo:base/Result)",
+      "reason": "The visible imports show mo:core libraries but no mo:base/Bitcoin or mo:base/Result imports. Only mo:core/List, Map, Text, Time, Float, Nat, Iter, Runtime, Principal are visible",
       "evidence": [
-        "frontend/src/components/transfers/BestPracticesSection.tsx"
+        "backend/main.mo"
       ]
     },
     {
-      "description": "Detailed blockchain API provider error categorization and normalization covering scenarios like localhost endpoints, rate limiting, multiple provider failures, and connection timeouts",
-      "reason": "While error handling is requested in REQ-3, the BuildRequest specifies it should use improved error messages from the fixed backend implementation. This extensive error normalization appears to preemptively handle backend errors that should come from the backend itself once REQ-2 is implemented.",
+      "id": "REQ-5",
+      "requirement": "Define the SendRequest type as a record containing destinationAddress (Text) and amountSatoshis (Nat64)",
+      "reason": "No SendRequest type definition visible in the truncated diff. Visible types include BitcoinAmount, PeerTransferId, WithdrawalRequestId, VerificationRequestId, TransactionType, but not SendRequest",
       "evidence": [
-        "frontend/src/utils/errors.ts"
+        "backend/main.mo"
       ]
     }
   ],
-  "confidence": 0.95,
+  "hallucinated_features": [],
+  "confidence": 0.4,
   "changed_files": [
-    "frontend-file-summaries.txt",
-    "frontend/src/components/transfers/BestPracticesSection.tsx",
-    "frontend/src/components/transfers/bestPracticesContent.ts",
-    "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/pages/TransferTroubleshootingPage.tsx",
-    "frontend/src/utils/errors.ts",
+    "backend/main.mo",
     "project_state.json"
   ]
 }

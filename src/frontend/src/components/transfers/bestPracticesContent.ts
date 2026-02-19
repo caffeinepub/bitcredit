@@ -31,7 +31,7 @@ This method should:
 3. Sign the Bitcoin transaction
 4. Broadcast to blockchain APIs via HTTP outcalls
 5. Track signing and broadcast status
-6. Return detailed result information
+6. Return detailed result information including broadcastAttempts array
 
 <strong>Workarounds:</strong>
 • Use Withdrawal Requests for admin-processed transfers
@@ -60,6 +60,7 @@ This method should:
 2. Implement retry logic with multiple providers
 3. Add proper timeout handling (IC HTTP outcalls have time limits)
 4. Include detailed error logging for diagnostics
+5. Return broadcastAttempts array with provider name, HTTP status, and error details
 
 <strong>Testing:</strong>
 • Test HTTP outcalls from IC canister environment, not local development
@@ -158,244 +159,385 @@ Internet Computer canisters run in a distributed network and cannot access local
 
 3. Review API error responses:
    • Each API may provide specific rejection reasons
-   • Look for patterns across multiple API failures
-   • Check API documentation for error codes
+   • Look for patterns across multiple provider failures
+   • Check HTTP status codes (400 = bad request, 429 = rate limit)
 
 <strong>Resolution:</strong>
-• Validate address format before signing
-• Implement transaction format validation
-• Increase network fee if mempool is congested
-• Add detailed error logging for each API attempt
-• Consider implementing transaction pre-validation`,
-    keywords: ['all apis', 'rejected', 'broadcast', 'failed', 'multiple', 'providers', 'address format']
-  },
-  {
-    id: 'address-format-issues',
-    category: 'Address Validation',
-    title: 'Address Format Issues Across Providers',
-    body: `<strong>Issue:</strong> Blockchain APIs rejecting transactions due to address format problems.
+1. Review broadcastAttempts array for specific error messages from each provider
+2. Validate transaction construction and signing process
+3. Check current network fee rates and adjust if necessary
+4. Ensure transaction follows Bitcoin protocol standards
+5. Verify inputs are unspent using blockchain explorer
 
-<strong>Common Problems:</strong>
-• Using testnet address on mainnet (or vice versa)
-• Invalid address checksum
-• Unsupported address type (some APIs don't support all Segwit formats)
-• Malformed address string
-
-<strong>Address Format Guide:</strong>
-<strong>Mainnet:</strong>
-• Legacy (P2PKH): Starts with 1
-• Script (P2SH): Starts with 3
-• Segwit (P2WPKH): Starts with bc1q
-• Taproot (P2TR): Starts with bc1p
-
-<strong>Testnet:</strong>
-• Legacy: Starts with m or n
-• Script: Starts with 2
-• Segwit: Starts with tb1q
-• Taproot: Starts with tb1p
-
-<strong>Resolution:</strong>
-1. Implement address validation before signing:
-   • Check address prefix matches network (mainnet vs testnet)
-   • Verify address checksum
-   • Validate address length
-
-2. Support multiple address formats:
-   • Ensure backend can handle Legacy, P2SH, and Segwit addresses
-   • Document which address types are supported
-
-3. Provide clear error messages:
-   • Tell users which address format was rejected
-   • Suggest correct address format for the network`,
-    keywords: ['address', 'format', 'invalid', 'testnet', 'mainnet', 'segwit', 'bc1', 'validation']
-  },
-  {
-    id: 'provider-timeout',
-    category: 'Network Issues',
-    title: 'Blockchain API Provider Timeouts',
-    body: `<strong>Issue:</strong> HTTP outcalls to blockchain APIs are timing out before completing.
-
-<strong>Common Causes:</strong>
-• API provider experiencing high load
-• Network connectivity issues
-• IC HTTP outcall time limits exceeded
-• API endpoint is slow or unresponsive
-
-<strong>Resolution:</strong>
-1. <strong>Implement Timeout Handling:</strong>
-   • Set reasonable timeout values (e.g., 10-30 seconds)
-   • Implement retry logic with exponential backoff
-   • Try alternative API providers on timeout
-
-2. <strong>Multi-Provider Strategy:</strong>
-   • Configure multiple blockchain API providers
-   • Attempt providers in priority order
-   • Fall back to alternative providers on timeout
-
-3. <strong>Optimize Requests:</strong>
-   • Use efficient API endpoints
-   • Minimize request payload size
-   • Cache API responses when appropriate
-
-<strong>Monitoring:</strong>
-• Track API response times
-• Log timeout occurrences for each provider
-• Alert when all providers are timing out (indicates broader issue)`,
-    keywords: ['timeout', 'slow', 'api', 'provider', 'network', 'connectivity', 'unresponsive']
+<strong>Prevention:</strong>
+• Implement pre-broadcast validation checks
+• Use multiple API providers with fallback logic
+• Monitor API health and response patterns
+• Log detailed diagnostic information for each attempt`,
+    keywords: ['rejected', 'all apis', 'all providers', 'broadcast failed', 'multiple failures', 'api error']
   },
   {
     id: 'rate-limiting',
     category: 'API Management',
-    title: 'API Rate Limiting',
-    body: `<strong>Issue:</strong> Blockchain API providers are rate limiting or rejecting requests due to quota exceeded.
+    title: 'Rate Limiting and API Quotas',
+    body: `<strong>Issue:</strong> Blockchain API provider is rate limiting or rejecting requests due to quota exceeded.
 
 <strong>Symptoms:</strong>
-• Error messages: "rate limit exceeded", "too many requests", "quota exceeded"
-• HTTP 429 status codes
-• Intermittent failures during high usage periods
-
-<strong>Resolution:</strong>
-1. <strong>Implement Rate Limit Handling:</strong>
-   • Detect rate limit errors (HTTP 429, specific error messages)
-   • Implement exponential backoff retry logic
-   • Respect Retry-After headers from APIs
-
-2. <strong>Use Multiple API Providers:</strong>
-   • Distribute requests across multiple providers
-   • Implement round-robin or weighted load balancing
-   • Track rate limit status per provider
-
-3. <strong>Optimize API Usage:</strong>
-   • Cache API responses when possible
-   • Batch requests where supported
-   • Implement request queuing to avoid bursts
-
-4. <strong>Consider API Keys:</strong>
-   • Many providers offer higher rate limits with API keys
-   • Implement API key rotation if needed
-   • Monitor usage against quotas
-
-<strong>Best Practices:</strong>
-• Monitor rate limit usage proactively
-• Implement graceful degradation when limits are reached
-• Provide clear user feedback when rate limited`,
-    keywords: ['rate limit', 'quota', 'too many requests', '429', 'throttle', 'api key']
-  },
-  {
-    id: 'wrong-network',
-    category: 'Configuration',
-    title: 'Wrong Network Configuration',
-    body: `<strong>Issue:</strong> Attempting to use testnet addresses on mainnet or vice versa.
-
-<strong>Symptoms:</strong>
-• Address validation failures
-• APIs rejecting transactions
-• "Invalid address" errors
-
-<strong>Network Identification:</strong>
-<strong>Mainnet Addresses:</strong>
-• Legacy: 1...
-• P2SH: 3...
-• Segwit: bc1...
-
-<strong>Testnet Addresses:</strong>
-• Legacy: m... or n...
-• P2SH: 2...
-• Segwit: tb1...
-
-<strong>Resolution:</strong>
-1. <strong>Verify Network Configuration:</strong>
-   • Check backend is configured for correct network (mainnet vs testnet)
-   • Ensure blockchain API endpoints match network
-   • Validate address prefixes match network
-
-2. <strong>Implement Network Detection:</strong>
-   • Detect network from address prefix
-   • Warn users if address doesn't match configured network
-   • Prevent cross-network transactions
-
-3. <strong>Clear Documentation:</strong>
-   • Document which network the application uses
-   • Provide examples of valid addresses for the network
-   • Explain differences between mainnet and testnet
-
-<strong>Testing:</strong>
-• Use testnet for development and testing
-• Switch to mainnet only for production
-• Never mix testnet and mainnet addresses`,
-    keywords: ['network', 'testnet', 'mainnet', 'wrong', 'address', 'bc1', 'tb1', 'configuration']
-  },
-  {
-    id: 'mempool-stuck',
-    category: 'Confirmation Issues',
-    title: 'Transaction Stuck in Mempool',
-    body: `<strong>Issue:</strong> Transaction broadcast successfully but not confirming for extended period.
+• HTTP 429 (Too Many Requests) status code
+• Error message: "Rate limit exceeded"
+• Temporary API access denial
+• Requests succeed after waiting period
 
 <strong>Common Causes:</strong>
-• Network fee too low for current mempool conditions
-• High network congestion
-• Transaction may be evicted if fee is too low
-
-<strong>Expected Confirmation Times:</strong>
-• 1 confirmation: ~10 minutes (first block)
-• 3 confirmations: ~30 minutes
-• 6 confirmations: ~60 minutes
-
-<strong>What to Do:</strong>
-1. <strong>Monitor Transaction:</strong>
-   • Check transaction on blockchain explorer
-   • Verify it's in the mempool
-   • Check current mempool fee rates
-
-2. <strong>Wait for Confirmation:</strong>
-   • Transactions with adequate fees will eventually confirm
-   • During high congestion, may take several hours
-   • Don't attempt to re-send (will create duplicate)
-
-3. <strong>If Transaction is Evicted:</strong>
-   • Transaction will be dropped from mempool after ~72 hours
-   • Credits will be restored to user balance
-   • Can create new transaction with higher fee
-
-<strong>Prevention:</strong>
-• Implement dynamic fee estimation based on current mempool
-• Provide fee options (slow/medium/fast)
-• Monitor mempool conditions before broadcasting`,
-    keywords: ['mempool', 'stuck', 'unconfirmed', 'pending', 'slow', 'confirmation', 'fee']
-  },
-  {
-    id: 'insufficient-reserve',
-    category: 'Balance Management',
-    title: 'Insufficient Reserve Balance',
-    body: `<strong>Issue:</strong> Backend reserve doesn't have enough Bitcoin to cover transaction fees.
-
-<strong>Symptoms:</strong>
-• "Insufficient reserve" error messages
-• Transactions failing during signing phase
-• Cannot initiate new transfers
-
-<strong>Understanding Reserve:</strong>
-The backend maintains a Bitcoin reserve to cover:
-• Network transaction fees
-• User withdrawal requests
-• Mainnet transaction broadcasting
+• Too many requests in short time period
+• API key quota exhausted
+• Free tier limitations
+• Shared IP address rate limiting
 
 <strong>Resolution:</strong>
-1. <strong>For Administrators:</strong>
-   • Deposit Bitcoin to reserve address
-   • Monitor reserve balance regularly
-   • Set up alerts for low reserve levels
+1. <strong>Implement Exponential Backoff:</strong>
+   • Wait before retrying failed requests
+   • Increase wait time with each retry
+   • Example: 1s, 2s, 4s, 8s delays
 
-2. <strong>For Users:</strong>
-   • Contact administrator to replenish reserve
-   • Use alternative transfer methods (peer-to-peer)
-   • Wait for reserve to be replenished
+2. <strong>Use Multiple Providers:</strong>
+   • Configure fallback API providers
+   • Distribute requests across providers
+   • Rotate providers on rate limit errors
+
+3. <strong>Optimize Request Patterns:</strong>
+   • Cache blockchain data when possible
+   • Batch operations where supported
+   • Implement request queuing
+
+4. <strong>Upgrade API Plans:</strong>
+   • Consider paid API tiers for higher limits
+   • Use authenticated API keys for better quotas
+   • Monitor usage against limits
+
+<strong>Best Practices:</strong>
+• Track API usage metrics
+• Set up alerts for approaching limits
+• Implement graceful degradation
+• Return clear error messages to users when rate limited`,
+    keywords: ['rate limit', '429', 'too many requests', 'quota', 'throttle', 'api limit']
+  },
+  {
+    id: 'malformed-transaction',
+    category: 'Transaction Format',
+    title: 'Malformed Transaction Errors',
+    body: `<strong>Issue:</strong> Blockchain API rejects transaction due to invalid format or encoding.
+
+<strong>Common Causes:</strong>
+• Incorrect transaction serialization
+• Invalid Segwit encoding
+• Missing or malformed witness data
+• Incorrect script format
+• Invalid signature encoding (DER format issues)
+
+<strong>Symptoms:</strong>
+• Error: "malformed transaction"
+• Error: "invalid transaction format"
+• Error: "bad-txns-inputs-missingorspent"
+• HTTP 400 status from API
+
+<strong>Resolution:</strong>
+1. <strong>Validate Transaction Structure:</strong>
+   • Verify version number (typically 1 or 2)
+   • Check input and output counts
+   • Validate script formats
+   • Ensure proper Segwit witness structure
+
+2. <strong>Segwit Encoding:</strong>
+   • Use proper witness serialization for P2WPKH/P2WSH
+   • Include witness marker and flag (0x00 0x01)
+   • Verify witness data placement
+   • Check address type matches transaction type
+
+3. <strong>Signature Validation:</strong>
+   • Ensure DER encoding is correct
+   • Verify SIGHASH flags
+   • Check signature length and format
+   • Validate public key format
+
+4. <strong>Testing:</strong>
+   • Test transaction format with blockchain explorers
+   • Use Bitcoin Core's testmempoolaccept RPC
+   • Validate against Bitcoin protocol specifications
+   • Check transaction hex encoding
 
 <strong>Prevention:</strong>
-• Implement reserve monitoring and alerts
-• Maintain reserve buffer above minimum operational level
-• Track reserve usage trends
-• Plan for fee rate increases during network congestion`,
-    keywords: ['reserve', 'insufficient', 'balance', 'fee', 'deposit', 'low']
+• Use well-tested Bitcoin libraries
+• Implement comprehensive transaction validation
+• Test with small amounts first
+• Log transaction hex for debugging`,
+    keywords: ['malformed', 'invalid format', 'bad transaction', 'encoding', 'serialization', 'segwit']
+  },
+  {
+    id: 'double-spend',
+    category: 'Transaction Validation',
+    title: 'Double-Spend Detection',
+    body: `<strong>Issue:</strong> Transaction rejected because inputs are already spent or pending in mempool.
+
+<strong>Symptoms:</strong>
+• Error: "txn-mempool-conflict"
+• Error: "bad-txns-inputs-missingorspent"
+• Error: "missing inputs"
+• Transaction rejected by all providers
+
+<strong>Common Causes:</strong>
+• UTXO already spent in confirmed transaction
+• Conflicting transaction in mempool
+• Incorrect UTXO selection
+• Race condition with multiple transaction attempts
+
+<strong>Resolution:</strong>
+1. <strong>Verify UTXO Status:</strong>
+   • Check if inputs are unspent on blockchain
+   • Query mempool for pending transactions
+   • Use blockchain explorer to verify UTXO state
+   • Ensure UTXO database is up to date
+
+2. <strong>Replace-By-Fee (RBF):</strong>
+   • If original transaction is stuck, use RBF
+   • Increase fee to replace pending transaction
+   • Signal RBF in transaction (nSequence < 0xfffffffe)
+   • Ensure new transaction spends same inputs
+
+3. <strong>UTXO Management:</strong>
+   • Implement proper UTXO tracking
+   • Lock UTXOs during transaction construction
+   • Update UTXO set after successful broadcast
+   • Handle concurrent transaction requests
+
+4. <strong>Recovery:</strong>
+   • Wait for conflicting transaction to confirm or drop
+   • Use different UTXOs for new transaction
+   • Implement transaction cancellation if needed
+
+<strong>Prevention:</strong>
+• Maintain accurate UTXO database
+• Implement UTXO locking mechanism
+• Use transaction queuing for sequential processing
+• Monitor mempool for conflicts`,
+    keywords: ['double spend', 'utxo', 'inputs spent', 'mempool conflict', 'missing inputs', 'rbf']
+  },
+  {
+    id: 'insufficient-fee',
+    category: 'Fee Management',
+    title: 'Insufficient Network Fee',
+    body: `<strong>Issue:</strong> Transaction rejected or stuck in mempool due to insufficient network fee.
+
+<strong>Symptoms:</strong>
+• Transaction not confirming after extended period
+• Error: "min relay fee not met"
+• Error: "insufficient priority"
+• Transaction dropped from mempool
+
+<strong>Common Causes:</strong>
+• Fee rate too low for current network conditions
+• Mempool congestion
+• Transaction size larger than expected
+• Outdated fee estimation
+
+<strong>Resolution:</strong>
+1. <strong>Fee Estimation:</strong>
+   • Query current fee rates from blockchain APIs
+   • Use fee estimation endpoints (e.g., /fee-estimates)
+   • Target appropriate confirmation time (1-6 blocks)
+   • Account for transaction size (vBytes)
+
+2. <strong>Fee Rate Calculation:</strong>
+   • Minimum: 1 sat/vByte (may not confirm quickly)
+   • Standard: 10-50 sat/vByte (normal conditions)
+   • Priority: 50-100+ sat/vByte (fast confirmation)
+   • Check current mempool conditions
+
+3. <strong>Replace-By-Fee (RBF):</strong>
+   • Enable RBF when creating transaction
+   • Bump fee if transaction is stuck
+   • Increase fee by at least 1 sat/vByte
+   • Rebroadcast with higher fee
+
+4. <strong>Monitoring:</strong>
+   • Track transaction confirmation status
+   • Monitor mempool depth and fee rates
+   • Set up alerts for stuck transactions
+   • Implement automatic fee bumping
+
+<strong>Best Practices:</strong>
+• Use dynamic fee estimation
+• Add fee buffer for safety (10-20% extra)
+• Implement RBF by default
+• Monitor network conditions before broadcasting
+• Provide fee options to users (slow/medium/fast)`,
+    keywords: ['fee', 'insufficient', 'min relay', 'priority', 'stuck', 'mempool', 'sat/vbyte']
+  },
+  {
+    id: 'provider-timeout',
+    category: 'Network Issues',
+    title: 'Provider Timeout and Connection Issues',
+    body: `<strong>Issue:</strong> Blockchain API provider not responding or timing out.
+
+<strong>Symptoms:</strong>
+• Request timeout errors
+• No response from API
+• Connection refused
+• Network unreachable
+
+<strong>Common Causes:</strong>
+• API endpoint is down or overloaded
+• Network connectivity issues
+• IC HTTP outcall timeout (default ~30 seconds)
+• DNS resolution failures
+• Firewall or routing issues
+
+<strong>Resolution:</strong>
+1. <strong>Implement Retry Logic:</strong>
+   • Retry failed requests with exponential backoff
+   • Maximum 3-5 retry attempts
+   • Use different providers for retries
+   • Log each attempt with timestamp
+
+2. <strong>Multiple Providers:</strong>
+   • Configure at least 3 blockchain API providers
+   • Implement automatic failover
+   • Track provider health and response times
+   • Rotate providers on failures
+
+3. <strong>Timeout Configuration:</strong>
+   • Set appropriate timeout values (10-30 seconds)
+   • Handle timeout errors gracefully
+   • Return partial results when possible
+   • Provide user feedback on delays
+
+4. <strong>Health Monitoring:</strong>
+   • Ping providers periodically
+   • Track success/failure rates
+   • Disable unhealthy providers temporarily
+   • Alert on provider failures
+
+<strong>Recommended Providers:</strong>
+• Primary: Blockstream.info
+• Secondary: Blockchain.info
+• Tertiary: BlockCypher
+• Monitor status pages for known issues
+
+<strong>Prevention:</strong>
+• Use multiple providers from different networks
+• Implement circuit breaker pattern
+• Cache responses when appropriate
+• Set up monitoring and alerting`,
+    keywords: ['timeout', 'connection', 'unreachable', 'network', 'provider down', 'no response']
+  },
+  {
+    id: 'address-format-issues',
+    category: 'Address Validation',
+    title: 'Bitcoin Address Format Issues',
+    body: `<strong>Issue:</strong> Destination address is invalid or incompatible with transaction type.
+
+<strong>Common Causes:</strong>
+• Testnet address used on mainnet (or vice versa)
+• Invalid address checksum
+• Unsupported address type
+• Malformed address string
+• Wrong network prefix
+
+<strong>Address Types:</strong>
+1. <strong>Legacy (P2PKH):</strong>
+   • Mainnet: starts with "1"
+   • Testnet: starts with "m" or "n"
+   • Example: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+
+2. <strong>Script Hash (P2SH):</strong>
+   • Mainnet: starts with "3"
+   • Testnet: starts with "2"
+   • Example: 3J98t1WpEZ73CNmYviecrnyiWrnqRhWNLy
+
+3. <strong>Segwit (Bech32):</strong>
+   • Mainnet: starts with "bc1"
+   • Testnet: starts with "tb1"
+   • P2WPKH: 42 characters
+   • P2WSH: 62 characters
+   • Example: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq
+
+<strong>Resolution:</strong>
+1. <strong>Validation:</strong>
+   • Verify address checksum
+   • Check network prefix matches target network
+   • Validate address length
+   • Use Bitcoin address validation library
+
+2. <strong>Network Detection:</strong>
+   • Detect address network from prefix
+   • Warn if address doesn't match expected network
+   • Prevent cross-network transactions
+   • Display clear error messages
+
+3. <strong>Address Conversion:</strong>
+   • Support multiple address formats
+   • Convert between formats when possible
+   • Prefer Segwit addresses for lower fees
+   • Document supported address types
+
+<strong>Best Practices:</strong>
+• Validate addresses before transaction construction
+• Display address type to user
+• Support all common address formats
+• Provide clear error messages for invalid addresses
+• Test with addresses from each format type`,
+    keywords: ['address', 'invalid', 'format', 'checksum', 'testnet', 'mainnet', 'bc1', 'bech32', 'segwit']
+  },
+  {
+    id: 'reserve-management',
+    category: 'System Management',
+    title: 'Reserve Balance and Fee Management',
+    body: `<strong>Issue:</strong> Insufficient reserve balance to cover network fees for transactions.
+
+<strong>Symptoms:</strong>
+• Transaction creation fails
+• Error: "insufficient reserve balance"
+• Cannot cover network fees
+• Reserve coverage ratio below threshold
+
+<strong>Common Causes:</strong>
+• Reserve not funded adequately
+• High network fees depleting reserve
+• Many pending transactions
+• Reserve not replenished after withdrawals
+
+<strong>Resolution:</strong>
+1. <strong>Monitor Reserve:</strong>
+   • Track reserve balance regularly
+   • Calculate coverage ratio (reserve / issued credits)
+   • Set up alerts for low reserve
+   • Monitor pending outflows
+
+2. <strong>Fee Management:</strong>
+   • Estimate fees before transaction creation
+   • Use dynamic fee calculation
+   • Reserve buffer for fee spikes
+   • Track fee expenditure
+
+3. <strong>Reserve Replenishment:</strong>
+   • Deposit Bitcoin to reserve address
+   • Verify deposits on blockchain
+   • Update reserve balance in system
+   • Maintain minimum coverage ratio (e.g., 110%)
+
+4. <strong>Transaction Prioritization:</strong>
+   • Queue transactions when reserve is low
+   • Prioritize by user tier or amount
+   • Batch transactions to save fees
+   • Implement fee limits
+
+<strong>Best Practices:</strong>
+• Maintain reserve coverage above 120%
+• Monitor network fee trends
+• Automate reserve monitoring
+• Set up multi-signature reserve wallet
+• Document reserve management procedures
+• Regular reserve audits`,
+    keywords: ['reserve', 'balance', 'insufficient', 'coverage', 'fee management', 'funding']
   }
 ];

@@ -67,6 +67,22 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface VerificationRequest {
+  'id' : VerificationRequestId,
+  'status' : VerificationStatus,
+  'requester' : Principal,
+  'submittedAt' : Time,
+  'reviewComment' : [] | [string],
+  'reviewedAt' : [] | [Time],
+  'reviewedBy' : [] | [Principal],
+  'amount' : BitcoinAmount,
+  'transactionId' : string,
+}
+export type VerificationRequestId = bigint;
+export type VerificationStatus = { 'pending' : null } |
+  { 'instantApproved' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface WithdrawalRequest {
   'id' : WithdrawalRequestId,
   'status' : WithdrawalStatus,
@@ -83,6 +99,10 @@ export type WithdrawalStatus = { 'REJECTED' : null } |
   { 'PENDING' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'approveVerificationRequest' : ActorMethod<
+    [VerificationRequestId, [] | [string]],
+    undefined
+  >,
   'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'creditBtcWithVerification' : ActorMethod<
@@ -90,6 +110,7 @@ export interface _SERVICE {
     undefined
   >,
   'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
+  'getAllVerificationRequests' : ActorMethod<[], Array<VerificationRequest>>,
   'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getBitcoinPurchase' : ActorMethod<[string], [] | [BitcoinPurchaseRecord]>,
   'getBitcoinPurchases' : ActorMethod<
@@ -100,10 +121,15 @@ export interface _SERVICE {
   'getCallerPeerTransfers' : ActorMethod<[], Array<PeerTransferRequest>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCallerVerificationRequests' : ActorMethod<[], Array<VerificationRequest>>,
   'getCallerWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getPeerTransfer' : ActorMethod<[PeerTransferId], [] | [PeerTransferRequest]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getVerificationRequest' : ActorMethod<
+    [VerificationRequestId],
+    [] | [VerificationRequest]
+  >,
   'getWithdrawalRequest' : ActorMethod<
     [WithdrawalRequestId],
     [] | [WithdrawalRequest]
@@ -112,6 +138,10 @@ export interface _SERVICE {
   'markWithdrawalAsPaid' : ActorMethod<[WithdrawalRequestId], undefined>,
   'recordBitcoinPurchase' : ActorMethod<
     [BitcoinPurchaseRecordInput],
+    VerificationRequestId
+  >,
+  'rejectVerificationRequest' : ActorMethod<
+    [VerificationRequestId, string],
     undefined
   >,
   'rejectWithdrawal' : ActorMethod<[WithdrawalRequestId, string], undefined>,

@@ -8,10 +8,15 @@ import { Send, AlertCircle, XCircle, ShieldAlert, Info } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
 import MainnetTransactionAlert from '../components/transfers/MainnetTransactionAlert';
+import ProviderDiagnosticsCard from '../components/transfers/ProviderDiagnosticsCard';
+import BestPracticesSection from '../components/transfers/BestPracticesSection';
+import type { BroadcastAttempt } from '../types/mainnet';
 
 export default function SendBtcPage() {
   const [destination, setDestination] = useState('');
   const [amount, setAmount] = useState('');
+  const [broadcastAttempts, setBroadcastAttempts] = useState<BroadcastAttempt[]>([]);
+  const [errorContext, setErrorContext] = useState<string>('');
   const navigate = useNavigate();
 
   const requestedAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
@@ -20,10 +25,21 @@ export default function SendBtcPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Prevent submission - feature not implemented
+    // When backend is implemented, this would:
+    // 1. Call actor.sendBTC(destination, amount)
+    // 2. Extract broadcastAttempts from result
+    // 3. Update state: setBroadcastAttempts(result.broadcastAttempts || [])
+    // 4. Set error context if needed
+  };
+
+  // Mock error for demonstration (remove when backend is implemented)
+  const mockError = {
+    failureReason: 'sendBTC method not available on backend',
+    diagnosticData: 'Backend method missing: The sendBTC function does not exist in the current backend implementation.'
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">Send Bitcoin</h1>
         <p className="text-muted-foreground">Transfer BTC from your credit balance to any Bitcoin address</p>
@@ -145,6 +161,19 @@ export default function SendBtcPage() {
         </CardContent>
       </Card>
 
+      {/* Provider Diagnostics Panel */}
+      <div className="mb-6">
+        <ProviderDiagnosticsCard 
+          broadcastAttempts={broadcastAttempts}
+          errorContext={errorContext}
+        />
+      </div>
+
+      {/* Best Practices & Troubleshooting */}
+      <div className="mb-6">
+        <BestPracticesSection request={mockError} />
+      </div>
+
       {/* Technical Implementation Details */}
       <Card className="mb-6">
         <CardHeader>
@@ -161,7 +190,7 @@ export default function SendBtcPage() {
             <h4 className="font-semibold text-sm mb-1">Missing Backend Method</h4>
             <p className="text-sm text-muted-foreground">
               The backend needs to implement a <code className="bg-muted px-1 py-0.5 rounded">sendBTC(destination: Text, amount: BitcoinAmount)</code> method 
-              that returns transaction status information.
+              that returns transaction status information including broadcast attempts.
             </p>
           </div>
           <div>

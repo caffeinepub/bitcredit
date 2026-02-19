@@ -1,5 +1,6 @@
 import type { Transaction } from '../backend';
-import type { MainnetTransaction, SigningStatus, BroadcastStatus } from '../types/mainnet';
+import type { MainnetTransaction } from '../types/mainnet';
+import { SigningStatus, BroadcastStatus } from '../types/mainnet';
 
 /**
  * Determines if a transaction is pending (not yet confirmed)
@@ -8,9 +9,9 @@ export function isTransactionPending(transaction: Transaction): boolean {
   const mtx = transaction as MainnetTransaction;
   
   return (
-    mtx.signingStatus === 'pending' ||
-    mtx.broadcastStatus === 'pending' ||
-    mtx.broadcastStatus === 'broadcast' ||
+    mtx.signingStatus === SigningStatus.pending ||
+    mtx.broadcastStatus === BroadcastStatus.pending ||
+    mtx.broadcastStatus === BroadcastStatus.broadcast ||
     (mtx.confirmationCount !== undefined && mtx.confirmationCount < 6)
   );
 }
@@ -21,27 +22,31 @@ export function isTransactionPending(transaction: Transaction): boolean {
 export function formatTransactionStatusMessage(transaction: Transaction): string {
   const mtx = transaction as MainnetTransaction;
 
-  if (mtx.signingStatus === 'failed') {
+  if (mtx.signingStatus === SigningStatus.failed) {
     return 'Signing failed';
   }
 
-  if (mtx.broadcastStatus === 'failed') {
+  if (mtx.broadcastStatus === BroadcastStatus.failed) {
     return 'Broadcast failed';
   }
 
-  if (mtx.broadcastStatus === 'confirmed') {
+  if (mtx.broadcastStatus === BroadcastStatus.confirmed) {
     return `Confirmed (${mtx.confirmationCount || 0} confirmations)`;
   }
 
-  if (mtx.broadcastStatus === 'broadcast') {
+  if (mtx.broadcastStatus === BroadcastStatus.broadcast && mtx.confirmationCount === 0) {
+    return 'Broadcast successful - awaiting confirmation';
+  }
+
+  if (mtx.broadcastStatus === BroadcastStatus.broadcast) {
     return 'Broadcasting to network';
   }
 
-  if (mtx.signingStatus === 'signed') {
+  if (mtx.signingStatus === SigningStatus.signed) {
     return 'Signed, awaiting broadcast';
   }
 
-  if (mtx.signingStatus === 'pending') {
+  if (mtx.signingStatus === SigningStatus.pending) {
     return 'Signing transaction';
   }
 
@@ -99,8 +104,8 @@ export function needsStatusPolling(transaction: Transaction): boolean {
   const mtx = transaction as MainnetTransaction;
   
   return (
-    mtx.signingStatus === 'pending' ||
-    mtx.broadcastStatus === 'pending' ||
-    mtx.broadcastStatus === 'broadcast'
+    mtx.signingStatus === SigningStatus.pending ||
+    mtx.broadcastStatus === BroadcastStatus.pending ||
+    mtx.broadcastStatus === BroadcastStatus.broadcast
   );
 }

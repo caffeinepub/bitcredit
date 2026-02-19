@@ -1,6 +1,6 @@
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface TransactionConfirmationProgressProps {
@@ -16,6 +16,7 @@ export default function TransactionConfirmationProgress({
 }: TransactionConfirmationProgressProps) {
   const progress = Math.min((confirmationCount / targetConfirmations) * 100, 100);
   const isComplete = confirmationCount >= targetConfirmations;
+  const isBroadcast = confirmationCount === 0 && txHash;
 
   // Estimate time remaining (approximately 10 minutes per confirmation)
   const remainingConfirmations = Math.max(0, targetConfirmations - confirmationCount);
@@ -30,19 +31,39 @@ export default function TransactionConfirmationProgress({
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               Transaction Confirmed
             </>
+          ) : isBroadcast ? (
+            <>
+              <Clock className="h-5 w-5 text-blue-600" />
+              Broadcast Successful
+            </>
           ) : (
             'Confirmation Progress'
           )}
         </CardTitle>
         <CardDescription>
-          {confirmationCount} of {targetConfirmations} confirmations received
+          {isBroadcast ? (
+            'Awaiting first confirmation'
+          ) : (
+            `${confirmationCount} of ${targetConfirmations} confirmations received`
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {isBroadcast && (
+          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              ✓ Transaction successfully broadcast to the blockchain. Waiting for miners to include it in a block.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
-          <Progress value={progress} className="h-2" />
+          <Progress 
+            value={progress} 
+            className={`h-2 ${isBroadcast ? 'opacity-50' : ''}`}
+          />
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{confirmationCount} confirmations</span>
+            <span>{confirmationCount} confirmation{confirmationCount !== 1 ? 's' : ''}</span>
             {!isComplete && estimatedMinutes > 0 && (
               <span>~{estimatedMinutes} min remaining</span>
             )}

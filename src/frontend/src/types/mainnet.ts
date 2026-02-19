@@ -30,12 +30,23 @@ export function isMainnetTransaction(tx: BaseTransaction): tx is MainnetTransact
   return 'signingStatus' in tx || 'broadcastStatus' in tx || 'confirmationCount' in tx;
 }
 
+// Broadcast attempt log entry
+export interface BroadcastAttempt {
+  provider: string;
+  timestamp: number;
+  httpStatus: number;
+  success: boolean;
+  errorMessage?: string;
+  responseBody?: string;
+}
+
 // SendBTC result type (not in backend interface)
 export interface SendBTCResult {
   success: boolean;
   requestId?: bigint;
   recordsUpdated: boolean;
   diagnosticData?: string;
+  broadcastAttempts?: BroadcastAttempt[];
 }
 
 // Confirmation analysis result type (not in backend interface)

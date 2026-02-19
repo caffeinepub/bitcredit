@@ -1,38 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix mainnet BTC send function backend support - Frontend error handling",
-  "requirements": [
-    {
-      "id": "REQ-3",
-      "summary": "Update SendBtcPage error handling to provide clear feedback when mainnet broadcasting fails, using improved error messages from the fixed backend implementation",
-      "acceptanceCriteria": [
-        "Users see specific error messages when broadcasting fails",
-        "Error messages distinguish between signing issues and broadcasting issues",
-        "Troubleshooting guidance is accessible from error states"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/SendBtcPage.tsx",
-          "operation": "modify",
-          "description": "Enhance error handling to distinguish between signing failures and broadcasting failures. Display specific error messages based on the error type (network issues, API failures, invalid transactions). Add a link or button to navigate to troubleshooting guidance when broadcasting errors occur. Ensure error states clearly communicate whether the issue is in signing or broadcasting phase."
-        },
-        {
-          "path": "frontend/src/utils/errors.ts",
-          "operation": "modify",
-          "description": "Expand error normalization utility to handle new backend error messages from the fixed sendBtc implementation. Add specific error message mappings for HTTP outcall failures, blockchain API rejections, and mainnet-specific issues. Ensure the utility can distinguish between signing errors and broadcasting errors for user-facing display."
-        },
-        {
-          "path": "frontend/src/pages/TransferTroubleshootingPage.tsx",
-          "operation": "modify",
-          "description": "Enhance troubleshooting page content to include specific guidance for mainnet broadcasting failures. Add sections covering HTTP outcall issues, blockchain API connectivity problems, and common mainnet transaction rejection reasons. Ensure this page is easily accessible from SendBtcPage error states."
-        },
-        {
-          "path": "frontend/src/components/transfers/BestPracticesSection.tsx",
-          "operation": "modify",
-          "description": "Update best practices content to include mainnet-specific troubleshooting topics. Add auto-suggested topics for HTTP outcall errors, blockchain API timeouts, and mainnet broadcasting failures. Ensure the searchable guide includes relevant keywords from common backend error messages."
-        }
-      ]
-    }
-  ]
+  "title": "Frontend Implementation Plan for Bitcoin Transaction Sending",
+  "requirements": []
 }

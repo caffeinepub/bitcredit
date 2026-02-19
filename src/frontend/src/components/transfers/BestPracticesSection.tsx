@@ -9,86 +9,109 @@ import { bestPracticesContent, type BestPracticeEntry } from './bestPracticesCon
 
 interface BestPracticesSectionProps {
   request?: any;
+  errorContext?: string;
 }
 
-export default function BestPracticesSection({ request }: BestPracticesSectionProps) {
+export default function BestPracticesSection({ request, errorContext }: BestPracticesSectionProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedEntries, setExpandedEntries] = useState<{ [key: string]: boolean }>({});
 
   // Auto-suggest topics based on transfer failure patterns
   const suggestedTopics = useMemo(() => {
-    if (!request) return [];
+    if (!request && !errorContext) return [];
 
     const suggestions: string[] = [];
-    const failureReason = request.failureReason?.toLowerCase() || '';
-    const diagnosticData = request.diagnosticData?.toLowerCase() || '';
-    const errorMessage = request.error?.message?.toLowerCase() || '';
+    const failureReason = request?.failureReason?.toLowerCase() || '';
+    const diagnosticData = request?.diagnosticData?.toLowerCase() || '';
+    const errorMessage = request?.error?.message?.toLowerCase() || '';
+    const contextLower = errorContext?.toLowerCase() || '';
+
+    // Combine all error sources
+    const allErrors = `${failureReason} ${diagnosticData} ${errorMessage} ${contextLower}`;
 
     // Check for backend method missing
-    if (failureReason.includes('sendbtc') || 
-        failureReason.includes('method not available') ||
-        errorMessage.includes('sendbtc') ||
-        errorMessage.includes('not available')) {
+    if (allErrors.includes('sendbtc') || 
+        allErrors.includes('method not available') ||
+        allErrors.includes('not implemented')) {
       suggestions.push('backend-method-missing');
     }
 
     // Check for HTTP outcall issues
-    if (failureReason.includes('http outcall') || 
-        failureReason.includes('outcall failed') ||
-        diagnosticData.includes('outcall')) {
+    if (allErrors.includes('http outcall') || 
+        allErrors.includes('outcall failed')) {
       suggestions.push('http-outcall-failures');
     }
 
     // Check for localhost/connectivity issues
-    if (failureReason.includes('localhost') || 
-        failureReason.includes('127.0.0.1') ||
-        diagnosticData.includes('localhost')) {
+    if (allErrors.includes('localhost') || 
+        allErrors.includes('127.0.0.1')) {
       suggestions.push('localhost-not-accessible');
     }
 
+    // Check for rate limiting
+    if (allErrors.includes('rate limit') || 
+        allErrors.includes('429') ||
+        allErrors.includes('too many requests')) {
+      suggestions.push('rate-limiting');
+    }
+
+    // Check for malformed transaction
+    if (allErrors.includes('malformed') || 
+        allErrors.includes('invalid format') ||
+        allErrors.includes('bad transaction')) {
+      suggestions.push('malformed-transaction');
+    }
+
+    // Check for double spend
+    if (allErrors.includes('double spend') || 
+        allErrors.includes('inputs spent') ||
+        allErrors.includes('mempool conflict')) {
+      suggestions.push('double-spend');
+    }
+
+    // Check for insufficient fee
+    if (allErrors.includes('insufficient fee') || 
+        allErrors.includes('min relay') ||
+        allErrors.includes('priority')) {
+      suggestions.push('insufficient-fee');
+    }
+
     // Check for provider timeout
-    if (failureReason.includes('timeout') || 
-        diagnosticData.includes('timeout')) {
+    if (allErrors.includes('timeout') || 
+        allErrors.includes('connection') ||
+        allErrors.includes('unreachable')) {
       suggestions.push('provider-timeout');
     }
 
     // Check for address format issues
-    if (failureReason.includes('address') || 
-        failureReason.includes('invalid') ||
-        failureReason.includes('format')) {
+    if (allErrors.includes('address') || 
+        allErrors.includes('invalid') ||
+        allErrors.includes('checksum')) {
       suggestions.push('address-format-issues');
     }
 
     // Check for all APIs rejected
-    if (failureReason.includes('all apis') || 
-        failureReason.includes('all providers') ||
-        failureReason.includes('multiple failures')) {
+    if (allErrors.includes('all apis') || 
+        allErrors.includes('all providers') ||
+        allErrors.includes('multiple failures')) {
       suggestions.push('all-apis-rejected');
     }
 
-    // Check for connection errors
-    if (failureReason.includes('connect') || 
-        failureReason.includes('connection') ||
-        diagnosticData.includes('connect')) {
-      suggestions.push('provider-timeout');
-    }
-
     // Check for signing failures
-    if (failureReason.includes('signing') || 
-        failureReason.includes('signature') ||
-        diagnosticData.includes('sign')) {
+    if (allErrors.includes('signing') || 
+        allErrors.includes('signature')) {
       suggestions.push('signing-failures');
     }
 
-    // Check for rate limiting
-    if (failureReason.includes('rate limit') || 
-        failureReason.includes('too many requests')) {
-      suggestions.push('rate-limiting');
+    // Check for reserve issues
+    if (allErrors.includes('reserve') || 
+        allErrors.includes('insufficient balance')) {
+      suggestions.push('reserve-management');
     }
 
     return suggestions;
-  }, [request]);
+  }, [request, errorContext]);
 
   // Filter entries based on search and category
   const filteredEntries = useMemo(() => {

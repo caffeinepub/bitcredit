@@ -1,20 +1,19 @@
 import List "mo:core/List";
 import Map "mo:core/Map";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import Float "mo:core/Float";
-import Text "mo:core/Text";
 import Nat "mo:core/Nat";
-import Blob "mo:core/Blob";
-import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
+import Principal "mo:core/Principal";
 
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
 actor {
-  type BitcoinAmount = Nat; // 1 Satoshi = 0.00000001 BTC
+  type BitcoinAmount = Nat;
   public type PeerTransferId = Nat;
   public type WithdrawalRequestId = Nat;
   public type VerificationRequestId = Nat;
@@ -389,34 +388,157 @@ actor {
     bitcoinPurchases.toArray();
   };
 
-  public shared ({ caller }) func recordBitcoinPurchase(input : BitcoinPurchaseRecordInput) : async () {
-    // INSTANT FUNDING: Allow authenticated users to record their own Bitcoin purchases
-    // This implements automatic approval without admin intervention as per implementation plan
-    // WARNING: This function trusts the user-provided transaction ID without external verification
-    // TODO: Add verification logic for the transactionId (e.g., check external provider)
-    // Pending issue: https://github.com/OpenInternetFoundation/puzzle-labs/issues/211
+  public shared ({ caller }) func recordBitcoinPurchase(input : BitcoinPurchaseRecordInput) : async VerificationRequestId {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can record Bitcoin purchases");
+      Runtime.trap("Unauthorized: Only authenticated users can submit Bitcoin purchase verification requests");
     };
 
-    // Prevent duplicate transaction IDs (basic fraud prevention)
-    if (bitcoinPurchases.get(input.transactionId) != null) {
-      Runtime.trap("Bitcoin purchase with this transaction ID already exists");
+    switch (bitcoinPurchases.get(input.transactionId)) {
+      case (?_) {
+        Runtime.trap("Bitcoin purchase with this transaction ID already exists");
+      };
+      case null {
+        let existingRequests = verificationRequests.toArray();
+        for ((id, req) in existingRequests.vals()) {
+          if (req.transactionId == input.transactionId and req.status == #pending) {
+            Runtime.trap("Verification request for this transaction ID is already pending");
+          };
+        };
+      };
     };
 
-    let record : BitcoinPurchaseRecord = {
+    let requestId = verificationRequestIdCounter;
+    verificationRequestIdCounter += 1;
+
+    let request : VerificationRequest = {
+      id = requestId;
+      requester = caller;
       transactionId = input.transactionId;
       amount = input.amount;
-      verifiedAt = Time.now();
-      verifiedBy = caller;
+      status = #pending;
+      submittedAt = Time.now();
+      reviewedAt = null;
+      reviewedBy = null;
+      reviewComment = null;
     };
 
-    bitcoinPurchases.add(input.transactionId, record);
+    verificationRequests.add(requestId, request);
+    requestId;
+  };
 
-    // Automatically credit the caller's account (instant funding per implementation plan)
-    let currentBalance = getBalance(caller);
-    updateBalance(caller, currentBalance + input.amount);
-    addTransaction(caller, input.amount, #creditPurchase);
+  public query ({ caller }) func getVerificationRequest(requestId : VerificationRequestId) : async ?VerificationRequest {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view verification requests");
+    };
+    switch (verificationRequests.get(requestId)) {
+      case (?request) {
+        if (request.requester == caller or AccessControl.isAdmin(accessControlState, caller)) {
+          ?request;
+        } else {
+          Runtime.trap("Unauthorized: Can only view your own verification requests");
+        };
+      };
+      case null { null };
+    };
+  };
+
+  public query ({ caller }) func getCallerVerificationRequests() : async [VerificationRequest] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view verification requests");
+    };
+    let allRequests = verificationRequests.toArray();
+    List.fromArray<(VerificationRequestId, VerificationRequest)>(allRequests).filter<(VerificationRequestId, VerificationRequest)>(
+      func(entry) {
+        entry.1.requester == caller;
+      }
+    ).map<(VerificationRequestId, VerificationRequest), VerificationRequest>(
+      func(entry) {
+        entry.1;
+      }
+    ).toArray();
+  };
+
+  public query ({ caller }) func getAllVerificationRequests() : async [VerificationRequest] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view all verification requests");
+    };
+    verificationRequests.toArray().map<(VerificationRequestId, VerificationRequest), VerificationRequest>(
+      func(entry) { entry.1 }
+    );
+  };
+
+  public shared ({ caller }) func approveVerificationRequest(requestId : VerificationRequestId, comment : ?Text) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can approve verification requests");
+    };
+    switch (verificationRequests.get(requestId)) {
+      case (?request) {
+        if (request.status != #pending) {
+          Runtime.trap("Verification request is not in pending status");
+        };
+
+        if (bitcoinPurchases.get(request.transactionId) != null) {
+          Runtime.trap("Transaction ID already processed, duplicate credit not allowed");
+        };
+
+        let updatedRequest : VerificationRequest = {
+          id = request.id;
+          requester = request.requester;
+          transactionId = request.transactionId;
+          amount = request.amount;
+          status = #approved;
+          submittedAt = request.submittedAt;
+          reviewedAt = ?Time.now();
+          reviewedBy = ?caller;
+          reviewComment = comment;
+        };
+        verificationRequests.add(requestId, updatedRequest);
+
+        let currentBalance = getBalance(request.requester);
+        updateBalance(request.requester, currentBalance + request.amount);
+        addTransaction(request.requester, request.amount, #creditPurchase);
+
+        let purchaseRecord : BitcoinPurchaseRecord = {
+          transactionId = request.transactionId;
+          amount = request.amount;
+          verifiedAt = Time.now();
+          verifiedBy = caller;
+        };
+        bitcoinPurchases.add(request.transactionId, purchaseRecord);
+      };
+      case null {
+        Runtime.trap("Verification request not found");
+      };
+    };
+  };
+
+  public shared ({ caller }) func rejectVerificationRequest(requestId : VerificationRequestId, reason : Text) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can reject verification requests");
+    };
+    switch (verificationRequests.get(requestId)) {
+      case (?request) {
+        if (request.status != #pending) {
+          Runtime.trap("Verification request is not in pending status");
+        };
+
+        let updatedRequest : VerificationRequest = {
+          id = request.id;
+          requester = request.requester;
+          transactionId = request.transactionId;
+          amount = request.amount;
+          status = #rejected;
+          submittedAt = request.submittedAt;
+          reviewedAt = ?Time.now();
+          reviewedBy = ?caller;
+          reviewComment = ?reason;
+        };
+        verificationRequests.add(requestId, updatedRequest);
+      };
+      case null {
+        Runtime.trap("Verification request not found");
+      };
+    };
   };
 
   public query ({ caller }) func getBitcoinPurchase(transactionId : Text) : async ?BitcoinPurchaseRecord {
@@ -427,21 +549,12 @@ actor {
   };
 
   public shared ({ caller }) func creditBtcWithVerification(targetUser : Principal, transactionId : Text, amount : BitcoinAmount) : async () {
-    // Admin-only function for manual crediting of user accounts
-    // This is separate from instant funding and requires admin privileges
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can credit user accounts");
     };
 
-    // TODO: Add verification logic for the transactionId (e.g., check external provider)
-    // In backend only valid transaction IDs should be processed, otherwise function call should return with error message.
-    // Function will not be idempotent until this check is implemented.
-    // Pending issue: https://github.com/OpenInternetFoundation/puzzle-labs/issues/211
-
-    // Check if transactionId has already been used
     switch (bitcoinPurchases.get(transactionId)) {
       case (null) {
-        // Proceed with credit
         let currentBalance = switch (balances.get(targetUser)) {
           case (?balance) { balance.balance };
           case (null) { 0 };
@@ -449,7 +562,6 @@ actor {
         updateBalance(targetUser, currentBalance + amount);
         addTransaction(targetUser, amount, #creditPurchase);
 
-        // Record the Bitcoin purchase
         let purchaseRecord : BitcoinPurchaseRecord = {
           transactionId = transactionId;
           amount = amount;
@@ -459,7 +571,6 @@ actor {
         bitcoinPurchases.add(transactionId, purchaseRecord);
       };
       case (_) {
-        // Transaction ID already exists, prevent duplicate credit
         Runtime.trap("Transaction ID already processed, duplicate credit not allowed.");
       };
     };

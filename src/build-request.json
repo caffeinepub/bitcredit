@@ -1,75 +1,121 @@
 {
   "kind": "build_request",
-  "title": "Fix mainnet BTC send function backend support",
-  "projectName": "Bitcoin Credit Transfer",
+  "title": "Implement Bitcoin transaction sending with helper functions",
+  "projectName": "Bitcoin Wallet",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Diagnose why the sendBtc function fails when attempting to broadcast Bitcoin transactions to mainnet. Examine the backend main.mo implementation for HTTP outcall errors, API endpoint issues, or network configuration problems preventing mainnet transaction broadcasting.",
+      "text": "Implement the sendBitcoin function in the backend main actor that accepts a SendRequest record containing destinationAddress (Text) and amountSatoshis (Nat64), builds a raw Bitcoin transaction, sends it to the testnet network using Bitcoin.send_transaction, and returns a Result<Text, Text> with the transaction ID on success or an error message on failure",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-user-latest"
         ],
         "quotes": [
-          "Send btc function to mainnet not supported on backend"
+          "public func sendBitcoin(req : SendRequest) : async Result.Result<Text, Text>"
         ]
       },
       "acceptanceCriteria": [
-        "Root cause of sendBtc mainnet failure is identified",
-        "Error logs or rejection messages clearly indicate the issue",
-        "Diagnostic information is sufficient to implement a fix"
+        "sendBitcoin function is publicly accessible from the backend actor",
+        "Function accepts SendRequest with destinationAddress and amountSatoshis fields",
+        "Function calls Bitcoin.send_transaction with network set to #testnet",
+        "Function returns #ok with transaction ID on successful broadcast",
+        "Function returns #err with error message on failure"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Fix the backend sendBtc implementation to successfully broadcast signed Bitcoin transactions to mainnet using Internet Computer HTTP outcalls. Ensure the function can reach public blockchain APIs (e.g., Blockstream, Mempool.space) and handle responses correctly.",
+      "text": "Implement the buildTransaction helper function that takes a SendRequest record and constructs a properly formatted raw Bitcoin transaction in hexadecimal format suitable for broadcasting to the Bitcoin network",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-user-latest"
         ],
         "quotes": [
-          "Troubleshoot with ai"
+          "let transaction = buildTransaction(req); // Logic to build hex raw transaction",
+          "// Helper functions (buildTransaction, getTxId) need to be implemented"
         ]
       },
       "acceptanceCriteria": [
-        "sendBtc function successfully broadcasts transactions to Bitcoin mainnet",
-        "HTTP outcalls to blockchain APIs complete without rejection",
-        "Transaction IDs are returned and can be verified on blockchain explorers",
-        "Error handling properly distinguishes between network issues, API failures, and invalid transactions"
+        "buildTransaction function accepts SendRequest as input",
+        "Function returns a valid hexadecimal-encoded Bitcoin transaction",
+        "Transaction includes the destination address from the request",
+        "Transaction includes the amount in satoshis from the request",
+        "Generated transaction is compatible with Bitcoin testnet format"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Update the frontend SendBtcPage error handling to provide clear feedback when mainnet broadcasting fails, using the improved error messages from the fixed backend implementation.",
-      "target": "frontend",
+      "text": "Implement the getTxId helper function that extracts and returns the transaction ID from a raw Bitcoin transaction in hexadecimal format",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-user-latest"
+        ],
+        "quotes": [
+          "return #ok(getTxId(transaction));",
+          "// Helper functions (buildTransaction, getTxId) need to be implemented"
         ]
       },
       "acceptanceCriteria": [
-        "Users see specific error messages when broadcasting fails",
-        "Error messages distinguish between signing issues and broadcasting issues",
-        "Troubleshooting guidance is accessible from error states"
+        "getTxId function accepts a raw transaction in hexadecimal format",
+        "Function returns the transaction ID as Text",
+        "Returned transaction ID is correctly derived from the transaction data",
+        "Transaction ID format is compatible with Bitcoin blockchain explorers"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Import the Bitcoin base library (mo:base/Bitcoin) and Result library (mo:base/Result) in the backend main actor to support Bitcoin transaction functionality",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-user-latest"
+        ],
+        "quotes": [
+          "import Bitcoin \"mo:base/Bitcoin\";",
+          "import Result \"mo:base/Result\";"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Bitcoin library is imported from mo:base/Bitcoin",
+        "Result library is imported from mo:base/Result",
+        "Imports are properly declared at the top of the main actor file"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Define the SendRequest type as a record containing destinationAddress (Text) and amountSatoshis (Nat64) fields in the backend actor",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-user-latest"
+        ],
+        "quotes": [
+          "type SendRequest = { destinationAddress : Text; amountSatoshis : Nat64; };"
+        ]
+      },
+      "acceptanceCriteria": [
+        "SendRequest type is defined in the backend actor",
+        "Type includes destinationAddress field of type Text",
+        "Type includes amountSatoshis field of type Nat64"
       ]
     }
   ],
   "constraints": [
-    "Maintain single-actor architecture in backend/main.mo",
-    "Preserve existing transaction data structures and state",
-    "Do not modify Internet Identity authentication flow",
-    "Keep HTTP outcall implementation compatible with Internet Computer constraints",
-    "Do not edit immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, components/ui/*"
+    "Use Bitcoin testnet (#testnet) for the network parameter in Bitcoin.send_transaction",
+    "Maintain single-actor architecture with all logic in backend/main.mo",
+    "Use mo:base/Bitcoin and mo:base/Result libraries for Bitcoin integration",
+    "Return Result.Result<Text, Text> type for sendBitcoin function"
   ],
   "nonGoals": [
-    "Implementing localhost Bitcoin Core node connectivity",
-    "Adding WebSocket support for real-time transaction updates",
-    "Implementing multisig wallet functionality",
-    "Integrating third-party payment APIs beyond existing Stripe support",
-    "Adding mobile-specific features or React Native support"
+    "Implementing mainnet Bitcoin transaction sending at this stage",
+    "Building a complete wallet management system with key storage",
+    "Adding frontend UI components for Bitcoin transaction sending",
+    "Implementing fee estimation or custom fee selection",
+    "Adding transaction signing logic (handled by Bitcoin canister)",
+    "Implementing UTXO management or input selection"
   ],
   "imageRequirements": {
     "required": [],
