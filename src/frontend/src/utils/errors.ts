@@ -5,11 +5,6 @@
 export function normalizeSendBTCError(error: Error): string {
   const message = error.message.toLowerCase();
   
-  // Check for "account not registered" or similar registration errors
-  if (message.includes('account') && (message.includes('not registered') || message.includes('registration'))) {
-    return 'Unable to process transfer. Please ensure you have entered a valid Bitcoin mainnet address. The recipient does not need to be registered in this app.';
-  }
-  
   // Check for invalid address format - now from blockchain API
   if (message.includes('invalid') && (message.includes('address') || message.includes('destination'))) {
     return 'The blockchain API rejected this address as invalid. Please verify the Bitcoin address format and try again.';

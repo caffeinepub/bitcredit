@@ -1,6 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove user registration check blocking admin transfers",
+  "title": "Remove user registration validation from Send BTC flow",
   "requirements": []
 }

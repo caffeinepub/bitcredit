@@ -1,32 +1,25 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T00:39:52.416Z",
+  "generatedAt": "2026-02-19T01:09:57.747Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
+    "total": 2,
     "implemented": 0,
     "items": [
       {
-        "id": "REQ-190",
-        "summary": "Remove any backend code that checks whether the destination address is a registered user account before allowing a Send BTC transfer to proceed, so that admins (and regular users) can complete transfers to any valid Bitcoin mainnet address without encountering a 'user not registered' error.",
+        "id": "REQ-202",
+        "summary": "Remove all backend code in the sendBTC method (backend/main.mo) that validates whether the destination Bitcoin address corresponds to a registered user account or user profile, so that any Bitcoin mainnet address can be used as a transfer destination without triggering a 'user not registered' error.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-191",
-        "summary": "Ensure the signed-in admin principal (ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe) is recognized by the backend admin access control and can successfully complete Send BTC transfers without being blocked by any user registration or account status checks.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-192",
-        "summary": "Add development-only logging to the backend sendBTC flow that captures and surfaces (a) the destination address being processed, (b) any validation checks performed on the destination, (c) any checks for user account existence or registration status, and (d) the specific error/trap message when a transfer fails, so it is easier to identify where incorrect account-registration requirements are being enforced.",
+        "id": "REQ-203",
+        "summary": "Update any backend error handling or validation logic in the sendBTC flow to ensure that address format validation (if any remains) only checks Bitcoin mainnet address syntax via the blockchain API, not app user registry existence.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []

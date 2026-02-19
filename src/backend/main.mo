@@ -11,21 +11,17 @@ import Blob "mo:core/Blob";
 import Text "mo:core/Text";
 import OutCall "http-outcalls/outcall";
 import Iter "mo:core/Iter";
-
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-
-// Apply migration using the with clause
 
 actor {
   public type BitcoinAmount = Nat; // 1 Satoshi
 
-  // State
   var currentBtcPriceUsd : ?Float = null;
   var lastUpdatedPriceTime : ?Time.Time = null;
   var reserveBtcBalance : Nat = 0;
   var outstandingIssuedCredits : Nat = 0;
-  let transactionFeeRate : Nat = 50_000; // Satoshis per gigabyte
+  let transactionFeeRate : Nat = 50_000;
   let currentNetworkFee = 10 : BitcoinAmount;
   var requestIdCounter : Nat = 0;
   var reserveAdjustmentCounter : Nat = 0;
@@ -49,7 +45,6 @@ actor {
     networkHealth : Text;
   };
 
-  // Extended SendBTCRequest (AddressValidationResult/AddressType will be removed)
   public type SendBTCRequest = {
     id : Nat;
     owner : Principal;
@@ -267,7 +262,7 @@ actor {
 
   func guardAgainstPrivateKeyExposure() {
     Runtime.trap(
-      "SECURITY VIOLATION: This backend must never store, process, or return private key material. Private keys must be managed client-side only. The BitcoinWallet type is restricted to public information (address and public key) only.",
+      "SECURITY VIOLATION: Backend should not store, process, or return private key material. Private keys must be managed exclusively client-side. The BitcoinWallet type is restricted to public information (address and public key).",
     );
   };
 
@@ -281,9 +276,8 @@ actor {
         Runtime.trap("Request not found");
       };
       case (?request) {
-        // Authorization: Users can only analyze their own requests, admins can analyze any
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Can only analyze your own transfer requests");
+          Runtime.trap("Unauthorized: Access restricted to your own transfer requests");
         };
 
         let preferredFreshBlockchainCheck = switch (forceFreshCheck, ?btcApiDiagnosticsEnabled) {
@@ -292,7 +286,6 @@ actor {
           case (_, _) { false };
         };
 
-        let requestFreshnessSufficient = false;
         let currentPenaltyFee = 5_000_000 : BitcoinAmount;
         let currentNetworkFee = 1_000 : BitcoinAmount;
 
@@ -310,44 +303,40 @@ actor {
           forceFreshCheck = ?preferredFreshBlockchainCheck;
         };
 
-        if (requestFreshnessSufficient and not preferredFreshBlockchainCheck) {
-          return basicResult;
-        } else {
-          if (request.status == #IN_PROGRESS or request.status == #PENDING) {
-            let mempoolAnalysis : MempoolAnalysisResult = {
-              txid = switch (request.blockchainTxId) {
-                case (?id) { id };
-                case (null) { "Unknown" };
-              };
-              mempoolFeeRate = currentNetworkFee;
-              recommendedFeeRate = currentNetworkFee + currentPenaltyFee; // 10% bump
-              feeRateSufficiency = #BORDERLINE;
-              timestamp = Time.now();
-              mempoolDepthBytes = ?200_000;
-              recommendedNextBlockFeeRate = ?(currentNetworkFee + 20_000);
-              diagnosticData = ?"Fee too low";
-              feeDescription = "Fee rate too low. High mempool depth.";
+        if (request.status == #IN_PROGRESS or request.status == #PENDING) {
+          let mempoolAnalysis : MempoolAnalysisResult = {
+            txid = switch (request.blockchainTxId) {
+              case (?id) { id };
+              case (null) { "Unknown" };
             };
-
-            let dynamicResult = {
-              status = switch (request.status) {
-                case (#FAILED) { #EVICTED };
-                case (currentStatus) { currentStatus };
-              };
-              feeDecryptorAnalysis = ?mempoolAnalysis;
-              diagnosticData = ?("Backend analysis performed at " # Time.now().toText() # " - included mempool analysis results");
-              confirmations = null;
-              expectedFee = ?currentNetworkFee;
-              suggestedFee = ?(currentNetworkFee + 5_000_000 : BitcoinAmount);
-              statusTimestamp = Time.now();
-              forceFreshCheck = ?preferredFreshBlockchainCheck;
-            };
-
-            return dynamicResult;
-          } else {
-            return basicResult;
+            mempoolFeeRate = currentNetworkFee;
+            recommendedFeeRate = currentNetworkFee + currentPenaltyFee;
+            feeRateSufficiency = #BORDERLINE;
+            timestamp = Time.now();
+            mempoolDepthBytes = ?200_000;
+            recommendedNextBlockFeeRate = ?(currentNetworkFee + 20_000);
+            diagnosticData = ?"Fee too low";
+            feeDescription = "Fee rate too low. High mempool depth.";
           };
-        };
+
+          let dynamicResult = {
+            status = switch (request.status) {
+              case (#FAILED) { #EVICTED };
+              case (currentStatus) { currentStatus };
+            };
+            feeDecryptorAnalysis = ?mempoolAnalysis;
+            diagnosticData = ?("Backend analysis performed at "
+              # Time.now().toText()
+              # " - included mempool analysis results");
+            confirmations = null;
+            expectedFee = ?currentNetworkFee;
+            suggestedFee = ?(currentNetworkFee + 5_000_000 : BitcoinAmount);
+            statusTimestamp = Time.now();
+            forceFreshCheck = ?preferredFreshBlockchainCheck;
+          };
+
+          return dynamicResult;
+        } else { basicResult };
       };
     };
   };
@@ -363,15 +352,14 @@ actor {
 
   public shared ({ caller }) func refreshTransferRequestStatus(requestId : Nat) : async ?SendBTCRequest {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can refresh transfer requests");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     switch (transferRequests.get(requestId)) {
       case (null) { null };
       case (?request) {
-        // Authorization: Users can only refresh their own requests, admins can refresh any
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Can only refresh your own transfer requests");
+          Runtime.trap("Unauthorized: Access restricted to your own transfer requests");
         };
 
         switch (request.blockchainTxId) {
@@ -387,7 +375,9 @@ actor {
                     request with
                     status = #FAILED;
                     failureReason = ?detectEvictedTransactionReason();
-                    diagnosticData = ?("Transaction appears evicted at " # Time.now().toText() # " - diagnostic check performed");
+                    diagnosticData = ?("Transaction appears evicted at "
+                      # Time.now().toText()
+                      # " - diagnostic check performed");
                     evictedDetectedTimestamp = ?Time.now();
                   };
                   transferRequests.add(requestId, updatedRequest);
@@ -437,7 +427,8 @@ actor {
       {
         isConfirmed = false;
         error = ?("Unable to verify transaction confirmation via blockchain API");
-        diagnosticData = ?("API check attempted at " # Time.now().toText() # " - transaction not yet confirmed or API unavailable");
+        diagnosticData = ?("API check attempted at " # Time.now().toText()
+          # " - transaction not yet confirmed or API unavailable");
       };
     };
   };
@@ -452,21 +443,21 @@ actor {
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+      Runtime.trap("Unauthorized: Access restricted to your own profile");
     };
     userProfiles.get(user);
   };
 
   public query ({ caller }) func getCallerBitcoinWallet() : async ?BitcoinWallet {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view wallet");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     let profile = switch (userProfiles.get(caller)) {
@@ -481,7 +472,7 @@ actor {
 
   public shared ({ caller }) func createCallerBitcoinWallet() : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create wallets");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     let existingProfile = switch (userProfiles.get(caller)) {
@@ -670,10 +661,20 @@ actor {
     };
     transactions.add(transaction);
 
-    let submitResult = await broadcastTransactionToBlockchain(requestId, destinationAddress, amount);
+    let submitResult = await broadcastTransactionToBlockchain(
+      requestId,
+      destinationAddress,
+      amount,
+    );
 
     if (not submitResult.success) {
-      updateRequestOnFailure(requestId, caller, totalCost, submitResult.error, submitResult.diagnosticData);
+      updateRequestOnFailure(
+        requestId,
+        caller,
+        totalCost,
+        submitResult.error,
+        submitResult.diagnosticData,
+      );
     };
 
     switch (submitResult.txid) {
@@ -699,7 +700,11 @@ actor {
     requestId;
   };
 
-  func broadcastTransactionToBlockchain(transactionId : Nat, _destination : Text, _amount : BitcoinAmount) : async BroadcastResponse {
+  func broadcastTransactionToBlockchain(
+    transactionId : Nat,
+    _destination : Text,
+    _amount : BitcoinAmount,
+  ) : async BroadcastResponse {
     switch (transferRequests.get(transactionId)) {
       case (null) {
         {
@@ -715,13 +720,20 @@ actor {
           success = false;
           txid = null;
           error = ?detailedErrorMessage;
-          diagnosticData = ?("Network error at " # Time.now().toText() # " (attempted connection)");
+          diagnosticData = ?("Network error at " # Time.now().toText()
+            # " (attempted connection)");
         };
       };
     };
   };
 
-  func updateRequestOnFailure(requestId : Nat, owner : Principal, totalCost : BitcoinAmount, failureReason : ?Text, diagnosticData : ?Text) {
+  func updateRequestOnFailure(
+    requestId : Nat,
+    owner : Principal,
+    totalCost : BitcoinAmount,
+    failureReason : ?Text,
+    diagnosticData : ?Text,
+  ) {
     let requestOpt = transferRequests.get(requestId);
 
     if (requestOpt == null) {
@@ -775,16 +787,19 @@ actor {
     balances.add(user, newBalance);
   };
 
-  public query ({ caller }) func getEstimatedNetworkFee(_destination : Text, _amount : BitcoinAmount) : async BitcoinAmount {
+  public query ({ caller }) func getEstimatedNetworkFee(
+    _destination : Text,
+    _amount : BitcoinAmount,
+  ) : async BitcoinAmount {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get network fee estimates");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
     currentNetworkFee;
   };
 
   public query ({ caller }) func getTransferRequest(requestId : Nat) : async ?SendBTCRequest {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view transfer requests");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     getTransferRequestInternal(caller, requestId);
@@ -798,7 +813,7 @@ actor {
       case (null) { null };
       case (?request) {
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Can only view your own transfer requests");
+          Runtime.trap("Unauthorized: Access restricted to your own transfer requests");
         };
         ?request;
       };
@@ -811,7 +826,7 @@ actor {
 
   public query ({ caller }) func getTransactionHistory() : async [Transaction] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view transaction history");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     let allTransactions = transactions.toArray();
@@ -825,14 +840,14 @@ actor {
 
   public query ({ caller }) func getWithdrawalRequest(requestId : Nat) : async ?WithdrawalRequest {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view withdrawal requests");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     switch (withdrawalRequests.get(requestId)) {
       case (null) { null };
       case (?request) {
         if (request.owner != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-          Runtime.trap("Unauthorized: Can only view your own withdrawal requests");
+          Runtime.trap("Unauthorized: Access restricted to your own withdrawal requests");
         };
         ?request;
       };
@@ -841,7 +856,7 @@ actor {
 
   public query ({ caller }) func getUserWithdrawalRequests(user : Principal) : async [WithdrawalRequest] {
     if (user != caller and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own withdrawal requests");
+      Runtime.trap("Unauthorized: Access restricted to your own withdrawal requests");
     };
     let userRequests = withdrawalRequests.values().toArray().filter(
       func(request) { request.owner == user }
@@ -851,14 +866,18 @@ actor {
 
   public query ({ caller }) func getAllWithdrawalRequests() : async [WithdrawalRequest] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view all withdrawal requests");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
     withdrawalRequests.values().toArray();
   };
 
-  public shared ({ caller }) func submitWithdrawalRequest(amount : BitcoinAmount, method : Text, account : ?Text) : async Nat {
+  public shared ({ caller }) func submitWithdrawalRequest(
+    amount : BitcoinAmount,
+    method : Text,
+    account : ?Text,
+  ) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can submit withdrawal requests");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
 
     if (amount == 0) {
@@ -926,7 +945,7 @@ actor {
 
   public shared ({ caller }) func markWithdrawalPaid(requestId : Nat) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can mark withdrawals as paid");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     switch (withdrawalRequests.get(requestId)) {
@@ -950,9 +969,12 @@ actor {
     };
   };
 
-  public shared ({ caller }) func rejectWithdrawalRequest(requestId : Nat, reason : Text) : async () {
+  public shared ({ caller }) func rejectWithdrawalRequest(
+    requestId : Nat,
+    reason : Text,
+  ) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can reject withdrawal requests");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     switch (withdrawalRequests.get(requestId)) {
@@ -1006,15 +1028,18 @@ actor {
 
   public shared ({ caller }) func toggleApiDiagnostics() : async Bool {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can toggle API diagnostics");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
     btcApiDiagnosticsEnabled := not btcApiDiagnosticsEnabled;
     btcApiDiagnosticsEnabled;
   };
 
-  public shared ({ caller }) func manageReserve(action : ReserveManagementAction, transactionId : ?Text) : async () {
+  public shared ({ caller }) func manageReserve(
+    action : ReserveManagementAction,
+    transactionId : ?Text,
+  ) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can manage reserves");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     let adjustment : ExtendedReserveAdjustment = {
@@ -1040,7 +1065,7 @@ actor {
 
   public query ({ caller }) func getReserveStatus() : async ReserveStatus {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view reserve status");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     {
@@ -1059,21 +1084,21 @@ actor {
 
   public query ({ caller }) func getAllReserveAdjustments() : async [(Nat, ExtendedReserveAdjustment)] {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can view reserve adjustments");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
     reserveAdjustments.toArray();
   };
 
   public query ({ caller }) func getCurrentBtcPriceUsd() : async ?Float {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view BTC price");
+      Runtime.trap("Unauthorized: Access restricted to users");
     };
     getCurrentBtcPrice();
   };
 
   public shared ({ caller }) func refreshBtcPrice() : async ?Float {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can refresh BTC price");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     await fetchAndUpdateBtcPrice();
@@ -1091,7 +1116,7 @@ actor {
 
   public query ({ caller }) func getReserveMultisigConfig() : async ?ReserveMultisigConfig {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can get reserve multisig config");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     reserveMultisigConfig;
@@ -1099,7 +1124,7 @@ actor {
 
   public query ({ caller }) func isReserveMultisigConfigSet() : async Bool {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can check reserve multisig config status");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     switch (reserveMultisigConfig) {
@@ -1110,9 +1135,14 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateReserveMultisigConfig(threshold : Nat, pubkeys : [Blob], address : ?Text, redeemScript : ?Text) : async () {
+  public shared ({ caller }) func updateReserveMultisigConfig(
+    threshold : Nat,
+    pubkeys : [Blob],
+    address : ?Text,
+    redeemScript : ?Text,
+  ) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can update reserve multisig config");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     if (threshold == 0 or threshold > pubkeys.size()) {
@@ -1129,9 +1159,11 @@ actor {
     reserveMultisigConfig := ?config;
   };
 
-  public shared ({ caller }) func validateReserveDeposit(request : ReserveDepositValidationRequest) : async ReserveDepositValidationResult {
+  public shared ({ caller }) func validateReserveDeposit(
+    request : ReserveDepositValidationRequest,
+  ) : async ReserveDepositValidationResult {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can validate reserve deposits");
+      Runtime.trap("Unauthorized: Access restricted to admins");
     };
 
     let reserveAddress = switch (reserveMultisigConfig) {
@@ -1174,8 +1206,8 @@ actor {
     } else {
       if (verificationResult.success) {
         Runtime.trap(
-          "Transaction found but does not match reserve address (" 
-          # reserveAddress # ") or amount (" # request.amount.toText() # " sats)"
+          "Transaction found but does not match reserve address (" # reserveAddress
+          # ") or amount (" # request.amount.toText() # " sats)"
         );
       } else {
         Runtime.trap("Unable to verify transaction confirmation via blockchain");
