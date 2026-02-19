@@ -1,18 +1,54 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Bitcoin wallet application with mainnet transaction capabilities",
-  "architectural_notes": [
-    "Bitcoin mainnet integration required for transaction signing and broadcasting",
-    "Segwit wallet support for mainnet transfers",
-    "Reserve system needed to cover transaction fees"
-  ],
+  "summary": "Bitcoin transaction verification application",
+  "architectural_notes": [],
   "known_issues": [],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-update-frontend-transaction-status-tracking-to-display-signing-posting-and-confirmation-states-for-mainnet-segwit-transactions",
-      "title": "Update frontend transaction status tracking to display signing, posting, and confirmation states for mainnet Segwit transactions",
+      "id": "feature-create-a-user-accessible-page-at-route-verify-transaction-that-allows-non-admin-users-to-manually-submit-bitcoin-transaction-details-for-verification",
+      "title": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-adminverificationrequestspage-at-route-admin-verification-requests-showing-all-user-submitted-verification-requests-with-approve-reject-actions",
+      "title": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-navigation-link-to-verify-transaction-in-applayout-navigation-menu-for-authenticated-non-admin-users",
+      "title": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-navigation-link-to-admin-verification-requests-in-admin-section-navigation",
+      "title": "Add navigation link to /admin/verification-requests in admin section navigation",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-user-verification-history-view-showing-all-verification-requests-submitted-by-the-current-user-with-their-status",
+      "title": "Create user verification history view showing all verification requests submitted by the current user with their status",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-react-query-hooks-for-user-verification-operations-usesubmitverification-useuserverificationrequests-useapproveverification-userejectverification-and-useadminverificationrequests",
+      "title": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
       "reqIds": [
         "REQ-8"
       ],
@@ -22,49 +58,29 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Sign mainnet wallet transfers for recipients",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Post and confirm transactions on blockchain network",
+      "summary": "Manual Bitcoin transaction verification",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Send mainnet transactions to Segwit Bitcoin wallets with fee coverage from reserve",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Implement cryptographic signing of mainnet Bitcoin wallet transfers for recipients, ensuring the application can sign transactions on behalf of users with proper key management",
+      "summary": "Add backend method submitVerificationRequest that allows regular users to submit transaction verification requests with status tracking",
       "reqIds": [
-        "REQ-5"
+        "REQ-2"
       ],
       "status": "pending"
     },
     {
       "id": "AR-5",
-      "summary": "Implement AI-powered transaction posting to blockchain network with automatic confirmation monitoring",
+      "summary": "Add backend methods approveVerificationRequest and rejectVerificationRequest that allow admins to process user verification submissions",
       "reqIds": [
-        "REQ-6"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Add support for sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation and reserve-funded fee coverage",
-      "reqIds": [
-        "REQ-7"
+        "REQ-4"
       ],
       "status": "pending"
     }
   ],
   "gameProjectType": "none",
-  "projectName": "Add mainnet wallet transfer signing, blockchain transaction posting, and Segwit transaction broadcasting",
+  "projectName": "Bitcoin Credit Transfer",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

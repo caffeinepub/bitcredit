@@ -7,12 +7,24 @@ import SendBtcPage from './pages/SendBtcPage';
 import HistoryPage from './pages/HistoryPage';
 import TransferTroubleshootingPage from './pages/TransferTroubleshootingPage';
 import AiLotteryPage from './pages/AiLotteryPage';
+import DashboardPage from './pages/DashboardPage';
+import SendToPeerPage from './pages/SendToPeerPage';
+import WithdrawPage from './pages/WithdrawPage';
+import IncomingRequestsPage from './pages/IncomingRequestsPage';
+import OutgoingRequestsPage from './pages/OutgoingRequestsPage';
+import BuyCreditsPage from './pages/BuyCreditsPage';
+import AdminPage from './pages/AdminPage';
+import AdminCredentialsPage from './pages/AdminCredentialsPage';
+import AdminManualVerificationPage from './pages/AdminManualVerificationPage';
+import UserVerifyTransactionPage from './pages/UserVerifyTransactionPage';
+import AdminVerificationRequestsPage from './pages/AdminVerificationRequestsPage';
 import { useInternetIdentity } from './hooks/useInternetIdentity';
 import { useIsCallerAdmin } from './hooks/useQueries';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import { useGetCallerUserProfile } from './hooks/useQueries';
 import AdminAccessDeniedScreen from './components/auth/AdminAccessDeniedScreen';
 import LoggedOutSignInPanel from './components/auth/LoggedOutSignInPanel';
+import AdminWithdrawalStatusDashboard from './components/withdrawals/AdminWithdrawalStatusDashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,7 +93,7 @@ const indexRoute = createRoute({
   path: '/',
   component: () => (
     <AuthenticatedRoute>
-      <SendBtcPage />
+      <DashboardPage />
     </AuthenticatedRoute>
   ),
 });
@@ -126,12 +138,133 @@ const transferTroubleshootingRoute = createRoute({
   ),
 });
 
+const sendToPeerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/send-to-peer',
+  component: () => (
+    <AuthenticatedRoute>
+      <SendToPeerPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const withdrawRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/withdraw',
+  component: () => (
+    <AuthenticatedRoute>
+      <WithdrawPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const incomingRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/incoming-requests',
+  component: () => (
+    <AuthenticatedRoute>
+      <IncomingRequestsPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const outgoingRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/outgoing-requests',
+  component: () => (
+    <AuthenticatedRoute>
+      <OutgoingRequestsPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const buyCreditsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/buy-credits',
+  component: () => (
+    <AuthenticatedRoute>
+      <BuyCreditsPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const verifyTransactionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/verify-transaction',
+  component: () => (
+    <AuthenticatedRoute>
+      <UserVerifyTransactionPage />
+    </AuthenticatedRoute>
+  ),
+});
+
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin',
+  component: () => (
+    <AdminRoute>
+      <AdminPage />
+    </AdminRoute>
+  ),
+});
+
+const adminCredentialsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/credentials',
+  component: () => (
+    <AdminRoute>
+      <AdminCredentialsPage />
+    </AdminRoute>
+  ),
+});
+
+const adminWithdrawalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/withdrawals',
+  component: () => (
+    <AdminRoute>
+      <AdminWithdrawalStatusDashboard />
+    </AdminRoute>
+  ),
+});
+
+const adminManualVerificationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/manual-verification',
+  component: () => (
+    <AdminRoute>
+      <AdminManualVerificationPage />
+    </AdminRoute>
+  ),
+});
+
+const adminVerificationRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/verification-requests',
+  component: () => (
+    <AdminRoute>
+      <AdminVerificationRequestsPage />
+    </AdminRoute>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   sendBtcRoute,
   historyRoute,
   aiLotteryRoute,
   transferTroubleshootingRoute,
+  sendToPeerRoute,
+  withdrawRoute,
+  incomingRequestsRoute,
+  outgoingRequestsRoute,
+  buyCreditsRoute,
+  verifyTransactionRoute,
+  adminRoute,
+  adminCredentialsRoute,
+  adminWithdrawalsRoute,
+  adminManualVerificationRoute,
+  adminVerificationRequestsRoute,
 ]);
 
 const router = createRouter({ routeTree });

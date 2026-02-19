@@ -1,91 +1,149 @@
 {
   "kind": "build_request",
-  "title": "Add mainnet wallet transfer signing, blockchain transaction posting, and Segwit transaction broadcasting",
-  "priority": "high",
+  "title": "Enable manual Bitcoin transaction verification for users",
+  "projectName": "Bitcoin Credit Transfer",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-5",
-      "text": "Implement cryptographic signing of mainnet Bitcoin wallet transfers for recipients, ensuring the application can sign transactions on behalf of users with proper key management",
-      "target": "backend",
+      "id": "REQ-1",
+      "text": "Create a user-accessible page at route /verify-transaction that allows non-admin users to manually submit Bitcoin transaction details for verification",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-latest"
         ],
         "quotes": [
-          "Add ability for app to sign mainnet wallet transfer for recipient"
+          "Give users ability for manual bitcoin transaction verification"
         ]
       },
       "acceptanceCriteria": [
-        "Application can cryptographically sign Bitcoin transactions for mainnet",
-        "Signing process properly handles recipient wallet addresses",
-        "Private key management is secure and follows best practices"
+        "Non-admin authenticated users can navigate to /verify-transaction",
+        "Page includes a form similar to AdminManualVerificationPage but for regular users",
+        "Form accepts transaction ID (64-character hex) and BTC amount (up to 8 decimals)"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add backend method submitVerificationRequest that allows regular users to submit transaction verification requests with status tracking",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Method stores verification requests with fields: txid, amount, requester principal, submission timestamp, status (pending/approved/rejected)",
+        "Only authenticated users can call this method",
+        "Returns request ID for tracking"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Create AdminVerificationRequestsPage at route /admin/verification-requests showing all user-submitted verification requests with approve/reject actions",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Admin-only page displaying table of verification requests",
+        "Shows txid, amount, requester principal, submission date, and status",
+        "Includes approve and reject buttons for pending requests",
+        "Links to blockchain explorer for transaction verification"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add backend methods approveVerificationRequest and rejectVerificationRequest that allow admins to process user verification submissions",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ]
+      },
+      "acceptanceCriteria": [
+        "approveVerificationRequest credits the user's balance and updates request status to approved",
+        "rejectVerificationRequest updates status to rejected without crediting balance",
+        "Both methods record the admin principal who processed the request",
+        "Both methods require admin privileges to execute"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add navigation link to /verify-transaction in AppLayout navigation menu for authenticated non-admin users",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Navigation item labeled 'Verify Transaction' or 'Submit Transaction'",
+        "Only visible to authenticated users who are not admins",
+        "Positioned logically within existing navigation menu"
       ]
     },
     {
       "id": "REQ-6",
-      "text": "Implement AI-powered transaction posting to blockchain network with automatic confirmation monitoring",
-      "target": "backend",
+      "text": "Add navigation link to /admin/verification-requests in admin section navigation",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "Add ability for app ai to Post and confirm transaction on blockchain network"
+          "msg-latest"
         ]
       },
       "acceptanceCriteria": [
-        "Application can post signed transactions to the Bitcoin mainnet",
-        "System monitors and confirms transaction inclusion in blocks",
-        "AI component tracks transaction status and handles confirmation logic"
+        "Navigation card on AdminPage linking to verification requests",
+        "Shows count of pending verification requests",
+        "Only visible to admin users"
       ]
     },
     {
       "id": "REQ-7",
-      "text": "Add support for sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation and reserve-funded fee coverage",
-      "target": "backend",
+      "text": "Create user verification history view showing all verification requests submitted by the current user with their status",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
-        ],
-        "quotes": [
-          "Add app ability to for app to send mainnet transactions to Segwit bitcoin wallets built in mainnet transfer request and broadcast transactions on blockchain network using reserve to cover estimated fees"
+          "msg-latest"
         ]
       },
       "acceptanceCriteria": [
-        "Application supports Segwit (P2WPKH and P2WSH) address formats",
-        "Transactions include proper fee estimation for mainnet broadcast",
-        "Reserve balance is used to cover transaction fees automatically",
-        "Transactions are successfully broadcast to the Bitcoin blockchain network"
+        "Displays on user verification page below submission form",
+        "Shows transaction ID, amount, submission date, status (pending/approved/rejected)",
+        "Includes link to blockchain explorer for each transaction",
+        "Updates in real-time when new requests are submitted"
       ]
     },
     {
       "id": "REQ-8",
-      "text": "Update frontend transaction status tracking to display signing, posting, and confirmation states for mainnet Segwit transactions",
+      "text": "Add React Query hooks for user verification operations: useSubmitVerification, useUserVerificationRequests, useApproveVerification, useRejectVerification, and useAdminVerificationRequests",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-latest"
         ]
       },
       "acceptanceCriteria": [
-        "UI shows transaction signing status",
-        "UI displays blockchain posting status",
-        "UI tracks and shows confirmation progress",
-        "Segwit transaction details are properly displayed"
+        "Hooks follow existing patterns in useQueries.ts",
+        "Mutations invalidate relevant queries on success",
+        "Error handling follows existing error normalization patterns"
       ]
     }
   ],
   "constraints": [
-    "Must maintain compatibility with existing Bitcoin credit transfer system",
-    "Must preserve existing transaction history and balance tracking",
-    "Private key handling must follow security best practices for mainnet operations",
-    "Reserve balance must be sufficient before covering transaction fees"
+    "Maintain single-actor architecture in backend/main.mo",
+    "Do not modify immutable frontend paths: useInternetIdentity.ts, useActor.ts, main.tsx, frontend/src/components/ui",
+    "Use existing ManualVerificationForm and VerificationHistoryTable components as reference patterns",
+    "Follow existing authentication and admin access patterns",
+    "Preserve existing recordPurchase admin-only functionality as separate from new user verification flow"
   ],
   "nonGoals": [
-    "Support for non-Segwit legacy address formats beyond what already exists",
-    "Integration with third-party wallet services",
-    "Support for other cryptocurrencies besides Bitcoin",
-    "Manual fee selection by users"
+    "Automatic blockchain verification of transactions",
+    "Integration with external Bitcoin APIs for transaction validation",
+    "Modification of existing admin manual verification page (AdminManualVerificationPage)",
+    "Changes to withdrawal or peer transfer systems",
+    "Real-time blockchain monitoring or webhook integration"
   ],
   "imageRequirements": {
     "required": [],

@@ -1,14 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Enable the application to sign, post, and broadcast mainnet Bitcoin transactions to Segwit wallets with automatic fee coverage from reserves.
+**Goal:** Enable regular users to submit Bitcoin transaction verification requests and allow admins to approve or reject them.
 
 **Planned changes:**
-- Implement cryptographic signing of mainnet Bitcoin wallet transfers with secure key management
-- Add AI-powered transaction posting to blockchain network with automatic confirmation monitoring
-- Support sending mainnet transactions to Segwit Bitcoin wallet addresses with automatic fee estimation
-- Use reserve balance to cover transaction fees automatically
-- Broadcast transactions on the Bitcoin blockchain network
-- Update frontend to display transaction signing, posting, and confirmation states
+- Add /verify-transaction page where authenticated users can submit transaction details (txid and BTC amount) for manual verification
+- Create backend method submitVerificationRequest to store user verification requests with pending status
+- Add AdminVerificationRequestsPage at /admin/verification-requests displaying all user-submitted requests with approve/reject actions
+- Implement backend methods approveVerificationRequest and rejectVerificationRequest for admins to process submissions
+- Add navigation links: "Verify Transaction" for regular users and "Verification Requests" for admins
+- Display user's verification history on their verification page showing all submitted requests and their status
+- Create React Query hooks for all verification operations following existing patterns
 
-**User-visible outcome:** Users can initiate Bitcoin transfers that are automatically signed by the application, posted to the mainnet blockchain, and broadcast to Segwit wallet addresses with fees covered by reserves. The UI shows real-time transaction status including signing, posting, and confirmation progress.
+**User-visible outcome:** Regular users can submit Bitcoin transactions for manual verification and track their request status, while admins can review and approve/reject these requests from a dedicated management page.

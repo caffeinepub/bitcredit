@@ -11,11 +11,40 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export type BitcoinAmount = bigint;
+export interface BitcoinPurchaseRecord {
+  'amount' : BitcoinAmount,
+  'verifiedAt' : Time,
+  'verifiedBy' : Principal,
+  'transactionId' : string,
+}
+export interface BitcoinPurchaseRecordInput {
+  'amount' : BitcoinAmount,
+  'transactionId' : string,
+}
 export interface BitcoinWallet {
   'publicKey' : Uint8Array,
   'address' : string,
   'segwitMetadata' : SegwitMetadata,
 }
+export type PeerTransferId = bigint;
+export interface PeerTransferRequest {
+  'id' : PeerTransferId,
+  'status' : PeerTransferStatus,
+  'deleted' : boolean,
+  'createdAt' : Time,
+  'rejectionReason' : [] | [string],
+  'lastUpdated' : Time,
+  'recipient' : Principal,
+  'approvalTimestamp' : [] | [Time],
+  'sender' : Principal,
+  'approver' : [] | [Principal],
+  'rejectionTimestamp' : [] | [Time],
+  'amount' : BitcoinAmount,
+}
+export type PeerTransferStatus = { 'deleted' : null } |
+  { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface SegwitMetadata { 'p2wpkhStatus' : boolean }
 export type Time = bigint;
 export interface Transaction {
@@ -38,15 +67,94 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface VerificationRequest {
+  'id' : VerificationRequestId,
+  'status' : VerificationStatus,
+  'requester' : Principal,
+  'submittedAt' : Time,
+  'reviewComment' : [] | [string],
+  'reviewedAt' : [] | [Time],
+  'reviewedBy' : [] | [Principal],
+  'amount' : BitcoinAmount,
+  'transactionId' : string,
+}
+export type VerificationRequestId = bigint;
+export type VerificationStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
+export interface WithdrawalRequest {
+  'id' : WithdrawalRequestId,
+  'status' : WithdrawalStatus,
+  'method' : string,
+  'failureReason' : [] | [string],
+  'owner' : Principal,
+  'account' : [] | [string],
+  'timestamp' : Time,
+  'amount' : BitcoinAmount,
+}
+export type WithdrawalRequestId = bigint;
+export type WithdrawalStatus = { 'REJECTED' : null } |
+  { 'PAID' : null } |
+  { 'PENDING' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'approveVerificationRequest' : ActorMethod<
+    [VerificationRequestId, [] | [string]],
+    undefined
+  >,
+  'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'getAllVerificationRequests' : ActorMethod<
+    [],
+    Array<[VerificationRequestId, VerificationRequest]>
+  >,
+  'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
+  'getBitcoinPurchase' : ActorMethod<[string], [] | [BitcoinPurchaseRecord]>,
+  'getBitcoinPurchases' : ActorMethod<
+    [],
+    Array<[string, BitcoinPurchaseRecord]>
+  >,
+  'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
+  'getCallerPeerTransfers' : ActorMethod<[], Array<PeerTransferRequest>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCallerWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
+  'getPeerTransfer' : ActorMethod<[PeerTransferId], [] | [PeerTransferRequest]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getUserVerificationRequests' : ActorMethod<
+    [Principal],
+    Array<VerificationRequest>
+  >,
+  'getVerificationRequest' : ActorMethod<
+    [VerificationRequestId],
+    [] | [VerificationRequest]
+  >,
+  'getWithdrawalRequest' : ActorMethod<
+    [WithdrawalRequestId],
+    [] | [WithdrawalRequest]
+  >,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'markWithdrawalAsPaid' : ActorMethod<[WithdrawalRequestId], undefined>,
+  'recordBitcoinPurchase' : ActorMethod<
+    [BitcoinPurchaseRecordInput],
+    undefined
+  >,
+  'rejectVerificationRequest' : ActorMethod<
+    [VerificationRequestId, string],
+    undefined
+  >,
+  'rejectWithdrawal' : ActorMethod<[WithdrawalRequestId, string], undefined>,
+  'requestWithdrawal' : ActorMethod<
+    [BitcoinAmount, string, [] | [string]],
+    WithdrawalRequestId
+  >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'sendCreditsToPeer' : ActorMethod<[Principal, BitcoinAmount], PeerTransferId>,
+  'submitVerificationRequest' : ActorMethod<
+    [string, BitcoinAmount],
+    VerificationRequestId
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

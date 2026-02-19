@@ -1,12 +1,18 @@
+import { Link } from '@tanstack/react-router';
 import AppHeader from './AppHeader';
 import AdminTroubleshootingCard from '../auth/AdminTroubleshootingCard';
-import { Heart } from 'lucide-react';
+import { Heart, Home, Send, Users, ArrowDownRight, History, CheckCircle } from 'lucide-react';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
+import { Button } from '@/components/ui/button';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+
   const appIdentifier = typeof window !== 'undefined' 
     ? encodeURIComponent(window.location.hostname || 'btc-credit-transfer')
     : 'btc-credit-transfer';
@@ -15,6 +21,51 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen flex flex-col bg-background">
       <AppHeader />
       
+      {isAuthenticated && (
+        <nav className="border-b border-border bg-card">
+          <div className="container mx-auto px-4 py-2">
+            <div className="flex gap-2 overflow-x-auto">
+              <Link to="/">
+                <Button variant="ghost" size="sm">
+                  <Home className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/send-btc">
+                <Button variant="ghost" size="sm">
+                  <Send className="h-4 w-4 mr-2" />
+                  Send BTC
+                </Button>
+              </Link>
+              <Link to="/send-to-peer">
+                <Button variant="ghost" size="sm">
+                  <Users className="h-4 w-4 mr-2" />
+                  Send to Peer
+                </Button>
+              </Link>
+              <Link to="/withdraw">
+                <Button variant="ghost" size="sm">
+                  <ArrowDownRight className="h-4 w-4 mr-2" />
+                  Withdraw
+                </Button>
+              </Link>
+              <Link to="/history">
+                <Button variant="ghost" size="sm">
+                  <History className="h-4 w-4 mr-2" />
+                  History
+                </Button>
+              </Link>
+              <Link to="/verify-transaction">
+                <Button variant="ghost" size="sm">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Verify Transaction
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </nav>
+      )}
+
       <main className="flex-1 container mx-auto px-4 py-8">
         <AdminTroubleshootingCard />
         {children}
