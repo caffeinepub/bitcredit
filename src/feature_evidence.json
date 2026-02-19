@@ -2,11 +2,13 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-investigate-and-fix-the-issue-where-the-username-entered-in-the-profilesetupmodal-is-not-being-saved-when-the-user-clicks-the-save-button-verify-that-the-createprofile-mutation-is-being-called-correctly-and-that-the-backend-is-persisting-the-username",
-      "featureTitle": "Investigate and fix the issue where the username entered in the ProfileSetupModal is not being saved when the user clicks the save button. Verify that the createProfile mutation is being called correctly and that the backend is persisting the username.",
+      "featureId": "feature-update-the-frontend-sendbtcpage-error-handling-to-provide-clear-feedback-when-mainnet-broadcasting-fails-using-the-improved-error-messages-from-the-fixed-backend-implementation",
+      "featureTitle": "Update the frontend SendBtcPage error handling to provide clear feedback when mainnet broadcasting fails, using the improved error messages from the fixed backend implementation.",
       "files": [
-        "frontend/src/components/auth/ProfileSetupModal.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/transfers/BestPracticesSection.tsx",
+        "frontend/src/pages/SendBtcPage.tsx",
+        "frontend/src/pages/TransferTroubleshootingPage.tsx",
+        "frontend/src/utils/errors.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,27 +20,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-error-handling-and-user-feedback-in-profilesetupmodal-to-display-any-errors-that-occur-during-profile-creation-including-network-errors-validation-errors-or-backend-failures",
-      "featureTitle": "Add error handling and user feedback in ProfileSetupModal to display any errors that occur during profile creation, including network errors, validation errors, or backend failures.",
-      "files": [
-        "frontend/src/components/auth/ProfileSetupModal.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
+        "REQ-3"
       ],
       "confidence": "high"
     }

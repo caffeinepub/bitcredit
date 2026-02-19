@@ -1,14 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the profile creation bug where usernames are not being saved when users complete the ProfileSetupModal.
+**Goal:** Fix the backend sendBtc function to successfully broadcast Bitcoin transactions to mainnet and improve error handling.
 
 **Planned changes:**
-- Debug and fix the username persistence issue in the ProfileSetupModal save flow
-- Verify the createProfile mutation is correctly calling the backend
-- Add error handling and user feedback to display profile creation errors
-- Add loading state indicator during profile creation
-- Verify backend validation and storage of username in createProfile method
-- Ensure backend returns appropriate success/error responses
+- Diagnose and fix the backend sendBtc function's HTTP outcall issues preventing mainnet transaction broadcasting
+- Update blockchain API endpoint configuration to ensure connectivity with public APIs (Blockstream, Mempool.space)
+- Improve error handling to distinguish between network issues, API failures, and invalid transactions
+- Update frontend SendBtcPage to display specific error messages from the fixed backend
 
-**User-visible outcome:** Users can successfully create their profile by entering a username, see loading feedback during save, and receive clear error messages if something goes wrong. The username will persist correctly and users can proceed past the profile setup.
+**User-visible outcome:** Users can successfully send Bitcoin transactions to mainnet with clear error feedback if broadcasting fails.

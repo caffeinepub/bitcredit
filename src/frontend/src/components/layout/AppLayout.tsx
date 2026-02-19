@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import AppHeader from './AppHeader';
 import AdminTroubleshootingCard from '../auth/AdminTroubleshootingCard';
-import { Heart, Home, Send, Users, ArrowDownRight, History, CheckCircle, Shield, UserPlus, ArrowLeftRight } from 'lucide-react';
+import { Heart, Home, Send, Users, ArrowDownRight, History, ShoppingCart, Shield, UserPlus, ArrowLeftRight } from 'lucide-react';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { useIsCallerAdmin } from '../../hooks/useQueries';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   Dashboard
                 </Button>
               </Link>
+              <Link to="/buy-btc">
+                <Button variant="ghost" size="sm">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Buy BTC
+                </Button>
+              </Link>
               <Link to="/send-btc">
                 <Button variant="ghost" size="sm">
                   <Send className="h-4 w-4 mr-2" />
@@ -55,12 +61,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Button variant="ghost" size="sm">
                   <History className="h-4 w-4 mr-2" />
                   History
-                </Button>
-              </Link>
-              <Link to="/verify-transaction">
-                <Button variant="ghost" size="sm">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Verify Transaction
                 </Button>
               </Link>
               {isAdmin && (

@@ -18,11 +18,10 @@ import SendToPeerPage from './pages/SendToPeerPage';
 import IncomingRequestsPage from './pages/IncomingRequestsPage';
 import OutgoingRequestsPage from './pages/OutgoingRequestsPage';
 import AdminManualVerificationPage from './pages/AdminManualVerificationPage';
-import UserVerifyTransactionPage from './pages/UserVerifyTransactionPage';
-import AdminVerificationRequestsPage from './pages/AdminVerificationRequestsPage';
 import AdminSendCreditsPage from './pages/AdminSendCreditsPage';
 import AdminSendToUserPage from './pages/AdminSendToUserPage';
 import AdminPeerTransfersPage from './pages/AdminPeerTransfersPage';
+import BuyBitcoinPage from './pages/BuyBitcoinPage';
 import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminRoute from './components/auth/AdminRoute';
 import LoggedOutSignInPanel from './components/auth/LoggedOutSignInPanel';
@@ -60,6 +59,12 @@ const buyCreditsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/buy-credits',
   component: BuyCreditsPage,
+});
+
+const buyBtcRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/buy-btc',
+  component: BuyBitcoinPage,
 });
 
 const sendBtcRoute = createRoute({
@@ -156,22 +161,6 @@ const adminManualVerificationRoute = createRoute({
   ),
 });
 
-const verifyTransactionRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/verify-transaction',
-  component: UserVerifyTransactionPage,
-});
-
-const adminVerificationRequestsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin/verification-requests',
-  component: () => (
-    <AdminRoute>
-      <AdminVerificationRequestsPage />
-    </AdminRoute>
-  ),
-});
-
 const adminSendCreditsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/send-credits',
@@ -205,6 +194,7 @@ const adminPeerTransfersRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   buyCreditsRoute,
+  buyBtcRoute,
   sendBtcRoute,
   historyRoute,
   adminRoute,
@@ -218,8 +208,6 @@ const routeTree = rootRoute.addChildren([
   incomingRequestsRoute,
   outgoingRequestsRoute,
   adminManualVerificationRoute,
-  verifyTransactionRoute,
-  adminVerificationRequestsRoute,
   adminSendCreditsRoute,
   adminSendToUserRoute,
   adminPeerTransfersRoute,

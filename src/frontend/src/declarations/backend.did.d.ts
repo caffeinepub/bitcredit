@@ -67,21 +67,6 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export interface VerificationRequest {
-  'id' : VerificationRequestId,
-  'status' : VerificationStatus,
-  'requester' : Principal,
-  'submittedAt' : Time,
-  'reviewComment' : [] | [string],
-  'reviewedAt' : [] | [Time],
-  'reviewedBy' : [] | [Principal],
-  'amount' : BitcoinAmount,
-  'transactionId' : string,
-}
-export type VerificationRequestId = bigint;
-export type VerificationStatus = { 'pending' : null } |
-  { 'approved' : null } |
-  { 'rejected' : null };
 export interface WithdrawalRequest {
   'id' : WithdrawalRequestId,
   'status' : WithdrawalStatus,
@@ -98,28 +83,13 @@ export type WithdrawalStatus = { 'REJECTED' : null } |
   { 'PENDING' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'approveVerificationRequest' : ActorMethod<
-    [VerificationRequestId, [] | [string]],
-    undefined
-  >,
   'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'creditBtc' : ActorMethod<[Principal, BitcoinAmount], undefined>,
-  'getAllPeerTransfers' : ActorMethod<
-    [],
-    {
-        'success' : {
-          'totalTransfers' : bigint,
-          'transfers' : Array<[PeerTransferId, PeerTransferRequest]>,
-        }
-      } |
-      { 'failedToRetrieveTransfers' : { 'errorMessage' : string } }
+  'creditBtcWithVerification' : ActorMethod<
+    [Principal, string, BitcoinAmount],
+    undefined
   >,
   'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
-  'getAllVerificationRequests' : ActorMethod<
-    [],
-    Array<[VerificationRequestId, VerificationRequest]>
-  >,
   'getAllWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getBitcoinPurchase' : ActorMethod<[string], [] | [BitcoinPurchaseRecord]>,
   'getBitcoinPurchases' : ActorMethod<
@@ -134,14 +104,6 @@ export interface _SERVICE {
   'getPeerTransfer' : ActorMethod<[PeerTransferId], [] | [PeerTransferRequest]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getUserVerificationRequests' : ActorMethod<
-    [Principal],
-    Array<VerificationRequest>
-  >,
-  'getVerificationRequest' : ActorMethod<
-    [VerificationRequestId],
-    [] | [VerificationRequest]
-  >,
   'getWithdrawalRequest' : ActorMethod<
     [WithdrawalRequestId],
     [] | [WithdrawalRequest]
@@ -152,10 +114,6 @@ export interface _SERVICE {
     [BitcoinPurchaseRecordInput],
     undefined
   >,
-  'rejectVerificationRequest' : ActorMethod<
-    [VerificationRequestId, string],
-    undefined
-  >,
   'rejectWithdrawal' : ActorMethod<[WithdrawalRequestId, string], undefined>,
   'requestWithdrawal' : ActorMethod<
     [BitcoinAmount, string, [] | [string]],
@@ -163,10 +121,6 @@ export interface _SERVICE {
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendCreditsToPeer' : ActorMethod<[Principal, BitcoinAmount], PeerTransferId>,
-  'submitVerificationRequest' : ActorMethod<
-    [string, BitcoinAmount],
-    VerificationRequestId
-  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

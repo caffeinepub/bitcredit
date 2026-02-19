@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useGetCallerBalance, useGetUserProfile, useSendCreditsToPeer } from '../hooks/useQueries';
+import { useGetCallerBalance, useGetUserProfileByPrincipal, useSendCreditsToPeer } from '../hooks/useQueries';
 import { Principal } from '@dfinity/principal';
 import { toast } from 'sonner';
 import { ArrowRight, Users } from 'lucide-react';
@@ -19,7 +19,7 @@ export default function SendToPeerPage() {
   const [validatedRecipient, setValidatedRecipient] = useState<Principal | null>(null);
 
   const { data: balance, isLoading: balanceLoading } = useGetCallerBalance();
-  const { data: recipientProfile, isLoading: recipientLoading } = useGetUserProfile(validatedRecipient);
+  const { data: recipientProfile, isLoading: recipientLoading } = useGetUserProfileByPrincipal(validatedRecipient);
   const sendMutation = useSendCreditsToPeer();
 
   const btcBalance = balance ? Number(balance) / 100_000_000 : 0;

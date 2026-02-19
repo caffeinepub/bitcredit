@@ -1,300 +1,401 @@
 export interface BestPracticeEntry {
   id: string;
+  category: string;
   title: string;
-  category: 'Connectivity' | 'Provider' | 'Mempool' | 'Network';
-  keywords: string[];
   body: string;
+  keywords: string[];
 }
 
 export const bestPracticesContent: BestPracticeEntry[] = [
   {
+    id: 'backend-method-missing',
+    category: 'Backend Implementation',
+    title: 'sendBTC Method Not Available',
+    body: `<strong>Issue:</strong> The backend canister does not implement the sendBTC method required for sending Bitcoin to external addresses.
+
+<strong>Symptoms:</strong>
+• Error message: "sendBTC method not available on backend"
+• Send Bitcoin form is disabled
+• Cannot initiate Bitcoin transfers to external addresses
+
+<strong>Root Cause:</strong>
+The backend/main.mo file does not export a public sendBTC function. The frontend is attempting to call a method that doesn't exist in the backend interface.
+
+<strong>Resolution:</strong>
+The backend needs to implement a public method with this signature:
+<code>public shared ({ caller }) func sendBTC(destination: Text, amount: BitcoinAmount) : async SendBTCResult</code>
+
+This method should:
+1. Validate the destination address format
+2. Check user balance and reserve availability
+3. Sign the Bitcoin transaction
+4. Broadcast to blockchain APIs via HTTP outcalls
+5. Track signing and broadcast status
+6. Return detailed result information
+
+<strong>Workarounds:</strong>
+• Use Withdrawal Requests for admin-processed transfers
+• Use Send to Peer for internal credit transfers between users`,
+    keywords: ['backend', 'sendBTC', 'method', 'not available', 'implementation', 'missing', 'function']
+  },
+  {
+    id: 'http-outcall-failures',
+    category: 'Backend Implementation',
+    title: 'HTTP Outcall Failures',
+    body: `<strong>Issue:</strong> Internet Computer HTTP outcalls to blockchain APIs are failing or being rejected.
+
+<strong>Common Causes:</strong>
+• Localhost endpoints (127.0.0.1, localhost:18443) are not accessible from IC canisters
+• HTTP outcalls require publicly accessible HTTPS endpoints
+• API rate limiting or quota exceeded
+• Network timeouts during high load
+• API endpoint is down or unreachable
+
+<strong>Resolution:</strong>
+1. Configure backend to use public blockchain APIs:
+   • https://blockstream.info/api/ (Blockstream)
+   • https://blockchain.info/ (Blockchain.info)
+   • https://api.blockcypher.com/ (BlockCypher)
+
+2. Implement retry logic with multiple providers
+3. Add proper timeout handling (IC HTTP outcalls have time limits)
+4. Include detailed error logging for diagnostics
+
+<strong>Testing:</strong>
+• Test HTTP outcalls from IC canister environment, not local development
+• Verify API endpoints are publicly accessible
+• Check API documentation for rate limits and authentication requirements`,
+    keywords: ['http', 'outcall', 'api', 'blockchain', 'connectivity', 'network', 'timeout', 'localhost']
+  },
+  {
     id: 'localhost-not-accessible',
-    title: 'Localhost URLs Cannot Be Reached from IC Canisters',
-    category: 'Connectivity',
-    keywords: ['localhost', '127.0.0.1', '18443', 'local', 'connection', 'unable to connect', 'network error'],
-    body: `**Problem:** URLs like \`http://localhost:18443\` or other local network addresses cannot be reached from deployed Internet Computer canisters.
+    category: 'Network Configuration',
+    title: 'Localhost Endpoints Not Accessible from IC',
+    body: `<strong>Issue:</strong> Cannot connect to localhost Bitcoin Core node or local blockchain APIs from IC canisters.
 
-**Why:** IC canisters run in a decentralized network and can only make HTTP outcalls to publicly accessible endpoints on the internet. Local development servers, Bitcoin Core nodes running on localhost, or any service bound to 127.0.0.1 are not accessible.
+<strong>Why This Happens:</strong>
+Internet Computer canisters run in a distributed network and cannot access localhost (127.0.0.1) or private network endpoints. HTTP outcalls can only reach publicly accessible HTTPS endpoints.
 
-**Solution:**
-- Use a publicly accessible blockchain API endpoint (e.g., \`https://blockstream.info/api/tx\`, \`https://api.blockcypher.com\`)
-- If you need to use a local Bitcoin node for testing, deploy it to a publicly accessible server with a domain name or IP address
-- For production, always configure the backend to use reliable public blockchain service providers
+<strong>Error Messages:</strong>
+• "Cannot connect to localhost endpoints from IC canisters"
+• "Connection refused to 127.0.0.1:18443"
+• "HTTP outcall failed: unreachable endpoint"
 
-**Next Steps:**
-- Review the backend canister configuration to ensure it uses a public API endpoint
-- Check the diagnostic data for connection error messages mentioning localhost
-- If testing locally, consider using Bitcoin testnet with public testnet APIs`,
+<strong>Resolution:</strong>
+1. <strong>For Development:</strong>
+   • Use public testnet APIs (e.g., https://blockstream.info/testnet/api/)
+   • Deploy a publicly accessible Bitcoin node with HTTPS endpoint
+   • Use ngrok or similar tunneling service (not recommended for production)
+
+2. <strong>For Production:</strong>
+   • Use established public blockchain APIs
+   • Configure multiple API providers for redundancy
+   • Implement proper error handling and fallback logic
+
+<strong>Recommended Public APIs:</strong>
+• Blockstream: https://blockstream.info/api/
+• Blockchain.info: https://blockchain.info/
+• BlockCypher: https://api.blockcypher.com/v1/btc/main`,
+    keywords: ['localhost', '127.0.0.1', 'local', 'bitcoin core', 'rpc', 'connection', 'unreachable', '18443']
   },
   {
-    id: 'provider-timeout',
-    title: 'Blockchain API Provider Timeout or Unavailable',
-    category: 'Provider',
-    keywords: ['timeout', 'unavailable', 'connection timeout', 'provider', 'api', 'unable to connect', 'network error', 'failed to connect'],
-    body: `**Problem:** The external blockchain API provider is not responding or is experiencing downtime.
+    id: 'signing-failures',
+    category: 'Transaction Signing',
+    title: 'Transaction Signing Failures',
+    body: `<strong>Issue:</strong> Backend unable to sign Bitcoin transactions before broadcasting.
 
-**Why:** External blockchain service providers (BlockCypher, Blockchain.info, Blockstream, etc.) may experience temporary outages, rate limiting, or network issues.
+<strong>Common Causes:</strong>
+• Private key not available or not properly initialized
+• Invalid transaction parameters (amount, destination address)
+• Insufficient reserve balance to cover network fees
+• Threshold ECDSA signing errors (if using IC threshold signatures)
 
-**Solution:**
-- Wait a few minutes and retry the broadcast
-- Check the status page of the blockchain API provider being used
-- Consider configuring a fallback API provider in the backend
-- Verify that the API endpoint URL is correct and publicly accessible
+<strong>Resolution:</strong>
+1. <strong>Key Management:</strong>
+   • Ensure private keys are securely stored in canister stable memory
+   • Consider using IC threshold ECDSA for decentralized key management
+   • Verify key initialization during canister deployment
 
-**Next Steps:**
-- Use the "Retry Broadcast" button on this page if the transfer failed without a transaction ID
-- Check diagnostic data for specific timeout or connection error messages
-- If the issue persists, the backend may need to be reconfigured to use a different API provider`,
-  },
-  {
-    id: 'mempool-congestion',
-    title: 'Transaction Stuck in Mempool or Low Fee',
-    category: 'Mempool',
-    keywords: ['mempool', 'confirmation', 'stuck', 'pending', 'low fee', 'not confirmed', 'waiting'],
-    body: `**Problem:** A transaction was successfully broadcast (has a txid) but is not confirming on the blockchain.
+2. <strong>Transaction Validation:</strong>
+   • Validate destination address format before signing
+   • Check that amount + fees don't exceed available balance
+   • Verify transaction inputs and outputs are properly constructed
 
-**Why:** Bitcoin network congestion can cause transactions with lower fees to remain unconfirmed in the mempool for extended periods. During high network activity, miners prioritize transactions with higher fees.
+3. <strong>Error Handling:</strong>
+   • Return specific error messages for different signing failure types
+   • Log signing attempts for debugging
+   • Track signing status (pending, signed, failed) in transaction records
 
-**Solution:**
-- Wait for network congestion to decrease (can take hours or days depending on fee rate)
-- Check the transaction status on a blockchain explorer (e.g., \`https://blockstream.info/tx/YOUR_TXID\`)
-- For future transfers, consider increasing the network fee setting in the backend
-- If the transaction has a txid, it will eventually confirm or be dropped from the mempool
-
-**Next Steps:**
-- Monitor the transaction on a blockchain explorer
-- If the transaction has been broadcast (status IN_PROGRESS with txid), it will auto-update to COMPLETED once confirmed
-- The app automatically checks for confirmation status when you refresh the transfer details`,
-  },
-  {
-    id: 'wrong-network',
-    title: 'Wrong Network or Invalid Address Format',
-    category: 'Network',
-    keywords: ['invalid address', 'wrong network', 'testnet', 'mainnet', 'address format', 'invalid', 'format', 'address rejected', 'api rejected'],
-    body: `**Problem:** The destination address is invalid or belongs to a different Bitcoin network (testnet vs mainnet).
-
-**Why:** Bitcoin addresses have different formats for mainnet and testnet. Sending to an address from the wrong network will fail validation.
-
-**Solution:**
-- Verify the destination address is a valid Bitcoin mainnet address
-- Mainnet addresses typically start with \`1\`, \`3\`, or \`bc1\`
-- Testnet addresses typically start with \`m\`, \`n\`, \`2\`, or \`tb1\`
-- Double-check the address with the recipient before creating a new transfer request
-
-**Next Steps:**
-- If the transfer failed due to invalid address, create a new transfer request with the correct address
-- Your credits have been restored for the failed transfer
-- Ensure you're using the correct network (mainnet) address format`,
-  },
-  {
-    id: 'insufficient-reserve',
-    title: 'Insufficient Backend Reserve Balance',
-    category: 'Provider',
-    keywords: ['insufficient', 'reserve', 'backend', 'funds', 'balance'],
-    body: `**Problem:** The backend reserve does not have enough BTC to cover the transfer.
-
-**Why:** The app maintains a reserve of BTC to back issued credits. If the reserve balance is too low, transfers cannot be processed.
-
-**Solution:**
-- This is typically an admin-level issue that requires reserve management
-- Contact the application administrator to add funds to the reserve
-- Your credits have been restored for the failed transfer
-
-**Next Steps:**
-- Wait for the administrator to replenish the reserve
-- Check back later and retry your transfer
-- Your credits remain available in your balance`,
-  },
-  {
-    id: 'fee-too-low-rbf',
-    title: 'Low Fee Rate & RBF (Replace-By-Fee) Guidance',
-    category: 'Mempool',
-    keywords: ['rbf', 'fee too low', 'fee spike', 'mempool', 'replace by fee', 'bump fee', 'insufficient fee', 'borderline', 'fee rate'],
-    body: `**Problem:** Your transaction was broadcast with a fee rate that is too low for timely confirmation, or network fees have spiked since broadcast.
-
-**Why:** Bitcoin miners prioritize transactions with higher fees. When the mempool is congested or fees spike suddenly, transactions with lower fees may remain unconfirmed for extended periods or even be dropped.
-
-**What is RBF (Replace-By-Fee)?**
-RBF is a Bitcoin protocol feature that allows you to replace an unconfirmed transaction with a new version that pays a higher fee. This requires:
-- Creating a new transaction with the same inputs but a higher fee
-- Re-signing the transaction with your private key (must be done externally—never paste keys into this app)
-- Broadcasting the replacement transaction to the network
-
-**Important Limitations:**
-- This app does not currently support automated RBF fee bumping for already-broadcast transactions
-- RBF requires access to the original transaction's private keys and the ability to create and sign a replacement transaction externally
-- Not all wallets or services support RBF
-
-**What You Can Do:**
-1. **Wait it out:** If your transaction has a txid, it may eventually confirm when network congestion decreases
-2. **Monitor on a blockchain explorer:** Check \`https://blockstream.info/tx/YOUR_TXID\` to see if your transaction is still in the mempool
-3. **If dropped/evicted:** If the transaction is dropped from the mempool (see "Dropped/Evicted Transaction" guidance), you can create a new transfer request with a higher fee
-4. **For future transfers:** Consider using a higher network fee setting to ensure faster confirmation during periods of high network activity
-
-**Security Reminder:**
-Any RBF re-signing must be performed externally using your own secure tools. Never paste private keys into this app.
-
-**Next Steps:**
-- Check the Agent Analysis section above for suggested fee rates
-- If the transaction has been dropped, your credits will be restored and you can retry with a higher fee
-- Monitor the transaction status and wait for confirmation or eviction`,
-  },
-  {
-    id: 'evicted-dropped-transaction',
-    title: 'Dropped or Evicted Transaction Recovery',
-    category: 'Mempool',
-    keywords: ['evicted', 'dropped', 'not found', 'transaction not found', 'mempool eviction', 'tx not found', 'disappeared'],
-    body: `**Problem:** Your transaction was broadcast to the network but is no longer found in the mempool and has not been confirmed on the blockchain.
-
-**Why:** Transactions can be dropped (evicted) from the mempool for several reasons:
-- The fee rate was too low and the mempool became full with higher-fee transactions
-- The transaction remained unconfirmed for an extended period (typically 2 weeks)
-- Network nodes restarted and did not re-broadcast the transaction
-- The transaction conflicted with another transaction that was confirmed
-
-**What Happens When a Transaction is Evicted:**
-- The transaction is removed from the mempool and will not be confirmed
-- The Bitcoin network treats it as if the transaction never happened
-- Your credits are automatically restored in this app
-- The transaction ID (txid) becomes invalid and cannot be used
-
-**Safe Recovery Steps:**
-1. **Verify eviction:** Check a blockchain explorer (\`https://blockstream.info/tx/YOUR_TXID\`) to confirm the transaction is not found
-2. **Wait for automatic detection:** This app periodically checks for evicted transactions and updates the status
-3. **Credits restored:** Once detected as evicted/dropped, your credits are automatically restored to your balance
-4. **Create a new transfer:** You can safely create a new transfer request with a higher fee to ensure faster confirmation
-
-**Important Notes:**
-- Do NOT attempt to "retry" a transaction that has a txid and is still in the mempool—this could result in a double-spend attempt
-- Only create a new transfer after confirming the original transaction is truly dropped/evicted
-- Consider using a higher network fee for the new transfer to avoid the same issue
-
-**Next Steps:**
-- Verify the transaction status on a blockchain explorer
-- If confirmed as evicted, create a new transfer request with an appropriate fee
-- Use the Agent Analysis section above to see suggested fee rates for successful confirmation`,
+<strong>Security Considerations:</strong>
+• Never expose private keys in error messages or logs
+• Implement rate limiting on signing operations
+• Validate all transaction parameters before signing`,
+    keywords: ['signing', 'signature', 'private key', 'ecdsa', 'threshold', 'failed', 'sign']
   },
   {
     id: 'all-apis-rejected',
-    title: 'All APIs Rejected - Multi-Provider Failure',
-    category: 'Provider',
-    keywords: ['all apis', 'all providers', 'multiple failures', 'all rejected', 'every api', 'all attempts failed'],
-    body: `**Problem:** The system attempted to broadcast your transaction using multiple blockchain API providers, but all of them rejected the request.
+    category: 'Broadcasting',
+    title: 'All Blockchain APIs Rejected Transaction',
+    body: `<strong>Issue:</strong> All configured blockchain API providers rejected the transaction broadcast.
 
-**Why:** When all configured API providers reject a transaction, it typically indicates one of these issues:
-- The destination address format is invalid or not recognized by any provider
-- The transaction parameters violate Bitcoin protocol rules
-- All providers are experiencing simultaneous outages (rare)
-- The backend configuration has an issue affecting all providers
+<strong>Common Causes:</strong>
+• Invalid destination address format (testnet address on mainnet, or vice versa)
+• Transaction signature is invalid or malformed
+• Network fee too low for current mempool conditions
+• Transaction size exceeds API limits
+• Duplicate transaction (same inputs already spent)
 
-**Solution:**
-- **Address Format Issues:** If all APIs rejected with address-related errors, verify the destination address is valid for Bitcoin mainnet
-- **Connectivity Issues:** If all APIs timed out or failed to connect, check network status and retry after a few minutes
-- **Rate Limiting:** If all APIs returned rate limit errors, wait a few minutes before retrying
+<strong>Diagnosis:</strong>
+1. Check destination address:
+   • Mainnet addresses start with 1, 3, or bc1
+   • Testnet addresses start with m, n, or tb1
+   • Verify address checksum is valid
 
-**Next Steps:**
-- Review the "Multi-API Broadcast Attempts" section above to see specific errors from each provider
-- Check the "API Error Analysis" section to understand the error pattern
-- If all errors are address-related, verify the destination address with the recipient
-- If all errors are connectivity-related, wait and retry
-- Your credits have been restored and you can create a new transfer request once the issue is resolved`,
+2. Verify transaction format:
+   • Ensure transaction is properly serialized
+   • Check that signature is valid
+   • Verify all inputs are unspent
+
+3. Review API error responses:
+   • Each API may provide specific rejection reasons
+   • Look for patterns across multiple API failures
+   • Check API documentation for error codes
+
+<strong>Resolution:</strong>
+• Validate address format before signing
+• Implement transaction format validation
+• Increase network fee if mempool is congested
+• Add detailed error logging for each API attempt
+• Consider implementing transaction pre-validation`,
+    keywords: ['all apis', 'rejected', 'broadcast', 'failed', 'multiple', 'providers', 'address format']
   },
   {
-    id: 'address-format-across-providers',
-    title: 'Address Format Issues Across Multiple Providers',
-    category: 'Network',
-    keywords: ['address format', 'multiple providers', 'all rejected address', 'invalid address multiple', 'format error'],
-    body: `**Problem:** Multiple blockchain API providers rejected the destination address, indicating a consistent address format issue.
+    id: 'address-format-issues',
+    category: 'Address Validation',
+    title: 'Address Format Issues Across Providers',
+    body: `<strong>Issue:</strong> Blockchain APIs rejecting transactions due to address format problems.
 
-**Why:** Different API providers may have varying levels of address validation, but when multiple providers reject the same address, it strongly suggests:
-- The address is for a different Bitcoin network (testnet instead of mainnet)
-- The address contains typos or formatting errors
-- The address uses an unsupported or deprecated format
-- The address checksum is invalid
+<strong>Common Problems:</strong>
+• Using testnet address on mainnet (or vice versa)
+• Invalid address checksum
+• Unsupported address type (some APIs don't support all Segwit formats)
+• Malformed address string
 
-**Solution:**
-1. **Verify Network:** Ensure the address is for Bitcoin mainnet (not testnet or other networks)
-2. **Check Format:** Valid mainnet addresses start with:
-   - \`1\` (P2PKH - Legacy)
-   - \`3\` (P2SH - Script Hash)
-   - \`bc1\` (Bech32 - SegWit)
-3. **Validate Checksum:** Use a Bitcoin address validator tool to verify the address checksum
-4. **Confirm with Recipient:** Double-check the address with the recipient to ensure it's correct
+<strong>Address Format Guide:</strong>
+<strong>Mainnet:</strong>
+• Legacy (P2PKH): Starts with 1
+• Script (P2SH): Starts with 3
+• Segwit (P2WPKH): Starts with bc1q
+• Taproot (P2TR): Starts with bc1p
 
-**Next Steps:**
-- Review the exact address you entered in the transfer request
-- Use a blockchain explorer to verify the address format
-- If the address is incorrect, create a new transfer request with the corrected address
-- Your credits have been restored for the failed transfer`,
+<strong>Testnet:</strong>
+• Legacy: Starts with m or n
+• Script: Starts with 2
+• Segwit: Starts with tb1q
+• Taproot: Starts with tb1p
+
+<strong>Resolution:</strong>
+1. Implement address validation before signing:
+   • Check address prefix matches network (mainnet vs testnet)
+   • Verify address checksum
+   • Validate address length
+
+2. Support multiple address formats:
+   • Ensure backend can handle Legacy, P2SH, and Segwit addresses
+   • Document which address types are supported
+
+3. Provide clear error messages:
+   • Tell users which address format was rejected
+   • Suggest correct address format for the network`,
+    keywords: ['address', 'format', 'invalid', 'testnet', 'mainnet', 'segwit', 'bc1', 'validation']
   },
   {
-    id: 'connectivity-failures',
-    title: 'Connectivity Failures Across Multiple APIs',
-    category: 'Connectivity',
-    keywords: ['connectivity', 'multiple timeouts', 'network error multiple', 'connection failed multiple', 'all timed out'],
-    body: `**Problem:** Multiple blockchain API providers experienced connectivity failures when attempting to broadcast your transaction.
+    id: 'provider-timeout',
+    category: 'Network Issues',
+    title: 'Blockchain API Provider Timeouts',
+    body: `<strong>Issue:</strong> HTTP outcalls to blockchain APIs are timing out before completing.
 
-**Why:** Simultaneous connectivity failures across multiple providers can indicate:
-- Temporary network issues between the Internet Computer and external APIs
-- Internet Computer subnet experiencing connectivity problems
-- Widespread API provider outages (rare)
-- Firewall or network configuration issues
+<strong>Common Causes:</strong>
+• API provider experiencing high load
+• Network connectivity issues
+• IC HTTP outcall time limits exceeded
+• API endpoint is slow or unresponsive
 
-**Solution:**
-- **Wait and Retry:** Most connectivity issues are temporary. Wait 5-10 minutes and retry the transfer
-- **Check Status Pages:** Visit the status pages of major blockchain API providers to check for known outages
-- **Monitor IC Status:** Check the Internet Computer status dashboard for any reported network issues
-- **Try Different Time:** If the issue persists, try again during off-peak hours
+<strong>Resolution:</strong>
+1. <strong>Implement Timeout Handling:</strong>
+   • Set reasonable timeout values (e.g., 10-30 seconds)
+   • Implement retry logic with exponential backoff
+   • Try alternative API providers on timeout
 
-**Next Steps:**
-- Wait a few minutes for network conditions to improve
-- Use the "Retry Transfer" button to create a new transfer request
-- If the issue persists after multiple attempts, contact support with the request ID and diagnostic data
-- Your credits have been restored and remain available in your balance`,
+2. <strong>Multi-Provider Strategy:</strong>
+   • Configure multiple blockchain API providers
+   • Attempt providers in priority order
+   • Fall back to alternative providers on timeout
+
+3. <strong>Optimize Requests:</strong>
+   • Use efficient API endpoints
+   • Minimize request payload size
+   • Cache API responses when appropriate
+
+<strong>Monitoring:</strong>
+• Track API response times
+• Log timeout occurrences for each provider
+• Alert when all providers are timing out (indicates broader issue)`,
+    keywords: ['timeout', 'slow', 'api', 'provider', 'network', 'connectivity', 'unresponsive']
   },
   {
     id: 'rate-limiting',
-    title: 'Rate Limiting Across Multiple APIs',
-    category: 'Provider',
-    keywords: ['rate limit', 'too many requests', 'quota exceeded', 'api limit', 'throttled'],
-    body: `**Problem:** One or more blockchain API providers returned rate limit errors, indicating too many requests in a short period.
+    category: 'API Management',
+    title: 'API Rate Limiting',
+    body: `<strong>Issue:</strong> Blockchain API providers are rate limiting or rejecting requests due to quota exceeded.
 
-**Why:** Blockchain API providers implement rate limiting to prevent abuse and ensure fair usage:
-- Free tier APIs have lower rate limits
-- Multiple users sharing the same backend may hit collective limits
-- Rapid retry attempts can trigger rate limiting
-- Some providers have stricter limits during high-traffic periods
+<strong>Symptoms:</strong>
+• Error messages: "rate limit exceeded", "too many requests", "quota exceeded"
+• HTTP 429 status codes
+• Intermittent failures during high usage periods
 
-**Solution:**
-- **Wait Before Retrying:** Most rate limits reset after a few minutes (typically 1-5 minutes)
-- **Avoid Rapid Retries:** Don't repeatedly retry failed transfers immediately
-- **Check Provider Limits:** Review the rate limit policies of the configured API providers
-- **Consider Paid Tiers:** For high-volume usage, consider upgrading to paid API tiers with higher limits
+<strong>Resolution:</strong>
+1. <strong>Implement Rate Limit Handling:</strong>
+   • Detect rate limit errors (HTTP 429, specific error messages)
+   • Implement exponential backoff retry logic
+   • Respect Retry-After headers from APIs
 
-**Next Steps:**
-- Wait at least 5 minutes before retrying the transfer
-- If you need to make multiple transfers, space them out over time
-- Contact the administrator if rate limiting is a recurring issue (may need API tier upgrade)
-- Your credits have been restored and you can retry once the rate limit window has passed`,
+2. <strong>Use Multiple API Providers:</strong>
+   • Distribute requests across multiple providers
+   • Implement round-robin or weighted load balancing
+   • Track rate limit status per provider
+
+3. <strong>Optimize API Usage:</strong>
+   • Cache API responses when possible
+   • Batch requests where supported
+   • Implement request queuing to avoid bursts
+
+4. <strong>Consider API Keys:</strong>
+   • Many providers offer higher rate limits with API keys
+   • Implement API key rotation if needed
+   • Monitor usage against quotas
+
+<strong>Best Practices:</strong>
+• Monitor rate limit usage proactively
+• Implement graceful degradation when limits are reached
+• Provide clear user feedback when rate limited`,
+    keywords: ['rate limit', 'quota', 'too many requests', '429', 'throttle', 'api key']
   },
   {
-    id: 'general-troubleshooting',
-    title: 'General Troubleshooting Steps',
-    category: 'Connectivity',
-    keywords: ['general', 'help', 'troubleshoot', 'error', 'failed', 'problem'],
-    body: `**General troubleshooting steps for failed transfers:**
+    id: 'wrong-network',
+    category: 'Configuration',
+    title: 'Wrong Network Configuration',
+    body: `<strong>Issue:</strong> Attempting to use testnet addresses on mainnet or vice versa.
 
-1. **Check the failure reason:** Review the specific error message in the "Failure Reason" section above
-2. **Review diagnostic data:** Look for clues in the diagnostic data (timestamps, connection errors, API responses)
-3. **Verify your balance:** Ensure you have sufficient credits to cover the total cost (amount + network fee)
-4. **Check the destination address:** Confirm it's a valid Bitcoin mainnet address
-5. **Retry if no txid:** If the transfer failed before being broadcast (no transaction ID), use the "Retry Broadcast" button
-6. **Monitor if txid exists:** If a transaction ID was generated, the transfer was broadcast—monitor it on a blockchain explorer
-7. **Credits are restored:** Failed transfers (without successful broadcast) automatically restore your credits
+<strong>Symptoms:</strong>
+• Address validation failures
+• APIs rejecting transactions
+• "Invalid address" errors
 
-**When to contact support:**
-- Repeated failures with the same error
-- Unclear or unexpected error messages
-- Issues persisting after following troubleshooting steps`,
+<strong>Network Identification:</strong>
+<strong>Mainnet Addresses:</strong>
+• Legacy: 1...
+• P2SH: 3...
+• Segwit: bc1...
+
+<strong>Testnet Addresses:</strong>
+• Legacy: m... or n...
+• P2SH: 2...
+• Segwit: tb1...
+
+<strong>Resolution:</strong>
+1. <strong>Verify Network Configuration:</strong>
+   • Check backend is configured for correct network (mainnet vs testnet)
+   • Ensure blockchain API endpoints match network
+   • Validate address prefixes match network
+
+2. <strong>Implement Network Detection:</strong>
+   • Detect network from address prefix
+   • Warn users if address doesn't match configured network
+   • Prevent cross-network transactions
+
+3. <strong>Clear Documentation:</strong>
+   • Document which network the application uses
+   • Provide examples of valid addresses for the network
+   • Explain differences between mainnet and testnet
+
+<strong>Testing:</strong>
+• Use testnet for development and testing
+• Switch to mainnet only for production
+• Never mix testnet and mainnet addresses`,
+    keywords: ['network', 'testnet', 'mainnet', 'wrong', 'address', 'bc1', 'tb1', 'configuration']
   },
+  {
+    id: 'mempool-stuck',
+    category: 'Confirmation Issues',
+    title: 'Transaction Stuck in Mempool',
+    body: `<strong>Issue:</strong> Transaction broadcast successfully but not confirming for extended period.
+
+<strong>Common Causes:</strong>
+• Network fee too low for current mempool conditions
+• High network congestion
+• Transaction may be evicted if fee is too low
+
+<strong>Expected Confirmation Times:</strong>
+• 1 confirmation: ~10 minutes (first block)
+• 3 confirmations: ~30 minutes
+• 6 confirmations: ~60 minutes
+
+<strong>What to Do:</strong>
+1. <strong>Monitor Transaction:</strong>
+   • Check transaction on blockchain explorer
+   • Verify it's in the mempool
+   • Check current mempool fee rates
+
+2. <strong>Wait for Confirmation:</strong>
+   • Transactions with adequate fees will eventually confirm
+   • During high congestion, may take several hours
+   • Don't attempt to re-send (will create duplicate)
+
+3. <strong>If Transaction is Evicted:</strong>
+   • Transaction will be dropped from mempool after ~72 hours
+   • Credits will be restored to user balance
+   • Can create new transaction with higher fee
+
+<strong>Prevention:</strong>
+• Implement dynamic fee estimation based on current mempool
+• Provide fee options (slow/medium/fast)
+• Monitor mempool conditions before broadcasting`,
+    keywords: ['mempool', 'stuck', 'unconfirmed', 'pending', 'slow', 'confirmation', 'fee']
+  },
+  {
+    id: 'insufficient-reserve',
+    category: 'Balance Management',
+    title: 'Insufficient Reserve Balance',
+    body: `<strong>Issue:</strong> Backend reserve doesn't have enough Bitcoin to cover transaction fees.
+
+<strong>Symptoms:</strong>
+• "Insufficient reserve" error messages
+• Transactions failing during signing phase
+• Cannot initiate new transfers
+
+<strong>Understanding Reserve:</strong>
+The backend maintains a Bitcoin reserve to cover:
+• Network transaction fees
+• User withdrawal requests
+• Mainnet transaction broadcasting
+
+<strong>Resolution:</strong>
+1. <strong>For Administrators:</strong>
+   • Deposit Bitcoin to reserve address
+   • Monitor reserve balance regularly
+   • Set up alerts for low reserve levels
+
+2. <strong>For Users:</strong>
+   • Contact administrator to replenish reserve
+   • Use alternative transfer methods (peer-to-peer)
+   • Wait for reserve to be replenished
+
+<strong>Prevention:</strong>
+• Implement reserve monitoring and alerts
+• Maintain reserve buffer above minimum operational level
+• Track reserve usage trends
+• Plan for fee rate increases during network congestion`,
+    keywords: ['reserve', 'insufficient', 'balance', 'fee', 'deposit', 'low']
+  }
 ];

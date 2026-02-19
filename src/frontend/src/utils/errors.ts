@@ -1,6 +1,17 @@
 export function normalizeSendBTCError(error: Error): string {
   const message = error.message || '';
 
+  // Backend method not available
+  if (message.includes('sendBTC method not available') || 
+      message.includes('sendBTC') && message.includes('not available')) {
+    return 'The sendBTC functionality is not implemented in the backend. This feature requires backend support for transaction signing and broadcasting to Bitcoin mainnet. Please use the Withdrawal Request feature or Send to Peer as alternatives.';
+  }
+
+  // Actor not available
+  if (message.includes('Actor not available')) {
+    return 'Backend connection not available. Please ensure you are logged in and try again.';
+  }
+
   // Blockchain API provider-specific errors
   if (message.includes('API rejected') || 
       message.includes('address format not accepted') || 
@@ -15,6 +26,13 @@ export function normalizeSendBTCError(error: Error): string {
       message.includes('connection failed') ||
       message.includes('network error')) {
     return 'Unable to connect to the blockchain API provider. This may be due to network issues or the API endpoint being unreachable. If using localhost, note that IC canisters cannot access local endpoints.';
+  }
+
+  // HTTP outcall errors
+  if (message.includes('HTTP outcall') || 
+      message.includes('outcall failed') ||
+      message.includes('outcall rejected')) {
+    return 'The Internet Computer HTTP outcall to the blockchain API failed. This may be due to network connectivity issues, API rate limiting, or the API endpoint being unreachable from IC canisters. Ensure the backend is configured with publicly accessible blockchain API endpoints.';
   }
 
   // Timeout errors
@@ -40,7 +58,7 @@ export function normalizeSendBTCError(error: Error): string {
   if (message.includes('localhost') || 
       message.includes('127.0.0.1') ||
       message.includes('18443')) {
-    return 'Cannot connect to localhost endpoints from IC canisters. Please configure the backend to use a publicly accessible blockchain API endpoint (e.g., https://blockstream.info/api/).';
+    return 'Cannot connect to localhost endpoints from IC canisters. The backend must be configured to use publicly accessible blockchain API endpoints (e.g., https://blockstream.info/api/). Localhost Bitcoin Core nodes are not reachable from deployed IC applications.';
   }
 
   // Invalid address format
@@ -48,6 +66,20 @@ export function normalizeSendBTCError(error: Error): string {
       message.includes('address format') ||
       message.includes('malformed address')) {
     return 'The destination address format is invalid. Please verify you are using a valid Bitcoin mainnet address.';
+  }
+
+  // Signing errors
+  if (message.includes('signing failed') || 
+      message.includes('could not sign') ||
+      message.includes('signature')) {
+    return 'Transaction signing failed. This may be due to backend key management issues or invalid transaction parameters. Please contact support if this issue persists.';
+  }
+
+  // Broadcasting errors
+  if (message.includes('broadcast failed') || 
+      message.includes('could not broadcast') ||
+      message.includes('broadcasting')) {
+    return 'Transaction broadcasting to the Bitcoin network failed. The transaction was signed but could not be submitted to blockchain APIs. This may be due to network connectivity issues or API rejections. Check the troubleshooting guide for more information.';
   }
 
   // Insufficient balance/reserve

@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useGetCallerBalance, useGetTransactionHistory } from '../hooks/useQueries';
-import { ArrowUpRight, ArrowDownRight, History, Send, Users, Wallet } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, History, Send, Users, Wallet, ShoppingCart } from 'lucide-react';
 import UsdEstimateLine from '../components/balance/UsdEstimateLine';
 import WithdrawalStatusSummaryCard from '../components/withdrawals/WithdrawalStatusSummaryCard';
 import { useFundedWithdrawalNotifications } from '../hooks/useFundedWithdrawalNotifications';
@@ -54,7 +54,23 @@ export default function DashboardPage() {
         <WithdrawalStatusSummaryCard />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Link to="/buy-btc">
+          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Buy BTC</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Purchase Bitcoin instantly
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
         <Link to="/send-btc">
           <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
             <CardHeader>

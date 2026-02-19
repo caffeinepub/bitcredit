@@ -1,20 +1,18 @@
 import { Link } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useGetAllWithdrawalRequests, useGetTransactionHistory, useAdminVerificationRequests, useGetAllPeerTransfers } from '../hooks/useQueries';
-import { AlertCircle, FileText, Wallet, CheckCircle, ClipboardCheck, Coins, UserPlus, ArrowLeftRight } from 'lucide-react';
+import { useGetAllWithdrawalRequests, useGetTransactionHistory, useGetAllPeerTransfers } from '../hooks/useQueries';
+import { AlertCircle, FileText, Wallet, CheckCircle, Coins, UserPlus, ArrowLeftRight } from 'lucide-react';
 import AdminReserveStatusMonitor from '../components/reserve/AdminReserveStatusMonitor';
-import { WithdrawalStatus, VerificationStatus } from '../backend';
+import { WithdrawalStatus } from '../backend';
 
 export default function AdminPage() {
   const { data: withdrawalRequests, isLoading: withdrawalsLoading } = useGetAllWithdrawalRequests();
   const { data: transactions, isLoading: transactionsLoading } = useGetTransactionHistory();
-  const { data: verificationRequests, isLoading: verificationsLoading } = useAdminVerificationRequests();
   const { data: peerTransfers, isLoading: peerTransfersLoading } = useGetAllPeerTransfers();
 
   const pendingWithdrawals = withdrawalRequests?.filter(r => r.status === WithdrawalStatus.PENDING) || [];
   const recentTransactions = transactions?.slice(0, 10) || [];
-  const pendingVerifications = verificationRequests?.filter(([_, req]) => req.status === VerificationStatus.pending) || [];
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -133,28 +131,6 @@ export default function AdminPage() {
                 <CheckCircle className="mr-2 h-4 w-4" />
                 Verify BTC Purchases
               </Button>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/admin/verification-requests">
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
-            <CardHeader>
-              <CardTitle>User Verification Requests</CardTitle>
-              <CardDescription>Review user-submitted Bitcoin transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <Button className="w-full" variant="outline">
-                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                  Review Requests
-                </Button>
-              </div>
-              {!verificationsLoading && pendingVerifications.length > 0 && (
-                <p className="text-sm text-yellow-600 font-medium mt-2">
-                  {pendingVerifications.length} pending request{pendingVerifications.length !== 1 ? 's' : ''}
-                </p>
-              )}
             </CardContent>
           </Card>
         </Link>

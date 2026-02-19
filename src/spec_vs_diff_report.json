@@ -1,25 +1,67 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T07:18:10.743Z",
-  "summary": "The diff shows comprehensive implementation of profile creation functionality with error handling and validation. All three requirements (REQ-1, REQ-2, REQ-3) appear to be addressed through changes to ProfileSetupModal.tsx, useQueries.ts hooks, and backend main.mo. The implementation includes validation, error handling, loading states, toast notifications, and proper data structure matching between frontend and backend.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-19T08:13:03.114Z",
+  "summary": "The diff contains only frontend changes that provide user-facing documentation and error messaging about the missing backend sendBTC implementation. However, the BuildRequest explicitly requires backend diagnosis (REQ-1) and backend implementation fixes (REQ-2) in main.mo, which are completely absent from the diff. The frontend error handling improvements (REQ-3) are partially implemented but rely on backend error messages that don't exist yet.",
+  "missing_requirements": [
     {
-      "description": "Migration module added in backend/migration.mo with complex Bitcoin-related state management including BTC price tracking, reserve balances, transaction fees, multisig configuration, and blockchain API configuration",
-      "reason": "The BuildRequest is specifically about fixing username persistence in profile creation with explicit constraints to maintain single-actor architecture and not modify authentication. A migration module with extensive Bitcoin financial infrastructure was not requested and appears unrelated to the profile username persistence issue.",
+      "id": "REQ-1",
+      "requirement": "Diagnose why the sendBtc function fails when attempting to broadcast Bitcoin transactions to mainnet by examining backend main.mo implementation for HTTP outcall errors, API endpoint issues, or network configuration problems",
+      "reason": "No backend files were modified. The diff contains only frontend changes. There is no evidence of diagnostic work on backend/main.mo, HTTP outcall analysis, or investigation of mainnet broadcasting failures.",
+      "evidence": []
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Fix the backend sendBtc implementation to successfully broadcast signed Bitcoin transactions to mainnet using Internet Computer HTTP outcalls to public blockchain APIs",
+      "reason": "No backend implementation changes exist in the diff. The frontend changes document that sendBTC is 'not implemented', but REQ-2 requires actually implementing and fixing the backend functionality in main.mo.",
       "evidence": [
-        "backend/migration.mo"
+        "frontend/src/pages/SendBtcPage.tsx",
+        "frontend/src/pages/TransferTroubleshootingPage.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Update frontend SendBtcPage error handling to provide clear feedback when mainnet broadcasting fails, using improved error messages from the fixed backend implementation",
+      "reason": "While frontend error handling was added, it describes the missing backend implementation rather than handling actual backend error responses. The acceptance criteria require distinguishing between signing and broadcasting issues from backend errors, but no backend exists to provide those errors yet.",
+      "evidence": [
+        "frontend/src/pages/SendBtcPage.tsx",
+        "frontend/src/utils/errors.ts"
       ]
     }
   ],
-  "confidence": 0.92,
+  "hallucinated_features": [
+    {
+      "description": "Comprehensive troubleshooting documentation and best practices content for sendBTC failures including HTTP outcall issues, localhost connectivity problems, rate limiting, and API provider diagnostics",
+      "reason": "The BuildRequest does not ask for documentation, troubleshooting guides, or best practices content. It requests backend diagnosis, backend fixes, and frontend error handling for actual backend responses. The extensive documentation in bestPracticesContent.ts and BestPracticesSection.tsx was not requested.",
+      "evidence": [
+        "frontend/src/components/transfers/bestPracticesContent.ts",
+        "frontend/src/components/transfers/BestPracticesSection.tsx",
+        "frontend/src/pages/TransferTroubleshootingPage.tsx"
+      ]
+    },
+    {
+      "description": "Auto-suggestion system that analyzes transfer failure patterns to recommend relevant troubleshooting topics",
+      "reason": "The BuildRequest does not mention implementing intelligent failure pattern analysis or auto-suggestion systems. REQ-3 only requires clear error feedback when broadcasting fails.",
+      "evidence": [
+        "frontend/src/components/transfers/BestPracticesSection.tsx"
+      ]
+    },
+    {
+      "description": "Detailed blockchain API provider error categorization and normalization covering scenarios like localhost endpoints, rate limiting, multiple provider failures, and connection timeouts",
+      "reason": "While error handling is requested in REQ-3, the BuildRequest specifies it should use improved error messages from the fixed backend implementation. This extensive error normalization appears to preemptively handle backend errors that should come from the backend itself once REQ-2 is implemented.",
+      "evidence": [
+        "frontend/src/utils/errors.ts"
+      ]
+    }
+  ],
+  "confidence": 0.95,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/auth/ProfileSetupModal.tsx",
-    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/components/transfers/BestPracticesSection.tsx",
+    "frontend/src/components/transfers/bestPracticesContent.ts",
+    "frontend/src/pages/SendBtcPage.tsx",
+    "frontend/src/pages/TransferTroubleshootingPage.tsx",
+    "frontend/src/utils/errors.ts",
     "project_state.json"
   ]
 }

@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { ArrowLeft, AlertCircle, ShieldCheck, Wifi, Clock } from 'lucide-react';
+import { ArrowLeft, AlertCircle, ShieldCheck, Wifi, Clock, Code, Server } from 'lucide-react';
 import BestPracticesSection from '../components/transfers/BestPracticesSection';
 
 export default function TransferTroubleshootingPage() {
@@ -25,44 +25,56 @@ export default function TransferTroubleshootingPage() {
         <p className="text-muted-foreground">Detailed diagnostics and troubleshooting guidance for mainnet transactions</p>
       </div>
 
-      {/* Notice about backend implementation */}
-      <Alert className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950">
-        <AlertCircle className="h-4 w-4 text-amber-600" />
-        <AlertDescription className="text-amber-800 dark:text-amber-200">
-          <strong>Backend Implementation Note:</strong> The backend now handles mainnet transaction signing and broadcasting. 
-          Full transfer troubleshooting features including request history, status tracking, and detailed 
-          diagnostics are available for mainnet Segwit transactions.
+      {/* Backend Implementation Status */}
+      <Alert className="mb-6 border-red-500 bg-red-50 dark:bg-red-950">
+        <AlertCircle className="h-4 w-4 text-red-600" />
+        <AlertTitle className="text-red-800 dark:text-red-200 font-semibold">
+          Backend Implementation Required
+        </AlertTitle>
+        <AlertDescription className="text-red-800 dark:text-red-200">
+          <strong>sendBTC Method Not Available:</strong> The backend canister does not currently implement the <code>sendBTC</code> method 
+          required for sending Bitcoin to external addresses. This page provides troubleshooting guidance for when the feature is implemented.
+          <div className="mt-2">
+            <strong>Current Alternatives:</strong> Use Withdrawal Requests or Send to Peer for transferring credits.
+          </div>
         </AlertDescription>
       </Alert>
 
-      {/* Mainnet Transaction Troubleshooting Sections */}
+      {/* Backend Implementation Requirements */}
       <div className="space-y-6 mb-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-blue-600" />
-              Mainnet Signing Issues
+              <Code className="h-5 w-5 text-purple-600" />
+              Backend Method Missing
             </CardTitle>
-            <CardDescription>Troubleshooting transaction signing failures</CardDescription>
+            <CardDescription>The sendBTC method is not implemented in the backend</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <h4 className="font-semibold text-sm mb-1">Signing Status: Pending</h4>
+              <h4 className="font-semibold text-sm mb-1">Error Message</h4>
               <p className="text-sm text-muted-foreground">
-                The transaction is waiting to be signed by the backend. This usually takes a few seconds. 
-                If it remains pending for more than 30 seconds, there may be a backend processing issue.
+                When attempting to send Bitcoin, you may see: <code className="bg-muted px-1 py-0.5 rounded">"sendBTC method not available on backend"</code>
               </p>
             </div>
             <div>
-              <h4 className="font-semibold text-sm mb-1">Signing Status: Failed</h4>
+              <h4 className="font-semibold text-sm mb-1">Root Cause</h4>
               <p className="text-sm text-muted-foreground">
-                The backend was unable to sign the transaction. Common causes include:
+                The backend canister (backend/main.mo) does not export a <code className="bg-muted px-1 py-0.5 rounded">sendBTC</code> public method. 
+                The frontend is attempting to call a method that doesn't exist in the backend interface.
               </p>
-              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li>Invalid destination address format</li>
-                <li>Insufficient reserve balance to cover fees</li>
-                <li>Backend key management issues</li>
-              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Resolution</h4>
+              <p className="text-sm text-muted-foreground">
+                The backend needs to implement a public method with signature similar to:
+              </p>
+              <pre className="bg-muted p-2 rounded text-xs mt-2 overflow-x-auto">
+{`public shared ({ caller }) func sendBTC(
+  destination: Text, 
+  amount: BitcoinAmount
+) : async SendBTCResult`}
+              </pre>
             </div>
           </CardContent>
         </Card>
@@ -70,34 +82,114 @@ export default function TransferTroubleshootingPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Wifi className="h-5 w-5 text-emerald-600" />
+              <Server className="h-5 w-5 text-blue-600" />
+              HTTP Outcall Implementation
+            </CardTitle>
+            <CardDescription>Broadcasting transactions requires HTTP outcalls to blockchain APIs</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Blockchain API Connectivity</h4>
+              <p className="text-sm text-muted-foreground">
+                The backend must use Internet Computer HTTP outcalls to communicate with public blockchain APIs. 
+                Common issues include:
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
+                <li>Localhost endpoints (127.0.0.1, localhost:18443) are not accessible from IC canisters</li>
+                <li>HTTP outcalls require publicly accessible HTTPS endpoints</li>
+                <li>API rate limiting may cause intermittent failures</li>
+                <li>Network timeouts during high load periods</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Recommended Blockchain APIs</h4>
+              <p className="text-sm text-muted-foreground">
+                Use public blockchain APIs that support transaction broadcasting:
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
+                <li><code className="bg-muted px-1 py-0.5 rounded">https://blockstream.info/api/</code> - Blockstream API (mainnet)</li>
+                <li><code className="bg-muted px-1 py-0.5 rounded">https://blockchain.info/</code> - Blockchain.info API</li>
+                <li><code className="bg-muted px-1 py-0.5 rounded">https://api.blockcypher.com/</code> - BlockCypher API</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Error Handling</h4>
+              <p className="text-sm text-muted-foreground">
+                The backend should implement retry logic with multiple API providers and return detailed error information 
+                including which APIs were attempted and why they failed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              Transaction Signing
+            </CardTitle>
+            <CardDescription>Backend must sign transactions before broadcasting</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Signing Implementation</h4>
+              <p className="text-sm text-muted-foreground">
+                The backend needs to implement Bitcoin transaction signing using one of these approaches:
+              </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
+                <li>Internet Computer threshold ECDSA for decentralized key management</li>
+                <li>Secure key storage within the canister (less recommended)</li>
+                <li>Integration with external signing services (requires additional HTTP outcalls)</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm mb-1">Signing Status Tracking</h4>
+              <p className="text-sm text-muted-foreground">
+                The backend should track signing status (pending, signed, failed) and include this information 
+                in transaction records for frontend display.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wifi className="h-5 w-5 text-orange-600" />
               Broadcasting & Network Issues
             </CardTitle>
-            <CardDescription>Troubleshooting blockchain broadcast problems</CardDescription>
+            <CardDescription>Common problems when broadcasting to Bitcoin mainnet</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
               <h4 className="font-semibold text-sm mb-1">Broadcast Status: Pending</h4>
               <p className="text-sm text-muted-foreground">
-                The signed transaction is being broadcast to the Bitcoin network. This typically takes 5-15 seconds.
+                The transaction is signed and waiting to be broadcast to the Bitcoin network. 
+                This usually takes a few seconds. Extended pending status may indicate:
               </p>
+              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
+                <li>Blockchain API connectivity issues</li>
+                <li>HTTP outcall timeouts</li>
+                <li>API rate limiting</li>
+              </ul>
             </div>
             <div>
               <h4 className="font-semibold text-sm mb-1">Broadcast Status: Failed</h4>
               <p className="text-sm text-muted-foreground">
-                The transaction could not be broadcast to the network. Common causes:
+                The backend was unable to broadcast the signed transaction. Common causes:
               </p>
               <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li>Network connectivity issues with blockchain APIs</li>
-                <li>Transaction rejected by mempool (fee too low, double-spend, etc.)</li>
-                <li>API rate limiting or service outages</li>
+                <li>All configured blockchain APIs rejected the transaction</li>
+                <li>Invalid transaction format or signature</li>
+                <li>Network fee too low for current mempool conditions</li>
+                <li>Destination address format not accepted by APIs</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-sm mb-1">Broadcast Timeout</h4>
+              <h4 className="font-semibold text-sm mb-1">Multi-Provider Strategy</h4>
               <p className="text-sm text-muted-foreground">
-                If broadcasting takes longer than expected, the backend will retry with alternative API providers. 
-                Check the transaction history for updated status.
+                The backend should attempt broadcasting to multiple blockchain APIs in sequence. 
+                If all providers fail, detailed error information should be returned to help diagnose the issue.
               </p>
             </div>
           </CardContent>
@@ -106,74 +198,46 @@ export default function TransferTroubleshootingPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-600" />
+              <Clock className="h-5 w-5 text-blue-600" />
               Confirmation Delays
             </CardTitle>
-            <CardDescription>Understanding blockchain confirmation times</CardDescription>
+            <CardDescription>Understanding Bitcoin network confirmation times</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <h4 className="font-semibold text-sm mb-1">Normal Confirmation Time</h4>
+              <h4 className="font-semibold text-sm mb-1">Expected Confirmation Times</h4>
               <p className="text-sm text-muted-foreground">
-                Bitcoin blocks are mined approximately every 10 minutes. A transaction typically receives:
+                Bitcoin transactions typically confirm in 10-60 minutes depending on network congestion and fee rates:
               </p>
               <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li>1st confirmation: 10-20 minutes</li>
-                <li>6 confirmations: 60-90 minutes</li>
+                <li>1 confirmation: ~10 minutes (first block)</li>
+                <li>3 confirmations: ~30 minutes (recommended for medium-value transactions)</li>
+                <li>6 confirmations: ~60 minutes (recommended for high-value transactions)</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-sm mb-1">Delayed Confirmations</h4>
+              <h4 className="font-semibold text-sm mb-1">Stuck Transactions</h4>
               <p className="text-sm text-muted-foreground">
-                If your transaction is taking longer than expected:
+                If a transaction remains unconfirmed for several hours, it may be stuck in the mempool due to:
               </p>
               <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li>Check the transaction hash on a blockchain explorer (e.g., blockstream.info)</li>
-                <li>Verify the transaction is in the mempool</li>
-                <li>Network congestion may cause delays during high-traffic periods</li>
-                <li>Reserve-funded fees are optimized for timely confirmation</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-rose-600" />
-              Segwit Address Issues
-            </CardTitle>
-            <CardDescription>Troubleshooting Segwit address format problems</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <h4 className="font-semibold text-sm mb-1">Supported Address Formats</h4>
-              <p className="text-sm text-muted-foreground">
-                This application supports native Segwit addresses:
-              </p>
-              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li><strong>P2WPKH:</strong> Addresses starting with "bc1q" (most common)</li>
-                <li><strong>P2WSH:</strong> Addresses starting with "bc1q" (multisig/script)</li>
+                <li>Network fee too low for current conditions</li>
+                <li>High network congestion</li>
+                <li>Transaction may eventually be dropped (evicted) from mempool</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-sm mb-1">Unsupported Formats</h4>
+              <h4 className="font-semibold text-sm mb-1">Monitoring Confirmations</h4>
               <p className="text-sm text-muted-foreground">
-                Legacy address formats may not be supported:
-              </p>
-              <ul className="list-disc list-inside text-sm text-muted-foreground ml-4 mt-1">
-                <li>Legacy addresses (starting with "1")</li>
-                <li>P2SH addresses (starting with "3")</li>
-              </ul>
-              <p className="text-sm text-muted-foreground mt-2">
-                If you need to send to a legacy address, ask the recipient for a Segwit address or contact support.
+                The backend should periodically check transaction status via blockchain APIs and update 
+                the confirmation count in transaction records. Users can also monitor transactions on blockchain explorers.
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Best Practices and Troubleshooting Guide */}
+      {/* Best Practices Section */}
       <BestPracticesSection />
     </div>
   );

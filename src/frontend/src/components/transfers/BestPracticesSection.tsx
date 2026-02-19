@@ -23,6 +23,22 @@ export default function BestPracticesSection({ request }: BestPracticesSectionPr
     const suggestions: string[] = [];
     const failureReason = request.failureReason?.toLowerCase() || '';
     const diagnosticData = request.diagnosticData?.toLowerCase() || '';
+    const errorMessage = request.error?.message?.toLowerCase() || '';
+
+    // Check for backend method missing
+    if (failureReason.includes('sendbtc') || 
+        failureReason.includes('method not available') ||
+        errorMessage.includes('sendbtc') ||
+        errorMessage.includes('not available')) {
+      suggestions.push('backend-method-missing');
+    }
+
+    // Check for HTTP outcall issues
+    if (failureReason.includes('http outcall') || 
+        failureReason.includes('outcall failed') ||
+        diagnosticData.includes('outcall')) {
+      suggestions.push('http-outcall-failures');
+    }
 
     // Check for localhost/connectivity issues
     if (failureReason.includes('localhost') || 
@@ -41,7 +57,14 @@ export default function BestPracticesSection({ request }: BestPracticesSectionPr
     if (failureReason.includes('address') || 
         failureReason.includes('invalid') ||
         failureReason.includes('format')) {
-      suggestions.push('wrong-network');
+      suggestions.push('address-format-issues');
+    }
+
+    // Check for all APIs rejected
+    if (failureReason.includes('all apis') || 
+        failureReason.includes('all providers') ||
+        failureReason.includes('multiple failures')) {
+      suggestions.push('all-apis-rejected');
     }
 
     // Check for connection errors
@@ -49,6 +72,19 @@ export default function BestPracticesSection({ request }: BestPracticesSectionPr
         failureReason.includes('connection') ||
         diagnosticData.includes('connect')) {
       suggestions.push('provider-timeout');
+    }
+
+    // Check for signing failures
+    if (failureReason.includes('signing') || 
+        failureReason.includes('signature') ||
+        diagnosticData.includes('sign')) {
+      suggestions.push('signing-failures');
+    }
+
+    // Check for rate limiting
+    if (failureReason.includes('rate limit') || 
+        failureReason.includes('too many requests')) {
+      suggestions.push('rate-limiting');
     }
 
     return suggestions;
@@ -138,7 +174,7 @@ export default function BestPracticesSection({ request }: BestPracticesSectionPr
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-amber-600" />
-              <h4 className="font-semibold text-sm">Suggested Topics Based on This Transfer</h4>
+              <h4 className="font-semibold text-sm">Suggested Topics Based on This Error</h4>
             </div>
             <div className="space-y-2">
               {suggestedEntries.map(entry => (

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import ManualVerificationForm from '../components/verification/ManualVerificationForm';
 import VerificationHistoryTable from '../components/verification/VerificationHistoryTable';
 import { useGetBitcoinPurchases } from '../hooks/useQueries';
-import { AlertCircle } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminManualVerificationPage() {
@@ -13,25 +13,25 @@ export default function AdminManualVerificationPage() {
       <div>
         <h1 className="text-3xl font-bold mb-2">Manual Bitcoin Verification</h1>
         <p className="text-muted-foreground">
-          Record Bitcoin purchases by verifying transaction IDs on the blockchain
+          Record Bitcoin purchases for historical tracking and special cases
         </p>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Manual Verification Process</AlertTitle>
-        <AlertDescription>
-          This tool allows you to manually record Bitcoin purchases after verifying them on the blockchain.
-          Enter the transaction ID (txid) and amount in BTC. The system will store this as a verified purchase record.
-          This does not automatically update reserve balances - it serves as an audit trail.
+      <Alert className="bg-blue-50 border-blue-200">
+        <Info className="h-4 w-4 text-blue-600" />
+        <AlertTitle className="text-blue-900">Instant Funding Now Active</AlertTitle>
+        <AlertDescription className="text-blue-800">
+          The standard user flow now funds accounts instantly when users submit transaction IDs. This manual 
+          verification page is primarily for historical record-keeping, special cases, or administrative corrections. 
+          Manual records created here are stored as verified purchase records for audit purposes.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader>
-          <CardTitle>Verify New Bitcoin Purchase</CardTitle>
+          <CardTitle>Record Bitcoin Purchase Manually</CardTitle>
           <CardDescription>
-            Enter the Bitcoin transaction ID and amount to record a verified purchase
+            Enter the Bitcoin transaction ID and amount to create a manual verification record
           </CardDescription>
         </CardHeader>
         <CardContent>
