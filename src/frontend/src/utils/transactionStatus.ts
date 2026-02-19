@@ -1,111 +1,106 @@
-import type { Transaction } from '../backend';
-import type { MainnetTransaction } from '../types/mainnet';
 import { SigningStatus, BroadcastStatus } from '../types/mainnet';
 
-/**
- * Determines if a transaction is pending (not yet confirmed)
- */
-export function isTransactionPending(transaction: Transaction): boolean {
-  const mtx = transaction as MainnetTransaction;
-  
-  return (
-    mtx.signingStatus === SigningStatus.pending ||
-    mtx.broadcastStatus === BroadcastStatus.pending ||
-    mtx.broadcastStatus === BroadcastStatus.broadcast ||
-    (mtx.confirmationCount !== undefined && mtx.confirmationCount < 6)
-  );
-}
-
-/**
- * Formats a status message for a transaction
- */
-export function formatTransactionStatusMessage(transaction: Transaction): string {
-  const mtx = transaction as MainnetTransaction;
-
-  if (mtx.signingStatus === SigningStatus.failed) {
+export function getStatusMessage(
+  signingStatus?: SigningStatus | string,
+  broadcastStatus?: BroadcastStatus | string,
+  confirmations?: number
+): string {
+  // Check signing status first
+  if (signingStatus === SigningStatus.pending || signingStatus === 'pending') {
+    return 'Awaiting signature';
+  }
+  if (signingStatus === SigningStatus.failed || signingStatus === 'failed') {
     return 'Signing failed';
   }
 
-  if (mtx.broadcastStatus === BroadcastStatus.failed) {
-    return 'Broadcast failed';
-  }
-
-  if (mtx.broadcastStatus === BroadcastStatus.confirmed) {
-    return `Confirmed (${mtx.confirmationCount || 0} confirmations)`;
-  }
-
-  if (mtx.broadcastStatus === BroadcastStatus.broadcast && mtx.confirmationCount === 0) {
-    return 'Broadcast successful - awaiting confirmation';
-  }
-
-  if (mtx.broadcastStatus === BroadcastStatus.broadcast) {
+  // Then check broadcast status
+  if (broadcastStatus === BroadcastStatus.pending || broadcastStatus === 'pending') {
     return 'Broadcasting to network';
   }
-
-  if (mtx.signingStatus === SigningStatus.signed) {
-    return 'Signed, awaiting broadcast';
+  if (broadcastStatus === BroadcastStatus.failed || broadcastStatus === 'failed') {
+    return 'Broadcast failed';
+  }
+  if (broadcastStatus === BroadcastStatus.broadcast || broadcastStatus === 'broadcast') {
+    if (confirmations && confirmations > 0) {
+      return `${confirmations} confirmation${confirmations > 1 ? 's' : ''}`;
+    }
+    return 'Broadcast - awaiting confirmation';
+  }
+  if (broadcastStatus === BroadcastStatus.confirmed || broadcastStatus === 'confirmed') {
+    return 'Confirmed';
   }
 
-  if (mtx.signingStatus === SigningStatus.pending) {
-    return 'Signing transaction';
+  return 'Unknown status';
+}
+
+export function estimateRemainingConfirmationTime(confirmations: number): string {
+  if (confirmations >= 6) return 'Complete';
+  
+  const remaining = 6 - confirmations;
+  const minutes = remaining * 10;
+  
+  if (minutes < 60) {
+    return `~${minutes} minutes`;
   }
-
-  return 'Pending';
-}
-
-/**
- * Calculates estimated time until confirmation (in minutes)
- */
-export function calculateEstimatedConfirmationTime(confirmationCount: number = 0, targetConfirmations: number = 6): number {
-  const remainingConfirmations = Math.max(0, targetConfirmations - confirmationCount);
-  return remainingConfirmations * 10; // Approximately 10 minutes per confirmation
-}
-
-/**
- * Validates if a Bitcoin address is a Segwit address
- */
-export function isSegwitAddress(address: string): boolean {
-  // P2WPKH and P2WSH addresses start with "bc1" for mainnet
-  return address.toLowerCase().startsWith('bc1');
-}
-
-/**
- * Determines the Segwit address type from an address string
- */
-export function getSegwitAddressType(address: string): 'P2WPKH' | 'P2WSH' | null {
-  if (!isSegwitAddress(address)) {
-    return null;
+  
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  
+  if (remainingMinutes === 0) {
+    return `~${hours} hour${hours > 1 ? 's' : ''}`;
   }
-
-  // P2WPKH addresses are typically 42 characters (bc1q + 38 chars)
-  // P2WSH addresses are typically 62 characters (bc1q + 58 chars)
-  if (address.length === 42) {
-    return 'P2WPKH';
-  } else if (address.length === 62) {
-    return 'P2WSH';
-  }
-
-  // Default to P2WPKH for other bc1 addresses
-  return 'P2WPKH';
+  
+  return `~${hours}h ${remainingMinutes}m`;
 }
 
-/**
- * Formats Bitcoin amount from satoshis to BTC
- */
-export function formatBitcoinAmount(satoshis: bigint): string {
-  const btc = Number(satoshis) / 100000000;
-  return `${satoshis.toLocaleString()} sats (${btc.toFixed(8)} BTC)`;
+export function calculateConfirmationProgress(confirmations: number): number {
+  return Math.min((confirmations / 6) * 100, 100);
 }
 
-/**
- * Determines if a transaction needs status polling
- */
-export function needsStatusPolling(transaction: Transaction): boolean {
-  const mtx = transaction as MainnetTransaction;
+export function isTransactionFullyConfirmed(confirmations: number): boolean {
+  return confirmations >= 6;
+}
+
+export function isValidSegwitAddress(address: string): boolean {
+  // Basic Segwit address validation
+  // P2WPKH: bc1q... (mainnet) or tb1q... (testnet) - 42 or 62 characters
+  // P2WSH: bc1q... (mainnet) or tb1q... (testnet) - 62 characters
+  
+  const p2wpkhMainnetRegex = /^bc1q[a-z0-9]{38,58}$/;
+  const p2wpkhTestnetRegex = /^tb1q[a-z0-9]{38,58}$/;
+  const p2wshMainnetRegex = /^bc1q[a-z0-9]{58}$/;
+  const p2wshTestnetRegex = /^tb1q[a-z0-9]{58}$/;
   
   return (
-    mtx.signingStatus === SigningStatus.pending ||
-    mtx.broadcastStatus === BroadcastStatus.pending ||
-    mtx.broadcastStatus === BroadcastStatus.broadcast
+    p2wpkhMainnetRegex.test(address) ||
+    p2wpkhTestnetRegex.test(address) ||
+    p2wshMainnetRegex.test(address) ||
+    p2wshTestnetRegex.test(address)
   );
+}
+
+export function needsStatusPolling(
+  signingStatus?: SigningStatus | string,
+  broadcastStatus?: BroadcastStatus | string,
+  confirmations?: number
+): boolean {
+  // Poll if signing is pending
+  if (signingStatus === SigningStatus.pending || signingStatus === 'pending') {
+    return true;
+  }
+
+  // Poll if broadcast is pending
+  if (broadcastStatus === BroadcastStatus.pending || broadcastStatus === 'pending') {
+    return true;
+  }
+
+  // Poll if broadcast but not fully confirmed
+  if (
+    (broadcastStatus === BroadcastStatus.broadcast || broadcastStatus === 'broadcast') &&
+    (!confirmations || confirmations < 6)
+  ) {
+    return true;
+  }
+
+  return false;
 }

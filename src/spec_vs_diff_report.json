@@ -1,54 +1,45 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T10:12:46.021Z",
-  "summary": "The diff shows modifications to backend/main.mo, but the content is truncated at ~4000 chars, making it impossible to verify if the Bitcoin-specific functionality (sendBitcoin, buildTransaction, getTxId functions, Bitcoin/Result imports, SendRequest type) was implemented. The visible portion shows existing wallet/credit functionality but no evidence of the requested Bitcoin transaction sending features. All five requirements appear to be missing from the visible diff content.",
+  "generatedAt": "2026-02-19T11:58:27.248Z",
+  "summary": "The diff implements comprehensive Bitcoin functionality including address generation, transaction signing/broadcasting frameworks, and frontend integration. Most requirements are addressed, but there are critical gaps: the actual Bitcoin transaction signing implementation (ECDSA) and HTTP outcall broadcast logic appear incomplete or missing from the truncated backend/main.mo. Frontend implementation is thorough with proper state management, loading states, QR code generation, and provider diagnostics display.",
   "missing_requirements": [
     {
-      "id": "REQ-1",
-      "requirement": "Implement the sendBitcoin function that accepts SendRequest, builds a raw Bitcoin transaction, sends it to testnet using Bitcoin.send_transaction, and returns Result<Text, Text>",
-      "reason": "No sendBitcoin function implementation visible in the truncated diff. The visible portion shows existing actor code but no Bitcoin transaction sending logic",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
       "id": "REQ-2",
-      "requirement": "Implement the buildTransaction helper function that constructs a properly formatted raw Bitcoin transaction in hexadecimal format",
-      "reason": "No buildTransaction function visible in the truncated diff content",
+      "requirement": "Implement backend framework for Bitcoin transaction signing with ECDSA and proper Segwit witness data structure",
+      "reason": "The backend/main.mo file is truncated and does not show evidence of ECDSA signing implementation, witness data construction, or raw transaction building logic. While transactionBroadcastMap exists and frontend shows signing status, the actual signing implementation is not visible in the diff.",
       "evidence": [
         "backend/main.mo"
       ]
     },
     {
       "id": "REQ-3",
-      "requirement": "Implement the getTxId helper function that extracts and returns the transaction ID from a raw Bitcoin transaction",
-      "reason": "No getTxId function visible in the truncated diff content",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "requirement": "Import the Bitcoin base library (mo:base/Bitcoin) and Result library (mo:base/Result)",
-      "reason": "The visible imports show mo:core libraries but no mo:base/Bitcoin or mo:base/Result imports. Only mo:core/List, Map, Text, Time, Float, Nat, Iter, Runtime, Principal are visible",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "requirement": "Define the SendRequest type as a record containing destinationAddress (Text) and amountSatoshis (Nat64)",
-      "reason": "No SendRequest type definition visible in the truncated diff. Visible types include BitcoinAmount, PeerTransferId, WithdrawalRequestId, VerificationRequestId, TransactionType, but not SendRequest",
+      "requirement": "HTTP outcall functionality to broadcast transaction hex to multiple public Bitcoin API providers with fallback logic",
+      "reason": "The diff shows transactionBroadcastMap and BroadcastAttempt types in frontend, but the actual HTTP outcall implementation to blockchain.info and blockcypher.com is not visible in the truncated backend/main.mo. OutCall import exists but usage is not shown.",
       "evidence": [
         "backend/main.mo"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.4,
+  "hallucinated_features": [
+    {
+      "description": "QR code generation implemented as simple text-in-box placeholder rather than actual QR code",
+      "reason": "BitcoinAddressDisplay.tsx implements generateQRCode function that draws text in a bordered box instead of generating a proper QR code matrix. Comment explicitly states 'Simple QR code placeholder - just display the address as text in a box'.",
+      "evidence": [
+        "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.7,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
+    "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx",
+    "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+    "frontend/src/components/transfers/TransferHistoryTable.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json"
   ]
 }

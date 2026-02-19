@@ -1,124 +1,111 @@
-export function normalizeSendBTCError(error: Error): string {
-  const message = error.message || '';
+export function normalizeError(error: any): string {
+  if (!error) return 'An unknown error occurred';
 
-  // Backend method not available
-  if (message.includes('sendBTC method not available') || 
-      message.includes('sendBTC') && message.includes('not available')) {
-    return 'The sendBTC functionality is not implemented in the backend. This feature requires backend support for transaction signing and broadcasting to Bitcoin mainnet. Please use the Withdrawal Request feature or Send to Peer as alternatives.';
+  // Extract error message from various error formats
+  let errorMessage = '';
+
+  if (typeof error === 'string') {
+    errorMessage = error;
+  } else if (error.message) {
+    errorMessage = error.message;
+  } else if (error.toString) {
+    errorMessage = error.toString();
   }
 
-  // Actor not available
-  if (message.includes('Actor not available')) {
-    return 'Backend connection not available. Please ensure you are logged in and try again.';
+  // Backend method missing errors
+  if (errorMessage.includes('has no method') || 
+      errorMessage.includes('does not exist') ||
+      errorMessage.includes('not implemented')) {
+    return 'This feature is not yet implemented in the backend. The required method is missing from the canister.';
   }
 
-  // Blockchain API provider-specific errors
-  if (message.includes('API rejected') || 
-      message.includes('address format not accepted') || 
-      message.includes('API did not accept') ||
-      message.includes('address rejected')) {
-    return 'The blockchain API provider rejected the destination address. Please verify the address is a valid Bitcoin mainnet address (starting with 1, 3, or bc1) and not a testnet address.';
+  // sendBTC specific errors
+  if (errorMessage.includes('sendBTC')) {
+    if (errorMessage.includes('not implemented') || errorMessage.includes('not available')) {
+      return 'Bitcoin sending is not yet available. The backend needs to implement transaction signing, broadcasting via HTTP outcalls, and confirmation tracking.';
+    }
   }
 
-  // Connection and network errors
-  if (message.includes('Cannot connect to blockchain API') || 
-      message.includes('unable to connect') ||
-      message.includes('connection failed') ||
-      message.includes('network error')) {
-    return 'Unable to connect to the blockchain API provider. This may be due to network issues or the API endpoint being unreachable. If using localhost, note that IC canisters cannot access local endpoints.';
-  }
-
-  // HTTP outcall errors
-  if (message.includes('HTTP outcall') || 
-      message.includes('outcall failed') ||
-      message.includes('outcall rejected')) {
-    return 'The Internet Computer HTTP outcall to the blockchain API failed. This may be due to network connectivity issues, API rate limiting, or the API endpoint being unreachable from IC canisters. Ensure the backend is configured with publicly accessible blockchain API endpoints.';
-  }
-
-  // Timeout errors
-  if (message.includes('timeout') || message.includes('timed out')) {
-    return 'The blockchain API provider request timed out. The provider may be experiencing high load or network connectivity issues. Please try again in a few minutes.';
-  }
-
-  // Rate limiting
-  if (message.includes('rate limit') || 
-      message.includes('too many requests') ||
-      message.includes('quota exceeded')) {
-    return 'The blockchain API provider rate limit has been exceeded. Please wait a few minutes before retrying your transfer.';
-  }
-
-  // Multiple provider failures
-  if (message.includes('all apis') || 
-      message.includes('all providers') ||
-      message.includes('multiple failures')) {
-    return 'All configured blockchain API providers failed to process the transaction. This may indicate an issue with the destination address format or widespread provider connectivity problems. Please check the Provider Diagnostics section for detailed error information.';
-  }
-
-  // Localhost/local network errors
-  if (message.includes('localhost') || 
-      message.includes('127.0.0.1') ||
-      message.includes('18443')) {
-    return 'Cannot connect to localhost endpoints from IC canisters. The backend must be configured to use publicly accessible blockchain API endpoints (e.g., https://blockstream.info/api/). Localhost Bitcoin Core nodes are not reachable from deployed IC applications.';
+  // Insufficient balance
+  if (errorMessage.toLowerCase().includes('insufficient balance') ||
+      errorMessage.toLowerCase().includes('not enough balance')) {
+    return 'Insufficient balance. Please ensure you have enough credits to complete this transaction.';
   }
 
   // Invalid address format
-  if (message.includes('invalid address') || 
-      message.includes('address format') ||
-      message.includes('malformed address')) {
-    return 'The destination address format is invalid. Please verify you are using a valid Bitcoin mainnet address.';
+  if (errorMessage.toLowerCase().includes('invalid address') ||
+      errorMessage.toLowerCase().includes('address format')) {
+    return 'Invalid Bitcoin address format. Please provide a valid Segwit address (P2WPKH or P2WSH).';
+  }
+
+  // HTTP outcall failures
+  if (errorMessage.includes('HTTP outcall') || 
+      errorMessage.includes('outcall failed') ||
+      errorMessage.includes('network error')) {
+    return 'Network communication error. The Internet Computer HTTP outcall to the blockchain API failed. This may be due to API rate limits, network issues, or provider downtime.';
   }
 
   // Signing errors
-  if (message.includes('signing failed') || 
-      message.includes('could not sign') ||
-      message.includes('signature')) {
-    return 'Transaction signing failed. This may be due to backend key management issues or invalid transaction parameters. Please contact support if this issue persists.';
+  if (errorMessage.toLowerCase().includes('signing') ||
+      errorMessage.toLowerCase().includes('signature')) {
+    return 'Transaction signing failed. The backend was unable to sign the transaction. This may indicate a key management issue or threshold ECDSA problem.';
   }
 
   // Broadcasting errors
-  if (message.includes('broadcast failed') || 
-      message.includes('could not broadcast') ||
-      message.includes('broadcasting')) {
-    return 'Transaction broadcasting to the Bitcoin network failed. The transaction was signed but could not be submitted to blockchain APIs. This may be due to network connectivity issues or API rejections. Check the troubleshooting guide for more information.';
+  if (errorMessage.toLowerCase().includes('broadcast') ||
+      errorMessage.toLowerCase().includes('propagation')) {
+    return 'Transaction broadcasting failed. The signed transaction could not be broadcast to the Bitcoin network. Check provider diagnostics for details.';
   }
 
-  // Insufficient balance/reserve
-  if (message.includes('insufficient') || 
-      message.includes('not enough balance') ||
-      message.includes('reserve')) {
-    return 'Insufficient balance or backend reserve to complete this transfer. Please check your balance or contact the administrator.';
+  // Blockchain provider errors
+  if (errorMessage.includes('blockchain.info') ||
+      errorMessage.includes('blockstream.info') ||
+      errorMessage.includes('blockcypher')) {
+    return 'Blockchain API provider error. The external blockchain service returned an error or is unavailable. Try again later or check provider diagnostics.';
   }
 
-  // Fee-related errors
-  if (message.includes('fee too low') || 
-      message.includes('insufficient fee')) {
-    return 'The network fee is too low for the current Bitcoin network conditions. The transaction may take longer to confirm or may not be accepted by miners.';
+  // Mainnet-specific errors
+  if (errorMessage.toLowerCase().includes('mainnet') ||
+      errorMessage.toLowerCase().includes('testnet')) {
+    return 'Network configuration error. There may be a mismatch between the requested network (mainnet/testnet) and the transaction parameters.';
   }
 
-  // Mempool/confirmation errors
-  if (message.includes('mempool') || 
-      message.includes('not confirmed') ||
-      message.includes('stuck')) {
-    return 'The transaction is in the mempool but has not been confirmed yet. This is normal during periods of high network congestion. Monitor the transaction on a blockchain explorer.';
+  // Confirmation tracking errors
+  if (errorMessage.toLowerCase().includes('confirmation') ||
+      errorMessage.toLowerCase().includes('mempool')) {
+    return 'Confirmation tracking error. Unable to retrieve transaction confirmation status from the blockchain. The transaction may still be valid.';
   }
 
-  // Evicted/dropped transactions
-  if (message.includes('evicted') || 
-      message.includes('dropped') ||
-      message.includes('not found')) {
-    return 'The transaction was dropped from the mempool and will not be confirmed. Your credits have been restored. You can create a new transfer with a higher fee.';
+  // Fee calculation errors
+  if (errorMessage.toLowerCase().includes('fee') ||
+      errorMessage.toLowerCase().includes('reserve')) {
+    return 'Fee calculation or reserve balance error. The system may not have sufficient reserve funds to cover network fees.';
   }
 
-  // Generic unauthorized/permission errors
-  if (message.includes('Unauthorized') || message.includes('permission')) {
+  // Authorization errors
+  if (errorMessage.includes('Unauthorized') || 
+      errorMessage.includes('permission') ||
+      errorMessage.includes('not allowed')) {
     return 'You do not have permission to perform this action. Please ensure you are logged in with the correct account.';
   }
 
-  // Generic trap/runtime errors
-  if (message.includes('trap') || message.includes('runtime error')) {
-    return 'A backend error occurred while processing your request. Please try again or contact support if the issue persists.';
+  // Trap errors from backend
+  if (errorMessage.includes('trap') || errorMessage.includes('Runtime.trap')) {
+    // Try to extract the actual trap message
+    const trapMatch = errorMessage.match(/trap[:\s]+(.+?)(?:\n|$)/i);
+    if (trapMatch && trapMatch[1]) {
+      return trapMatch[1].trim();
+    }
+    return 'Backend error: ' + errorMessage;
   }
 
-  // Default: return the original message if no pattern matches
-  return message || 'An unknown error occurred. Please try again or contact support.';
+  // Generic network errors
+  if (errorMessage.toLowerCase().includes('network') ||
+      errorMessage.toLowerCase().includes('timeout') ||
+      errorMessage.toLowerCase().includes('connection')) {
+    return 'Network error. Please check your connection and try again.';
+  }
+
+  // Return the original error message if no pattern matches
+  return errorMessage || 'An unexpected error occurred';
 }

@@ -1,106 +1,133 @@
-import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink, CheckCircle2, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle2, Clock, ExternalLink, Loader2 } from 'lucide-react';
+import { BroadcastStatus } from '../../types/mainnet';
+import { useTransactionConfirmations } from '../../hooks/useQueries';
+import { estimateRemainingConfirmationTime, calculateConfirmationProgress } from '../../utils/transactionStatus';
 
 interface TransactionConfirmationProgressProps {
-  confirmationCount?: number;
-  txHash?: string;
-  targetConfirmations?: number;
+  txid: string | null;
+  confirmations?: number;
+  broadcastStatus?: BroadcastStatus | string;
 }
 
 export default function TransactionConfirmationProgress({
-  confirmationCount = 0,
-  txHash,
-  targetConfirmations = 6,
+  txid,
+  confirmations: propConfirmations,
+  broadcastStatus,
 }: TransactionConfirmationProgressProps) {
-  const progress = Math.min((confirmationCount / targetConfirmations) * 100, 100);
-  const isComplete = confirmationCount >= targetConfirmations;
-  const isBroadcast = confirmationCount === 0 && txHash;
+  // Poll for real-time confirmation data
+  const { data: polledConfirmations, isLoading } = useTransactionConfirmations(txid);
+  
+  // Use polled confirmations if available, otherwise fall back to prop
+  const confirmations = polledConfirmations !== undefined ? polledConfirmations : (propConfirmations || 0);
+  
+  const isFullyConfirmed = confirmations >= 6;
+  const isBroadcast = broadcastStatus === 'broadcast' || broadcastStatus === BroadcastStatus.broadcast;
+  const isConfirmed = broadcastStatus === 'confirmed' || broadcastStatus === BroadcastStatus.confirmed;
+  
+  const progress = calculateConfirmationProgress(confirmations);
+  const remainingTime = estimateRemainingConfirmationTime(confirmations);
 
-  // Estimate time remaining (approximately 10 minutes per confirmation)
-  const remainingConfirmations = Math.max(0, targetConfirmations - confirmationCount);
-  const estimatedMinutes = remainingConfirmations * 10;
+  // Show broadcast successful state even before first confirmation
+  const showBroadcastSuccess = isBroadcast && confirmations === 0 && txid;
+
+  const explorerUrl = txid ? `https://blockstream.info/tx/${txid}` : null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {isComplete ? (
+          {isFullyConfirmed || isConfirmed ? (
             <>
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
               Transaction Confirmed
             </>
-          ) : isBroadcast ? (
+          ) : showBroadcastSuccess ? (
             <>
-              <Clock className="h-5 w-5 text-blue-600" />
-              Broadcast Successful
+              <CheckCircle2 className="h-5 w-5 text-blue-600" />
+              Broadcast Successful - Awaiting Confirmation
             </>
           ) : (
-            'Confirmation Progress'
+            <>
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              ) : (
+                <Clock className="h-5 w-5 text-blue-600" />
+              )}
+              Confirmation Progress
+            </>
           )}
         </CardTitle>
         <CardDescription>
-          {isBroadcast ? (
-            'Awaiting first confirmation'
-          ) : (
-            `${confirmationCount} of ${targetConfirmations} confirmations received`
-          )}
+          {isFullyConfirmed || isConfirmed
+            ? 'Your transaction has been fully confirmed on the blockchain'
+            : showBroadcastSuccess
+            ? 'Your transaction has been broadcast to the network and is awaiting its first confirmation'
+            : `Waiting for blockchain confirmations (${confirmations}/6)`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isBroadcast && (
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              ✓ Transaction successfully broadcast to the blockchain. Waiting for miners to include it in a block.
-            </p>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Progress 
-            value={progress} 
-            className={`h-2 ${isBroadcast ? 'opacity-50' : ''}`}
-          />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{confirmationCount} confirmation{confirmationCount !== 1 ? 's' : ''}</span>
-            {!isComplete && estimatedMinutes > 0 && (
-              <span>~{estimatedMinutes} min remaining</span>
-            )}
-          </div>
-        </div>
-
-        {txHash && (
-          <div className="pt-2 border-t">
-            <p className="text-sm font-medium mb-2">Transaction Hash</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-muted px-2 py-1 rounded break-all">
-                {txHash}
-              </code>
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-              >
-                <a
-                  href={`https://blockstream.info/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1"
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  View
-                </a>
-              </Button>
+        {!isFullyConfirmed && !isConfirmed && (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Confirmations</span>
+                <span className="font-medium">{confirmations}/6</span>
+              </div>
+              <Progress value={progress} className="h-2" />
             </div>
+
+            {confirmations > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Estimated time remaining</span>
+                <span className="font-medium">{remainingTime}</span>
+              </div>
+            )}
+
+            {confirmations === 0 && !showBroadcastSuccess && (
+              <div className="text-sm text-muted-foreground">
+                Waiting for the first confirmation. This typically takes ~10 minutes.
+              </div>
+            )}
+          </>
+        )}
+
+        {(isFullyConfirmed || isConfirmed) && (
+          <div className="rounded-lg bg-green-50 dark:bg-green-950 p-4 border border-green-200 dark:border-green-800">
+            <p className="text-sm text-green-800 dark:text-green-200">
+              ✓ Transaction has received {confirmations} confirmations and is considered final.
+            </p>
           </div>
         )}
 
-        {isComplete && (
-          <div className="bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
-            <p className="text-sm text-emerald-800 dark:text-emerald-200">
-              ✓ Transaction has been confirmed on the blockchain and is now final.
+        {showBroadcastSuccess && (
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              ✓ Your transaction has been successfully broadcast to the Bitcoin network. 
+              The first confirmation typically arrives within 10 minutes.
             </p>
+          </div>
+        )}
+
+        {explorerUrl && (
+          <div className="pt-2 border-t">
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              <ExternalLink className="h-4 w-4" />
+              View on Blockchain Explorer
+            </a>
+          </div>
+        )}
+
+        {isLoading && confirmations === 0 && (
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Checking confirmation status...
           </div>
         )}
       </CardContent>

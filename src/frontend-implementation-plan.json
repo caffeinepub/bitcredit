@@ -1,6 +1,68 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend Implementation Plan for Bitcoin Transaction Sending",
-  "requirements": []
+  "title": "Bitcoin Address Generation and Transaction Signing Framework - Frontend Integration",
+  "requirements": [
+    {
+      "id": "REQ-4",
+      "summary": "Update BitcoinAddressDisplay component to fetch and display generated Bitcoin addresses with QR code and copy functionality",
+      "acceptanceCriteria": [
+        "Component successfully calls backend address generation method",
+        "Loading state is shown while fetching address",
+        "Generated address is displayed with QR code",
+        "Copy-to-clipboard functionality works for the address",
+        "Error states are handled gracefully with user feedback"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
+          "operation": "modify",
+          "description": "Update the component to integrate with the backend createBitcoinAddress method that generates P2WPKH addresses. Ensure the component properly handles the network parameter (mainnet/testnet) and displays loading states during address generation. Wire the generated address into the QR code display and copy-to-clipboard functionality. Add comprehensive error handling for address generation failures including network errors and validation failures. Display user-friendly error messages when address generation fails."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add or update a React Query hook for fetching the caller's Bitcoin address using getCallerBitcoinAddress backend method. Ensure the hook properly handles loading states, error states, and caching. Add a mutation hook for createBitcoinAddress that accepts addressType (P2WPKH) and network (mainnet/testnet) parameters. Include proper error handling and cache invalidation after successful address creation."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Update SendBtcPage to integrate with backend transaction signing and broadcasting framework with detailed status tracking",
+      "acceptanceCriteria": [
+        "Send form successfully calls backend signing and broadcast methods",
+        "Transaction signing status is displayed to the user",
+        "Broadcast attempt logs from multiple providers are shown",
+        "Transaction hash is displayed on successful broadcast",
+        "Error handling shows specific failure reasons from backend"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/SendBtcPage.tsx",
+          "operation": "modify",
+          "description": "Integrate the page with backend Bitcoin transaction signing and broadcasting capabilities. Update the form submission handler to call the backend method that constructs, signs, and broadcasts Bitcoin transactions. Display signing status with clear visual feedback (pending, signing, signed, broadcasting, confirmed, failed). Show broadcast attempt logs from multiple providers using the ProviderDiagnosticsCard component. Display the transaction hash prominently on successful broadcast with copy-to-clipboard and blockchain explorer link. Implement comprehensive error handling that shows specific failure reasons including signing errors, broadcast failures, network errors, and validation issues. Update the UI to reflect the current transaction state throughout the signing and broadcasting process."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add a React Query mutation hook for sending Bitcoin transactions that integrates with the backend signing and broadcasting method. The mutation should accept recipient address, amount, and network parameters. Include proper loading states, error handling with detailed error messages, and automatic cache invalidation for balance and transaction history after successful broadcast. Handle all error scenarios including backend method errors, HTTP outcall failures, and network timeouts."
+        },
+        {
+          "path": "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+          "operation": "modify",
+          "description": "Enhance the badge component to display signing and broadcasting status states. Add visual indicators for 'signing', 'signed', 'broadcasting', and 'broadcast-failed' states in addition to existing states. Ensure the component properly reflects the transaction lifecycle from signing through broadcast to confirmation."
+        },
+        {
+          "path": "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx",
+          "operation": "modify",
+          "description": "Update the component to display detailed broadcast attempt logs from the backend response. Show each provider's broadcast attempt with success/failure status, timestamps, and error messages. Ensure the component handles multiple provider fallback scenarios and displays which providers succeeded or failed during broadcast attempts."
+        },
+        {
+          "path": "frontend/src/types/mainnet.ts",
+          "operation": "modify",
+          "description": "Add or update TypeScript type definitions for the transaction signing and broadcasting flow. Include types for signing status (pending, signing, signed, failed), broadcast status, broadcast attempt logs per provider, and the complete transaction result structure returned by the backend. Ensure types properly represent the P2WPKH Segwit transaction structure and witness data."
+        }
+      ]
+    }
+  ]
 }

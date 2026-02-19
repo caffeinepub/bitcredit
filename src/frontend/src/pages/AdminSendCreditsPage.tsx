@@ -1,111 +1,77 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCreditBtc } from '../hooks/useQueries';
-import { Principal } from '@dfinity/principal';
-import { toast } from 'sonner';
-import { Coins, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCreditBtcWithVerification } from '../hooks/useQueries';
+import { Principal } from '@dfinity/principal';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import UsdEstimateLine from '../components/balance/UsdEstimateLine';
 
 export default function AdminSendCreditsPage() {
   const [principalId, setPrincipalId] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [btcAmount, setBtcAmount] = useState('');
-  const [principalError, setPrincipalError] = useState('');
-  const [amountError, setAmountError] = useState('');
+  const [validationError, setValidationError] = useState('');
 
-  const { mutate: sendCredits, isPending } = useCreditBtc();
+  const creditMutation = useCreditBtcWithVerification();
 
-  const validatePrincipal = (value: string): boolean => {
-    if (!value.trim()) {
-      setPrincipalError('Principal ID is required');
-      return false;
-    }
-    try {
-      Principal.fromText(value.trim());
-      setPrincipalError('');
-      return true;
-    } catch (error) {
-      setPrincipalError('Invalid Principal ID format');
-      return false;
-    }
-  };
-
-  const validateAmount = (value: string): boolean => {
-    if (!value.trim()) {
-      setAmountError('Amount is required');
-      return false;
-    }
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      setAmountError('Amount must be a positive number');
-      return false;
-    }
-    const decimalPlaces = (value.split('.')[1] || '').length;
-    if (decimalPlaces > 8) {
-      setAmountError('Amount cannot have more than 8 decimal places');
-      return false;
-    }
-    setAmountError('');
-    return true;
-  };
+  const satoshiAmount = btcAmount && Number(btcAmount) > 0 
+    ? BigInt(Math.floor(Number(btcAmount) * 100000000))
+    : BigInt(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError('');
 
-    const isPrincipalValid = validatePrincipal(principalId);
-    const isAmountValid = validateAmount(btcAmount);
-
-    if (!isPrincipalValid || !isAmountValid) {
-      return;
-    }
-
-    const recipient = Principal.fromText(principalId.trim());
-    const amount = parseFloat(btcAmount);
-    const satoshis = Math.round(amount * 100_000_000);
-    
-    // Generate a unique transaction ID for this credit operation
-    const transactionId = `admin-credit-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    sendCredits(
-      { targetUser: recipient, transactionId, amount: BigInt(satoshis) },
-      {
-        onSuccess: () => {
-          setPrincipalId('');
-          setBtcAmount('');
-          setPrincipalError('');
-          setAmountError('');
-        },
+    try {
+      const targetUser = Principal.fromText(principalId.trim());
+      
+      if (!transactionId.trim()) {
+        setValidationError('Transaction ID is required');
+        return;
       }
-    );
-  };
 
-  const enteredAmount = btcAmount ? parseFloat(btcAmount) : 0;
-  const enteredSatoshis = enteredAmount ? BigInt(Math.round(enteredAmount * 100_000_000)) : 0n;
+      if (satoshiAmount <= 0n) {
+        setValidationError('Amount must be greater than 0');
+        return;
+      }
+
+      await creditMutation.mutateAsync({
+        targetUser,
+        transactionId: transactionId.trim(),
+        amount: satoshiAmount,
+      });
+
+      // Reset form on success
+      setPrincipalId('');
+      setTransactionId('');
+      setBtcAmount('');
+    } catch (error: any) {
+      if (error.message?.includes('Invalid principal')) {
+        setValidationError('Invalid Principal ID format');
+      } else {
+        setValidationError(error.message || 'Failed to credit BTC');
+      }
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Send Credits to Users</h1>
+        <h1 className="text-3xl font-bold mb-2">Send Credits to User</h1>
         <p className="text-muted-foreground">
-          Credit BTC directly to user accounts by Principal ID
+          Credit BTC directly to a user account with transaction verification
         </p>
       </div>
-
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          This action will immediately credit the specified amount to the user's account.
-          Make sure you have verified the transaction externally before crediting.
-        </AlertDescription>
-      </Alert>
 
       <Card>
         <CardHeader>
           <CardTitle>Credit User Account</CardTitle>
-          <CardDescription>Enter user Principal ID and BTC amount</CardDescription>
+          <CardDescription>
+            Enter the user's Principal ID, transaction ID, and BTC amount to credit
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -116,60 +82,70 @@ export default function AdminSendCreditsPage() {
                 type="text"
                 placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxx"
                 value={principalId}
-                onChange={(e) => {
-                  setPrincipalId(e.target.value);
-                  if (principalError) validatePrincipal(e.target.value);
-                }}
-                onBlur={() => validatePrincipal(principalId)}
-                className={principalError ? 'border-destructive' : ''}
+                onChange={(e) => setPrincipalId(e.target.value)}
+                disabled={creditMutation.isPending}
               />
-              {principalError && (
-                <p className="text-sm text-destructive">{principalError}</p>
-              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (BTC)</Label>
+              <Label htmlFor="transactionId">Bitcoin Transaction ID</Label>
               <Input
-                id="amount"
-                type="number"
-                step="0.00000001"
-                placeholder="0.00000000"
-                value={btcAmount}
-                onChange={(e) => {
-                  setBtcAmount(e.target.value);
-                  if (amountError) validateAmount(e.target.value);
-                }}
-                onBlur={() => validateAmount(btcAmount)}
-                className={amountError ? 'border-destructive' : ''}
+                id="transactionId"
+                type="text"
+                placeholder="64-character hex transaction ID"
+                value={transactionId}
+                onChange={(e) => setTransactionId(e.target.value)}
+                disabled={creditMutation.isPending}
               />
-              {amountError && (
-                <p className="text-sm text-destructive">{amountError}</p>
-              )}
-              {enteredAmount > 0 && (
-                <UsdEstimateLine btcAmount={enteredSatoshis} btcPriceUsd={null} />
-              )}
               <p className="text-xs text-muted-foreground">
-                Enter the amount in BTC (up to 8 decimal places)
+                This prevents duplicate credits for the same transaction
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="btcAmount">BTC Amount</Label>
+              <Input
+                id="btcAmount"
+                type="number"
+                step="0.00000001"
+                min="0"
+                placeholder="0.00000000"
+                value={btcAmount}
+                onChange={(e) => setBtcAmount(e.target.value)}
+                disabled={creditMutation.isPending}
+              />
+              {satoshiAmount > 0n && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    = {satoshiAmount.toString()} satoshis
+                  </p>
+                  <UsdEstimateLine btcAmount={satoshiAmount} btcPriceUsd={null} />
+                </div>
+              )}
+            </div>
+
+            {validationError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
+
+            {creditMutation.isSuccess && (
+              <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  Credits successfully sent to user!
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Button
               type="submit"
-              disabled={isPending}
+              disabled={creditMutation.isPending}
               className="w-full"
             >
-              {isPending ? (
-                <>
-                  <Coins className="mr-2 h-4 w-4 animate-spin" />
-                  Sending Credits...
-                </>
-              ) : (
-                <>
-                  <Coins className="mr-2 h-4 w-4" />
-                  Send BTC Credits
-                </>
-              )}
+              {creditMutation.isPending ? 'Sending...' : 'Send Credits'}
             </Button>
           </form>
         </CardContent>

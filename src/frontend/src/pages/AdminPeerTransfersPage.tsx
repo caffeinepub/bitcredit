@@ -79,7 +79,7 @@ export default function AdminPeerTransfersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Completed transfers</p>
+            <p className="text-xs text-muted-foreground mt-1">Successfully completed</p>
           </CardContent>
         </Card>
 
@@ -96,22 +96,19 @@ export default function AdminPeerTransfersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Peer Transfers</CardTitle>
-          <CardDescription>
-            Complete list of peer-to-peer credit transfers ({transfers?.length || 0} total)
-          </CardDescription>
+          <CardTitle>All Transfers</CardTitle>
+          <CardDescription>Complete history of peer-to-peer credit transfers</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
-            <TabsList>
+          <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+            <TabsList className="mb-4">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value={PeerTransferStatus.pending}>Pending</TabsTrigger>
               <TabsTrigger value={PeerTransferStatus.approved}>Approved</TabsTrigger>
               <TabsTrigger value={PeerTransferStatus.rejected}>Rejected</TabsTrigger>
-              <TabsTrigger value={PeerTransferStatus.deleted}>Deleted</TabsTrigger>
             </TabsList>
 
-            <TabsContent value={statusFilter} className="mt-4">
+            <TabsContent value={statusFilter}>
               {isLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
@@ -119,39 +116,38 @@ export default function AdminPeerTransfersPage() {
                   ))}
                 </div>
               ) : sortedTransfers.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No {statusFilter !== 'all' ? statusFilter : ''} transfers found
+                <div className="text-center py-12 text-muted-foreground">
+                  No transfers found
                 </div>
               ) : (
-                <div className="border rounded-lg overflow-hidden">
+                <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Transfer ID</TableHead>
+                        <TableHead>ID</TableHead>
                         <TableHead>Sender</TableHead>
                         <TableHead>Recipient</TableHead>
-                        <TableHead>Amount (BTC)</TableHead>
+                        <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Created At</TableHead>
-                        <TableHead>Last Updated</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {sortedTransfers.map((transfer) => (
                         <TableRow key={transfer.id.toString()}>
-                          <TableCell className="font-mono text-sm">
+                          <TableCell className="font-mono text-xs">
                             {transfer.id.toString()}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs truncate max-w-[120px]" title={transfer.sender.toString()}>
-                                {transfer.sender.toString().slice(0, 8)}...{transfer.sender.toString().slice(-6)}
+                              <span className="font-mono text-xs truncate max-w-[120px]">
+                                {transfer.sender.toString()}
                               </span>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-6 w-6 p-0"
-                                onClick={() => copyToClipboard(transfer.sender.toString(), 'Sender Principal')}
+                                onClick={() => copyToClipboard(transfer.sender.toString(), 'Sender ID')}
                               >
                                 {copiedId === transfer.sender.toString() ? (
                                   <Check className="h-3 w-3 text-green-600" />
@@ -163,14 +159,14 @@ export default function AdminPeerTransfersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs truncate max-w-[120px]" title={transfer.recipient.toString()}>
-                                {transfer.recipient.toString().slice(0, 8)}...{transfer.recipient.toString().slice(-6)}
+                              <span className="font-mono text-xs truncate max-w-[120px]">
+                                {transfer.recipient.toString()}
                               </span>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-6 w-6 p-0"
-                                onClick={() => copyToClipboard(transfer.recipient.toString(), 'Recipient Principal')}
+                                onClick={() => copyToClipboard(transfer.recipient.toString(), 'Recipient ID')}
                               >
                                 {copiedId === transfer.recipient.toString() ? (
                                   <Check className="h-3 w-3 text-green-600" />
@@ -180,17 +176,12 @@ export default function AdminPeerTransfersPage() {
                               </Button>
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono">
-                            {(Number(transfer.amount) / 100000000).toFixed(8)}
+                          <TableCell className="font-semibold">
+                            {transfer.amount.toString()} sats
                           </TableCell>
-                          <TableCell>
-                            {getStatusBadge(transfer.status)}
-                          </TableCell>
+                          <TableCell>{getStatusBadge(transfer.status)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(Number(transfer.createdAt) / 1000000).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {new Date(Number(transfer.lastUpdated) / 1000000).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}

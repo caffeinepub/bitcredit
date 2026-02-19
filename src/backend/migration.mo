@@ -1,41 +1,28 @@
+import Map "mo:core/Map";
+import Principal "mo:core/Principal";
 import Time "mo:core/Time";
-import Float "mo:core/Float";
-import Text "mo:core/Text";
-import Nat "mo:core/Nat";
-import Blob "mo:core/Blob";
 
 module {
-  type Actor = {
-    currentBtcPriceUsd : ?Float;
-    lastUpdatedPriceTime : ?Time.Time;
-    reserveBtcBalance : Nat;
-    outstandingIssuedCredits : Nat;
-    transactionFeeRate : Nat;
-    currentNetworkFee : Nat;
-    requestIdCounter : Nat;
-    reserveAdjustmentCounter : Nat;
-    rtcRequestIdCounter : Nat;
-    btcApiDiagnosticsEnabled : Bool;
-    reserveMultisigConfig : ?{
-      threshold : Nat;
-      pubkeys : [Blob];
-      address : ?Text;
-      redeemScript : ?Text;
-    };
-    blockchainApiConfig : ?{
-      endpoints : [{
-        provider : Text;
-        url : Text;
-        apiKey : ?Text;
-        fee : ?Nat;
-        supportsBroadcast : Bool;
-      }];
-      preferredOrder : [Text];
-      maxRetries : Nat;
-    };
+  type BitcoinAddress = {
+    address : Text;
+    publicKey : Blob;
+    segwitMetadata : SegwitMetadata;
+    addressType : { #P2WPKH };
+    network : { #mainnet; #testnet };
+    createdAt : Time.Time;
+    creator : Principal;
   };
 
-  public func run(old : Actor) : Actor {
-    old;
+  type SegwitMetadata = { p2wpkhStatus : Bool };
+
+  type OldActor = {};
+
+  type NewActor = {
+    userBitcoinAddresses : Map.Map<Principal, BitcoinAddress>;
+  };
+
+  public func run(old : OldActor) : NewActor {
+    let addresses = Map.empty<Principal, BitcoinAddress>();
+    { userBitcoinAddresses = addresses };
   };
 };

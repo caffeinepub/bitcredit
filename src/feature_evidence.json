@@ -1,4 +1,52 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-update-frontend-bitcoinaddressdisplay-component-to-successfully-fetch-and-display-generated-bitcoin-addresses-from-the-backend-ensure-the-component-handles-loading-states-error-states-and-successfully-renders-the-generated-address-with-qr-code-and-copy-functionality",
+      "featureTitle": "Update frontend BitcoinAddressDisplay component to successfully fetch and display generated Bitcoin addresses from the backend. Ensure the component handles loading states, error states, and successfully renders the generated address with QR code and copy functionality.",
+      "files": [
+        "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-frontend-sendbtcpage-to-integrate-with-the-new-backend-transaction-signing-and-broadcasting-framework-connect-the-send-form-to-backend-methods-that-handle-transaction-construction-signing-and-broadcasting-display-broadcast-attempt-logs-and-transaction-status-from-the-backend-response",
+      "featureTitle": "Update frontend SendBtcPage to integrate with the new backend transaction signing and broadcasting framework. Connect the send form to backend methods that handle transaction construction, signing, and broadcasting. Display broadcast attempt logs and transaction status from the backend response.",
+      "files": [
+        "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx",
+        "frontend/src/components/transfers/TransactionStatusBadge.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

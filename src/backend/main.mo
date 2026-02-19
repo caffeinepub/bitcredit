@@ -7,11 +7,12 @@ import Nat "mo:core/Nat";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   type BitcoinAmount = Nat;
   public type PeerTransferId = Nat;
@@ -54,6 +55,7 @@ actor {
   let accessControlState = AccessControl.initState();
   let verificationRequests = Map.empty<VerificationRequestId, VerificationRequest>();
   var verificationRequestIdCounter : VerificationRequestId = 0;
+  let userBitcoinAddresses = Map.empty<Principal, BitcoinAddress>();
   include MixinAuthorization(accessControlState);
 
   func checkedSub(x : BitcoinAmount, y : BitcoinAmount) : BitcoinAmount {
@@ -576,6 +578,95 @@ actor {
     };
   };
 
+  // Bitcoin address management
+  public type BitcoinAddress = {
+    address : Text;
+    publicKey : Blob;
+    segwitMetadata : SegwitMetadata;
+    addressType : { #P2WPKH };
+    network : { #mainnet; #testnet };
+    createdAt : Time.Time;
+    creator : Principal;
+  };
+
+  public shared ({ caller }) func createBitcoinAddress(addressType : { #P2WPKH }, network : { #mainnet; #testnet }) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can create Bitcoin addresses");
+    };
+
+    // Check if user already has an address
+    switch (userBitcoinAddresses.get(caller)) {
+      case (?existingAddress) {
+        Runtime.trap("User already has a Bitcoin address");
+      };
+      case null {
+        // Proceed with address creation
+      };
+    };
+
+    // Address type handling can be extended in the future if needed
+    // Implement logic for mainnet and testnet address creation
+    let createdAt = Time.now();
+    let segwitMetadata : SegwitMetadata = {
+      p2wpkhStatus = (addressType == #P2WPKH);
+    };
+
+    let bitcoinAddress : BitcoinAddress = {
+      address = "N/A";
+      publicKey = "" : Blob;
+      segwitMetadata;
+      addressType;
+      network;
+      createdAt;
+      creator = caller;
+    };
+
+    userBitcoinAddresses.add(caller, bitcoinAddress);
+    bitcoinAddress.address;
+  };
+
+  public query ({ caller }) func getCallerBitcoinAddress() : async ?BitcoinAddress {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view Bitcoin addresses");
+    };
+    userBitcoinAddresses.get(caller);
+  };
+
+  public query ({ caller }) func getUserBitcoinAddress(user : Principal) : async ?BitcoinAddress {
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own Bitcoin address");
+    };
+    userBitcoinAddresses.get(user);
+  };
+
+  public shared ({ caller }) func setReserveMultisigConfig(config : ReserveMultisigConfig) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can configure reserve multisig");
+    };
+    reserveMultisigConfig := ?config;
+  };
+
+  public query ({ caller }) func getReserveMultisigConfig() : async ?ReserveMultisigConfig {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view reserve multisig configuration");
+    };
+    reserveMultisigConfig;
+  };
+
+  public shared ({ caller }) func setBlockchainApiConfig(config : AdminConfig) : async () {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can configure blockchain API");
+    };
+    blockchainApiConfig := ?config;
+  };
+
+  public query ({ caller }) func getBlockchainApiConfig() : async ?AdminConfig {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view blockchain API configuration");
+    };
+    blockchainApiConfig;
+  };
+
   public type BitcoinPurchaseRecord = {
     transactionId : Text;
     amount : BitcoinAmount;
@@ -606,7 +697,6 @@ actor {
     #rejected;
     #instantApproved;
   };
-
   public type SegwitMetadata = { p2wpkhStatus : Bool };
   public type AdminConfig = {
     endpoints : [BlockchainApiEndpoint];
@@ -751,10 +841,12 @@ actor {
     timestamp : Time.Time;
     adjustmentType : AdjustmentType;
   };
+
   public type AdjustmentType = {
     #puzzleReward : { puzzleId : Text; difficulty : Nat };
     #adminAdjustment : { reason : Text };
   };
+
   public type CreditBalance = {
     balance : BitcoinAmount;
     adjustments : [CreditAdjustment];

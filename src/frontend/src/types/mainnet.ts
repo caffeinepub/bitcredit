@@ -43,6 +43,7 @@ export interface BroadcastAttempt {
 // SendBTC result type (not in backend interface)
 export interface SendBTCResult {
   success: boolean;
+  txid?: string;
   requestId?: bigint;
   recordsUpdated: boolean;
   diagnosticData?: string;

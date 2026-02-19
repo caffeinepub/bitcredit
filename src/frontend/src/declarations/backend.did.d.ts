@@ -10,6 +10,21 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminConfig {
+  'endpoints' : Array<BlockchainApiEndpoint>,
+  'maxRetries' : bigint,
+  'preferredOrder' : Array<string>,
+}
+export interface BitcoinAddress {
+  'creator' : Principal,
+  'publicKey' : Uint8Array,
+  'createdAt' : Time,
+  'network' : { 'mainnet' : null } |
+    { 'testnet' : null },
+  'address' : string,
+  'addressType' : { 'P2WPKH' : null },
+  'segwitMetadata' : SegwitMetadata,
+}
 export type BitcoinAmount = bigint;
 export interface BitcoinPurchaseRecord {
   'amount' : BitcoinAmount,
@@ -25,6 +40,13 @@ export interface BitcoinWallet {
   'publicKey' : Uint8Array,
   'address' : string,
   'segwitMetadata' : SegwitMetadata,
+}
+export interface BlockchainApiEndpoint {
+  'fee' : [] | [bigint],
+  'url' : string,
+  'supportsBroadcast' : boolean,
+  'provider' : string,
+  'apiKey' : [] | [string],
 }
 export type PeerTransferId = bigint;
 export interface PeerTransferRequest {
@@ -45,6 +67,12 @@ export type PeerTransferStatus = { 'deleted' : null } |
   { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
+export interface ReserveMultisigConfig {
+  'threshold' : bigint,
+  'redeemScript' : [] | [string],
+  'address' : [] | [string],
+  'pubkeys' : Array<Uint8Array>,
+}
 export interface SegwitMetadata { 'p2wpkhStatus' : boolean }
 export type Time = bigint;
 export interface Transaction {
@@ -105,6 +133,10 @@ export interface _SERVICE {
   >,
   'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createBitcoinAddress' : ActorMethod<
+    [{ 'P2WPKH' : null }, { 'mainnet' : null } | { 'testnet' : null }],
+    string
+  >,
   'creditBtcWithVerification' : ActorMethod<
     [Principal, string, BitcoinAmount],
     undefined
@@ -117,14 +149,18 @@ export interface _SERVICE {
     [],
     Array<[string, BitcoinPurchaseRecord]>
   >,
+  'getBlockchainApiConfig' : ActorMethod<[], [] | [AdminConfig]>,
   'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
+  'getCallerBitcoinAddress' : ActorMethod<[], [] | [BitcoinAddress]>,
   'getCallerPeerTransfers' : ActorMethod<[], Array<PeerTransferRequest>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCallerVerificationRequests' : ActorMethod<[], Array<VerificationRequest>>,
   'getCallerWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getPeerTransfer' : ActorMethod<[PeerTransferId], [] | [PeerTransferRequest]>,
+  'getReserveMultisigConfig' : ActorMethod<[], [] | [ReserveMultisigConfig]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
+  'getUserBitcoinAddress' : ActorMethod<[Principal], [] | [BitcoinAddress]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getVerificationRequest' : ActorMethod<
     [VerificationRequestId],
@@ -151,6 +187,8 @@ export interface _SERVICE {
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendCreditsToPeer' : ActorMethod<[Principal, BitcoinAmount], PeerTransferId>,
+  'setBlockchainApiConfig' : ActorMethod<[AdminConfig], undefined>,
+  'setReserveMultisigConfig' : ActorMethod<[ReserveMultisigConfig], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

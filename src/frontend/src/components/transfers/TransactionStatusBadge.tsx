@@ -1,19 +1,19 @@
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Loader2, Send } from 'lucide-react';
 import { SigningStatus, BroadcastStatus } from '../../types/mainnet';
 
 interface TransactionStatusBadgeProps {
   signingStatus?: SigningStatus;
   broadcastStatus?: BroadcastStatus;
-  confirmationCount?: number;
+  confirmations?: number;
 }
 
-export default function TransactionStatusBadge({
-  signingStatus,
+export default function TransactionStatusBadge({ 
+  signingStatus, 
   broadcastStatus,
-  confirmationCount,
+  confirmations = 0 
 }: TransactionStatusBadgeProps) {
-  // Determine overall status
+  // Determine the overall status and display
   if (signingStatus === SigningStatus.failed || broadcastStatus === BroadcastStatus.failed) {
     return (
       <Badge variant="destructive" className="gap-1">
@@ -23,42 +23,43 @@ export default function TransactionStatusBadge({
     );
   }
 
-  if (broadcastStatus === BroadcastStatus.confirmed) {
+  if (signingStatus === SigningStatus.pending) {
     return (
-      <Badge className="gap-1 bg-emerald-600 hover:bg-emerald-700">
-        <CheckCircle2 className="h-3 w-3" />
-        Confirmed {confirmationCount ? `(${confirmationCount})` : ''}
+      <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-700 dark:text-yellow-400">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Signing
+      </Badge>
+    );
+  }
+
+  if (broadcastStatus === BroadcastStatus.pending) {
+    return (
+      <Badge variant="outline" className="gap-1 border-blue-500 text-blue-700 dark:text-blue-400">
+        <Send className="h-3 w-3" />
+        Broadcasting
       </Badge>
     );
   }
 
   if (broadcastStatus === BroadcastStatus.broadcast) {
     return (
-      <Badge className="gap-1 bg-blue-600 hover:bg-blue-700">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Broadcasting
-      </Badge>
-    );
-  }
-
-  if (signingStatus === SigningStatus.signed) {
-    return (
-      <Badge className="gap-1 bg-amber-600 hover:bg-amber-700">
+      <Badge variant="outline" className="gap-1 border-orange-500 text-orange-700 dark:text-orange-400">
         <Clock className="h-3 w-3" />
-        Signed
+        Awaiting Confirmations ({confirmations}/6)
       </Badge>
     );
   }
 
-  if (signingStatus === SigningStatus.pending) {
+  if (broadcastStatus === BroadcastStatus.confirmed || confirmations >= 6) {
     return (
-      <Badge variant="outline" className="gap-1">
-        <Clock className="h-3 w-3" />
-        Signing
+      <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-700">
+        <CheckCircle2 className="h-3 w-3" />
+        Confirmed
       </Badge>
     );
   }
 
+  // Default pending state
   return (
     <Badge variant="outline" className="gap-1">
       <Clock className="h-3 w-3" />

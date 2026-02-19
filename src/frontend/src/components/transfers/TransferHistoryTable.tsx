@@ -109,7 +109,7 @@ export default function TransferHistoryTable({ initialRequestId }: TransferHisto
                       <TransactionStatusBadge
                         signingStatus={mtx.signingStatus}
                         broadcastStatus={mtx.broadcastStatus}
-                        confirmationCount={mtx.confirmationCount}
+                        confirmations={mtx.confirmationCount}
                       />
                     ) : (
                       <Badge variant="outline">Completed</Badge>
@@ -145,8 +145,9 @@ export default function TransferHistoryTable({ initialRequestId }: TransferHisto
                         {/* Confirmation Progress */}
                         {(mtx.confirmationCount !== undefined || mtx.txHash) && (
                           <TransactionConfirmationProgress
-                            confirmationCount={mtx.confirmationCount}
-                            txHash={mtx.txHash}
+                            confirmations={mtx.confirmationCount}
+                            txid={mtx.txHash || null}
+                            broadcastStatus={mtx.broadcastStatus}
                           />
                         )}
                       </div>

@@ -1,45 +1,21 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, CheckCircle2, XCircle, ChevronDown, ChevronUp, Clock, Server } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { CheckCircle2, XCircle, ChevronDown, Activity } from 'lucide-react';
 import type { BroadcastAttempt } from '../../types/mainnet';
 
 interface ProviderDiagnosticsCardProps {
-  broadcastAttempts?: BroadcastAttempt[];
+  broadcastAttempts: BroadcastAttempt[];
   errorContext?: string;
 }
 
-export default function ProviderDiagnosticsCard({ broadcastAttempts, errorContext }: ProviderDiagnosticsCardProps) {
-  const [expandedAttempts, setExpandedAttempts] = useState<{ [key: number]: boolean }>({});
-
-  const toggleAttempt = (index: number) => {
-    setExpandedAttempts(prev => ({ ...prev, [index]: !prev[index] }));
-  };
-
-  // If no broadcast attempts, show placeholder
-  if (!broadcastAttempts || broadcastAttempts.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Blockchain Provider Diagnostics</CardTitle>
-          <CardDescription>
-            Real-time broadcast attempt logs and provider responses
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert className="border-muted">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No broadcast attempts recorded yet. Diagnostic information will appear here once the backend 
-              attempts to broadcast transactions to blockchain APIs.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
+export default function ProviderDiagnosticsCard({ 
+  broadcastAttempts,
+  errorContext 
+}: ProviderDiagnosticsCardProps) {
+  if (broadcastAttempts.length === 0) {
+    return null;
   }
 
   const successfulAttempts = broadcastAttempts.filter(a => a.success);
@@ -49,114 +25,93 @@ export default function ProviderDiagnosticsCard({ broadcastAttempts, errorContex
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Server className="h-5 w-5" />
-          Blockchain Provider Diagnostics
+          <Activity className="h-5 w-5 text-blue-600" />
+          Provider Broadcast Diagnostics
         </CardTitle>
         <CardDescription>
-          {broadcastAttempts.length} provider{broadcastAttempts.length !== 1 ? 's' : ''} attempted • 
-          {successfulAttempts.length > 0 ? (
-            <span className="text-emerald-600 ml-1">
-              {successfulAttempts.length} successful
-            </span>
-          ) : (
-            <span className="text-red-600 ml-1">
-              {failedAttempts.length} failed
-            </span>
-          )}
+          Detailed logs from blockchain API providers
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Summary Alert */}
-        {successfulAttempts.length > 0 ? (
-          <Alert className="border-emerald-500 bg-emerald-50 dark:bg-emerald-950">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-            <AlertDescription className="text-emerald-800 dark:text-emerald-200">
-              <strong>Broadcast Successful:</strong> Transaction was successfully broadcast by {successfulAttempts[0].provider}
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+      <CardContent className="space-y-4">
+        {/* Summary */}
+        <div className="flex gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <span>{successfulAttempts.length} successful</span>
+          </div>
+          <div className="flex items-center gap-2">
             <XCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800 dark:text-red-200">
-              <strong>All Providers Failed:</strong> {failedAttempts.length} provider{failedAttempts.length !== 1 ? 's' : ''} rejected the transaction. 
-              Review the error details below and check the troubleshooting guide.
+            <span>{failedAttempts.length} failed</span>
+          </div>
+        </div>
+
+        {/* Error Context */}
+        {errorContext && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              <strong>Error Context:</strong> {errorContext}
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Broadcast Attempt Logs */}
-        <div className="space-y-2">
-          <h4 className="font-semibold text-sm">Provider Attempt Logs</h4>
+        {/* Broadcast Attempts */}
+        <div className="space-y-3">
           {broadcastAttempts.map((attempt, index) => (
-            <Collapsible key={index} open={expandedAttempts[index] || !attempt.success}>
-              <div className={`border rounded-lg p-3 ${
-                attempt.success 
-                  ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950' 
-                  : 'border-red-200 bg-red-50 dark:bg-red-950'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {attempt.success ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      )}
-                      <span className="font-semibold text-sm">{attempt.provider}</span>
-                      <Badge variant={attempt.success ? "default" : "destructive"} className="text-xs">
-                        HTTP {attempt.httpStatus}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {new Date(attempt.timestamp).toLocaleString()}
-                    </div>
-                    {attempt.errorMessage && (
-                      <div className="mt-2 text-xs text-red-800 dark:text-red-200">
-                        <strong>Error:</strong> {attempt.errorMessage}
-                      </div>
+            <Collapsible key={index}>
+              <div className="border rounded-lg p-3">
+                <CollapsibleTrigger className="flex items-center justify-between w-full hover:bg-muted/50 p-2 rounded">
+                  <div className="flex items-center gap-3">
+                    {attempt.success ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
                     )}
-                  </div>
-                  {attempt.responseBody && (
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleAttempt(index)}
-                      >
-                        {expandedAttempts[index] ? (
-                          <ChevronUp className="h-4 w-4" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </CollapsibleTrigger>
-                  )}
-                </div>
-                {attempt.responseBody && (
-                  <CollapsibleContent>
-                    <div className="mt-3 pt-3 border-t border-current/20">
-                      <div className="text-xs font-medium mb-1">Response Body:</div>
-                      <div className="bg-muted/50 p-2 rounded text-xs font-mono whitespace-pre-wrap break-all max-h-40 overflow-y-auto">
-                        {attempt.responseBody}
+                    <div className="text-left">
+                      <div className="font-medium">{attempt.provider}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(attempt.timestamp).toLocaleString()}
                       </div>
                     </div>
-                  </CollapsibleContent>
-                )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={attempt.success ? "default" : "destructive"}>
+                      HTTP {attempt.httpStatus}
+                    </Badge>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </CollapsibleTrigger>
+
+                <CollapsibleContent className="pt-3 space-y-2">
+                  {attempt.errorMessage && (
+                    <div className="bg-red-50 dark:bg-red-950 p-2 rounded text-sm">
+                      <strong className="text-red-800 dark:text-red-200">Error:</strong>
+                      <p className="text-red-700 dark:text-red-300 mt-1">{attempt.errorMessage}</p>
+                    </div>
+                  )}
+                  
+                  {attempt.responseBody && (
+                    <div className="bg-muted p-2 rounded">
+                      <strong className="text-xs text-muted-foreground">Response Body:</strong>
+                      <pre className="text-xs mt-1 overflow-x-auto whitespace-pre-wrap break-words">
+                        {attempt.responseBody}
+                      </pre>
+                    </div>
+                  )}
+                </CollapsibleContent>
               </div>
             </Collapsible>
           ))}
         </div>
 
-        {/* Error Context */}
-        {errorContext && (
-          <div className="pt-3 border-t">
-            <div className="text-xs font-medium mb-1 text-muted-foreground">Additional Context:</div>
-            <div className="bg-muted p-2 rounded text-xs whitespace-pre-wrap break-all">
-              {errorContext}
-            </div>
-          </div>
-        )}
+        {/* Guidance */}
+        <Alert>
+          <AlertDescription className="text-sm">
+            <strong>About Provider Fallback:</strong> The system attempts to broadcast transactions 
+            to multiple blockchain API providers. If one provider fails, the system automatically 
+            tries the next provider in the list. A transaction is considered successful if at least 
+            one provider accepts it.
+          </AlertDescription>
+        </Alert>
       </CardContent>
     </Card>
   );

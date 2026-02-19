@@ -1,193 +1,211 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useGetCallerBalance, useGetUserProfileByPrincipal, useSendCreditsToPeer } from '../hooks/useQueries';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useSendCreditsToPeer, useGetUserProfileByPrincipal, useGetCallerBalance } from '../hooks/useQueries';
 import { Principal } from '@dfinity/principal';
-import { toast } from 'sonner';
-import { ArrowRight, Users } from 'lucide-react';
-import UsdEstimateLine from '../components/balance/UsdEstimateLine';
+import { Send, AlertCircle, CheckCircle2, User } from 'lucide-react';
 
 export default function SendToPeerPage() {
-  const navigate = useNavigate();
-  const [recipientPrincipal, setRecipientPrincipal] = useState('');
+  const [recipientId, setRecipientId] = useState('');
   const [amount, setAmount] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [validatedRecipient, setValidatedRecipient] = useState<Principal | null>(null);
+  const [validatedRecipient, setValidatedRecipient] = useState<string | null>(null);
 
-  const { data: balance, isLoading: balanceLoading } = useGetCallerBalance();
+  const { data: balance } = useGetCallerBalance();
   const { data: recipientProfile, isLoading: recipientLoading } = useGetUserProfileByPrincipal(validatedRecipient);
   const sendMutation = useSendCreditsToPeer();
 
-  const btcBalance = balance ? Number(balance) / 100_000_000 : 0;
-  const amountSatoshis = amount ? Math.floor(parseFloat(amount) * 100_000_000) : 0;
+  const satoshiAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
 
   const validateRecipient = () => {
+    setValidationError('');
+    setValidatedRecipient(null);
+
     try {
-      const principal = Principal.fromText(recipientPrincipal.trim());
-      setValidatedRecipient(principal);
-      return true;
+      const principal = Principal.fromText(recipientId.trim());
+      setValidatedRecipient(principal.toString());
+      return principal;
     } catch (error) {
-      toast.error('Invalid principal ID format');
-      return false;
+      setValidationError('Invalid Principal ID format');
+      return null;
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateRecipient()) return;
-    
-    if (!amount || parseFloat(amount) <= 0) {
-      toast.error('Please enter a valid amount');
+    setValidationError('');
+
+    const principal = validateRecipient();
+    if (!principal) return;
+
+    if (satoshiAmount <= 0n) {
+      setValidationError('Amount must be greater than 0');
       return;
     }
 
-    if (amountSatoshis > Number(balance || 0n)) {
-      toast.error('Insufficient balance');
+    if (balance !== undefined && satoshiAmount > balance) {
+      setValidationError(`Insufficient balance. You have ${balance.toString()} satoshis available.`);
       return;
     }
 
     setShowConfirmDialog(true);
   };
 
-  const handleConfirm = async () => {
-    if (!validatedRecipient) return;
+  const handleConfirmSend = async () => {
+    const principal = Principal.fromText(recipientId.trim());
 
     try {
       await sendMutation.mutateAsync({
-        recipient: validatedRecipient,
-        amount: BigInt(amountSatoshis),
+        recipient: principal,
+        amount: satoshiAmount,
       });
-      
-      toast.success('Transfer request sent successfully!');
-      navigate({ to: '/outgoing-requests' });
+
+      // Reset form on success
+      setRecipientId('');
+      setAmount('');
+      setValidatedRecipient(null);
+      setShowConfirmDialog(false);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send transfer request');
-    } finally {
+      setValidationError(error.message || 'Failed to send credits');
       setShowConfirmDialog(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div>
         <h1 className="text-3xl font-bold mb-2">Send to Peer</h1>
-        <p className="text-muted-foreground">Transfer credits to another user by their principal ID</p>
+        <p className="text-muted-foreground">
+          Transfer credits to another user within the platform
+        </p>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Your Balance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {balanceLoading ? (
-            <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-          ) : (
-            <>
-              <p className="text-2xl font-bold">₿ {btcBalance.toFixed(8)}</p>
-              <UsdEstimateLine btcAmount={balance || 0n} btcPriceUsd={null} />
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {balance !== undefined && (
+        <Alert>
+          <AlertDescription>
+            <strong>Your Balance:</strong> {balance.toString()} satoshis
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            <CardTitle>Transfer Details</CardTitle>
-          </div>
-          <CardDescription>Enter recipient information and amount</CardDescription>
+          <CardTitle>Transfer Details</CardTitle>
+          <CardDescription>Enter the recipient's Principal ID and amount</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="recipient">Recipient Principal ID</Label>
+              <Label htmlFor="recipientId">Recipient Principal ID</Label>
               <Input
-                id="recipient"
+                id="recipientId"
+                type="text"
                 placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxx"
-                value={recipientPrincipal}
-                onChange={(e) => setRecipientPrincipal(e.target.value)}
+                value={recipientId}
+                onChange={(e) => setRecipientId(e.target.value)}
                 onBlur={validateRecipient}
-                required
+                disabled={sendMutation.isPending}
               />
-              {validatedRecipient && recipientProfile && (
-                <p className="text-sm text-green-600">
-                  Recipient: {recipientProfile.name}
-                </p>
+              {recipientLoading && validatedRecipient && (
+                <p className="text-xs text-muted-foreground">Looking up recipient...</p>
               )}
-              {validatedRecipient && !recipientLoading && !recipientProfile && (
-                <p className="text-sm text-yellow-600">
-                  Warning: Recipient has no profile
+              {recipientProfile && validatedRecipient && (
+                <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                  <User className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    <strong>Recipient:</strong> {recipientProfile.name}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!recipientProfile && validatedRecipient && !recipientLoading && (
+                <p className="text-xs text-amber-600">
+                  Recipient has not set up their profile yet, but you can still send credits.
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (BTC)</Label>
+              <Label htmlFor="amount">Amount (satoshis)</Label>
               <Input
                 id="amount"
                 type="number"
-                step="0.00000001"
-                min="0"
-                placeholder="0.00000000"
+                min="1"
+                step="1"
+                placeholder="Enter amount in satoshis"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                required
+                disabled={sendMutation.isPending}
               />
-              {amount && parseFloat(amount) > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  = {amountSatoshis.toLocaleString()} satoshis
-                </p>
-              )}
             </div>
 
-            {amount && amountSatoshis > Number(balance || 0n) && (
-              <p className="text-sm text-destructive">Insufficient balance</p>
+            {validationError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{validationError}</AlertDescription>
+              </Alert>
+            )}
+
+            {sendMutation.isSuccess && (
+              <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  Credits sent successfully!
+                </AlertDescription>
+              </Alert>
             )}
 
             <Button
               type="submit"
+              disabled={sendMutation.isPending}
               className="w-full"
-              disabled={sendMutation.isPending || !recipientPrincipal || !amount}
             >
-              {sendMutation.isPending ? 'Processing...' : 'Send Credits'}
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <Send className="mr-2 h-4 w-4" />
+              {sendMutation.isPending ? 'Sending...' : 'Send Credits'}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Transfer</AlertDialogTitle>
-            <AlertDialogDescription>
-              You are about to transfer <strong>₿ {parseFloat(amount || '0').toFixed(8)}</strong> to:
-              <br />
-              <span className="font-mono text-xs break-all">{recipientPrincipal}</span>
-              {recipientProfile && (
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Transfer</DialogTitle>
+            <DialogDescription>
+              Please confirm the details of this peer-to-peer transfer
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <p className="text-sm font-medium">Recipient</p>
+              {recipientProfile ? (
                 <>
-                  <br />
-                  <strong>({recipientProfile.name})</strong>
+                  <p className="text-sm text-muted-foreground">{recipientProfile.name}</p>
+                  <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
                 </>
+              ) : (
+                <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
               )}
-              <br /><br />
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
-              Confirm Transfer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Amount</p>
+              <p className="text-sm text-muted-foreground">{satoshiAmount.toString()} satoshis</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
+              {sendMutation.isPending ? 'Sending...' : 'Confirm Send'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

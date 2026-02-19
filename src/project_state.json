@@ -1,82 +1,75 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Bitcoin wallet application with transaction sending capabilities",
+  "summary": "Bitcoin address generation and transaction signing project with deployment and framework implementation",
   "architectural_notes": [
-    "Using Motoko Bitcoin integration via mo:base/Bitcoin library",
-    "Supports both testnet and mainnet Bitcoin networks",
-    "Transaction sending returns Result type with txid on success"
+    "Focus on Bitcoin address generation functionality",
+    "Requires framework setup for Bitcoin operations",
+    "Multiple deployment attempts encountered errors"
   ],
   "known_issues": [
-    "buildTransaction and getTxId helper functions need implementation"
+    "Previous builds failed on Bitcoin signing and broadcast features",
+    "Deployment errors encountered during initial attempts"
   ],
-  "isFixRequest": false,
-  "existing_features": [],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-update-frontend-bitcoinaddressdisplay-component-to-successfully-fetch-and-display-generated-bitcoin-addresses-from-the-backend-ensure-the-component-handles-loading-states-error-states-and-successfully-renders-the-generated-address-with-qr-code-and-copy-functionality",
+      "title": "Update frontend BitcoinAddressDisplay component to successfully fetch and display generated Bitcoin addresses from the backend. Ensure the component handles loading states, error states, and successfully renders the generated address with QR code and copy functionality.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-sendbtcpage-to-integrate-with-the-new-backend-transaction-signing-and-broadcasting-framework-connect-the-send-form-to-backend-methods-that-handle-transaction-construction-signing-and-broadcasting-display-broadcast-attempt-logs-and-transaction-status-from-the-backend-response",
+      "title": "Update frontend SendBtcPage to integrate with the new backend transaction signing and broadcasting framework. Connect the send form to backend methods that handle transaction construction, signing, and broadcasting. Display broadcast attempt logs and transaction status from the backend response.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    }
+  ],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement Bitcoin transaction sending with testnet/mainnet support",
+      "summary": "Implement framework for Bitcoin address generation",
       "reqIds": [],
-      "status": "in_progress"
+      "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Implement buildTransaction helper function for raw transaction creation",
-      "reqIds": [
-        "AR-1"
-      ],
+      "summary": "Implement framework for Bitcoin transaction signing and broadcasting",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Implement getTxId helper function for transaction ID extraction",
-      "reqIds": [
-        "AR-1"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Implement the sendBitcoin function in the backend main actor that accepts a SendRequest record containing destinationAddress (Text) and amountSatoshis (Nat64), builds a raw Bitcoin transaction, sends it to the testnet network using Bitcoin.send_transaction, and returns a Result<Text, Text> with the transaction ID on success or an error message on failure",
+      "summary": "Implement backend framework for generating Bitcoin P2WPKH (Segwit) addresses. Add a backend method that generates a valid Bitcoin receiving address for authenticated users, ensuring the address follows P2WPKH format (bc1... for mainnet, tb1... for testnet). Store the generated address associated with the user's principal in stable storage.",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-5",
-      "summary": "Implement the buildTransaction helper function that takes a SendRequest record and constructs a properly formatted raw Bitcoin transaction in hexadecimal format suitable for broadcasting to the Bitcoin network",
+      "id": "AR-4",
+      "summary": "Implement backend framework for Bitcoin transaction signing. Add backend functionality to create and sign Bitcoin transactions using ECDSA with proper Segwit witness data structure. The signing process must handle P2WPKH inputs and generate valid transaction signatures without exposing private keys.",
       "reqIds": [
         "REQ-2"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-6",
-      "summary": "Implement the getTxId helper function that extracts and returns the transaction ID from a raw Bitcoin transaction in hexadecimal format",
+      "id": "AR-5",
+      "summary": "Implement backend framework for broadcasting signed Bitcoin transactions to the network. Add HTTP outcall functionality to broadcast signed transaction hex to multiple public Bitcoin API providers (blockchain.info, blockcypher.com). Track broadcast attempts and handle provider failures with fallback logic.",
       "reqIds": [
         "REQ-3"
       ],
       "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Import the Bitcoin base library (mo:base/Bitcoin) and Result library (mo:base/Result) in the backend main actor to support Bitcoin transaction functionality",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Define the SendRequest type as a record containing destinationAddress (Text) and amountSatoshis (Nat64) fields in the backend actor",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "status": "pending"
     }
   ],
-  "projectName": "BitcoinWallet",
+  "gameProjectType": "none",
+  "projectName": "Bitcoin Transfer",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

@@ -2,30 +2,27 @@ import { RouterProvider, createRouter, createRoute, createRootRoute, Outlet } fr
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from 'next-themes';
-import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
-import BuyCreditsPage from './pages/BuyCreditsPage';
 import SendBtcPage from './pages/SendBtcPage';
+import ReceiveBtcPage from './pages/ReceiveBtcPage';
 import HistoryPage from './pages/HistoryPage';
+import WithdrawPage from './pages/WithdrawPage';
+import BuyCreditsPage from './pages/BuyCreditsPage';
 import AdminPage from './pages/AdminPage';
 import AdminCredentialsPage from './pages/AdminCredentialsPage';
-import WithdrawPage from './pages/WithdrawPage';
 import AdminWithdrawalStatusDashboard from './components/withdrawals/AdminWithdrawalStatusDashboard';
-import PuzzleRewardsPage from './pages/PuzzleRewardsPage';
-import TransferTroubleshootingPage from './pages/TransferTroubleshootingPage';
-import AiLotteryPage from './pages/AiLotteryPage';
 import SendToPeerPage from './pages/SendToPeerPage';
 import IncomingRequestsPage from './pages/IncomingRequestsPage';
 import OutgoingRequestsPage from './pages/OutgoingRequestsPage';
+import TransferTroubleshootingPage from './pages/TransferTroubleshootingPage';
+import AiLotteryPage from './pages/AiLotteryPage';
+import PuzzleRewardsPage from './pages/PuzzleRewardsPage';
 import AdminManualVerificationPage from './pages/AdminManualVerificationPage';
 import AdminSendCreditsPage from './pages/AdminSendCreditsPage';
 import AdminSendToUserPage from './pages/AdminSendToUserPage';
 import AdminPeerTransfersPage from './pages/AdminPeerTransfersPage';
 import BuyBitcoinPage from './pages/BuyBitcoinPage';
-import ProfileSetupModal from './components/auth/ProfileSetupModal';
 import AdminRoute from './components/auth/AdminRoute';
-import LoggedOutSignInPanel from './components/auth/LoggedOutSignInPanel';
-import { useInternetIdentity } from './hooks/useInternetIdentity';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,23 +33,49 @@ const queryClient = new QueryClient({
   },
 });
 
-function IndexPageWrapper() {
-  const { identity } = useInternetIdentity();
-  return identity ? <DashboardPage /> : <LoggedOutSignInPanel />;
-}
-
 const rootRoute = createRootRoute({
   component: () => (
-    <AppLayout>
+    <>
       <Outlet />
-    </AppLayout>
+      <Toaster />
+    </>
   ),
 });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: IndexPageWrapper,
+  component: DashboardPage,
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/dashboard',
+  component: DashboardPage,
+});
+
+const sendBtcRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/send-btc',
+  component: SendBtcPage,
+});
+
+const receiveBtcRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/receive-btc',
+  component: ReceiveBtcPage,
+});
+
+const historyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/history',
+  component: HistoryPage,
+});
+
+const withdrawRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/withdraw',
+  component: WithdrawPage,
 });
 
 const buyCreditsRoute = createRoute({
@@ -65,18 +88,6 @@ const buyBtcRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/buy-btc',
   component: BuyBitcoinPage,
-});
-
-const sendBtcRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/send-btc',
-  component: SendBtcPage,
-});
-
-const historyRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/history',
-  component: HistoryPage,
 });
 
 const adminRoute = createRoute({
@@ -99,12 +110,6 @@ const adminCredentialsRoute = createRoute({
   ),
 });
 
-const withdrawRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/withdraw',
-  component: WithdrawPage,
-});
-
 const adminWithdrawalsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/withdrawals',
@@ -113,42 +118,6 @@ const adminWithdrawalsRoute = createRoute({
       <AdminWithdrawalStatusDashboard />
     </AdminRoute>
   ),
-});
-
-const puzzleRewardsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/puzzle-rewards',
-  component: PuzzleRewardsPage,
-});
-
-const transferTroubleshootingRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/transfer-troubleshooting',
-  component: TransferTroubleshootingPage,
-});
-
-const aiLotteryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/ai-lottery',
-  component: AiLotteryPage,
-});
-
-const sendToPeerRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/send-to-peer',
-  component: SendToPeerPage,
-});
-
-const incomingRequestsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/incoming-requests',
-  component: IncomingRequestsPage,
-});
-
-const outgoingRequestsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/outgoing-requests',
-  component: OutgoingRequestsPage,
 });
 
 const adminManualVerificationRoute = createRoute({
@@ -191,26 +160,64 @@ const adminPeerTransfersRoute = createRoute({
   ),
 });
 
+const sendToPeerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/send-to-peer',
+  component: SendToPeerPage,
+});
+
+const incomingRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/incoming-requests',
+  component: IncomingRequestsPage,
+});
+
+const outgoingRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/outgoing-requests',
+  component: OutgoingRequestsPage,
+});
+
+const transferTroubleshootingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/transfer-troubleshooting',
+  component: TransferTroubleshootingPage,
+});
+
+const aiLotteryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ai-lottery',
+  component: AiLotteryPage,
+});
+
+const puzzleRewardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/puzzle-rewards',
+  component: PuzzleRewardsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  dashboardRoute,
+  sendBtcRoute,
+  receiveBtcRoute,
+  historyRoute,
+  withdrawRoute,
   buyCreditsRoute,
   buyBtcRoute,
-  sendBtcRoute,
-  historyRoute,
   adminRoute,
   adminCredentialsRoute,
-  withdrawRoute,
   adminWithdrawalsRoute,
-  puzzleRewardsRoute,
-  transferTroubleshootingRoute,
-  aiLotteryRoute,
-  sendToPeerRoute,
-  incomingRequestsRoute,
-  outgoingRequestsRoute,
   adminManualVerificationRoute,
   adminSendCreditsRoute,
   adminSendToUserRoute,
   adminPeerTransfersRoute,
+  sendToPeerRoute,
+  incomingRequestsRoute,
+  outgoingRequestsRoute,
+  transferTroubleshootingRoute,
+  aiLotteryRoute,
+  puzzleRewardsRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -226,8 +233,6 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
-        <ProfileSetupModal />
-        <Toaster />
       </QueryClientProvider>
     </ThemeProvider>
   );
