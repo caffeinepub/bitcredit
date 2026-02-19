@@ -10,13 +10,13 @@ import Runtime "mo:core/Runtime";
 import Blob "mo:core/Blob";
 import Text "mo:core/Text";
 import OutCall "http-outcalls/outcall";
-import Migration "migration";
 import Iter "mo:core/Iter";
+
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
 // Apply migration using the with clause
-(with migration = Migration.run)
+
 actor {
   public type BitcoinAmount = Nat; // 1 Satoshi
 

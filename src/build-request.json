@@ -1,95 +1,71 @@
 {
   "kind": "build_request",
-  "title": "Remove Bitcoin address format validation and post all addresses directly to blockchain API",
+  "title": "Remove user registration check blocking admin transfers",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-186",
-      "text": "Remove all Bitcoin address format validation checks from the frontend Send BTC form (frontend/src/pages/SendBtcPage.tsx) so that any user-provided destination address text is accepted without pre-validation and submitted directly to the backend sendBTC method.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-last"
-        ],
-        "quotes": [
-          "remove format check to mainnet wallet transfer requests"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The Send BTC form accepts any text string in the destination address field without displaying 'invalid format' errors",
-        "Form submission is not blocked by address format validation",
-        "The destination address is passed as-is to the backend sendBTC call"
-      ]
-    },
-    {
-      "id": "REQ-187",
-      "text": "Remove all Bitcoin address format validation checks from the backend sendBTC flow (backend/main.mo) so that the provided destination address is passed directly to the blockchain API broadcast method without pre-validation, allowing the blockchain API to determine address validity.",
+      "id": "REQ-190",
+      "text": "Remove any backend code that checks whether the destination address is a registered user account before allowing a Send BTC transfer to proceed, so that admins (and regular users) can complete transfers to any valid Bitcoin mainnet address without encountering a 'user not registered' error.",
       "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "Post any wallet address user inputs to blockchain api for transfer"
+          "user not registered when attempting to transfer"
         ]
       },
       "acceptanceCriteria": [
-        "Backend sendBTC method does not perform Bitcoin address format validation",
-        "Destination addresses are passed directly to broadcastTransactionToBlockchain without format checks",
-        "Invalid addresses are rejected by the blockchain API, not by app-side validation",
-        "The blockchain API response determines whether the address was valid"
+        "The backend sendBTC flow accepts any destination address text without checking if it corresponds to a registered user profile",
+        "The 'user not registered' error no longer appears when an admin attempts a Send BTC transfer",
+        "Transfers can be completed to any Bitcoin mainnet address regardless of whether the recipient has an account in the app"
       ]
     },
     {
-      "id": "REQ-188",
-      "text": "Update the frontend Send BTC error handling (frontend/src/pages/SendBtcPage.tsx and frontend/src/utils/errors.ts) to display clear English error messages when the blockchain API rejects an address as invalid, explaining that the address format was not recognized by the blockchain API.",
-      "target": "frontend",
+      "id": "REQ-191",
+      "text": "Ensure the signed-in admin principal (ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe) is recognized by the backend admin access control and can successfully complete Send BTC transfers without being blocked by any user registration or account status checks.",
+      "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
         ],
         "quotes": [
-          "Post any wallet address user inputs to blockchain api for transfer"
+          "recognize my UI as admin to complete transaction"
         ]
       },
       "acceptanceCriteria": [
-        "When the blockchain API returns an address-related error, the UI shows a clear English message",
-        "The error message indicates the blockchain API could not process the address",
-        "Users understand the address was rejected by the blockchain, not by app validation"
+        "The backend isCallerAdmin() method returns true for the specified admin principal",
+        "The admin can access all admin-protected routes and operations without errors",
+        "The admin can successfully create and broadcast Send BTC transfers from the Admin Send BTC to Mainnet Wallet section"
       ]
     },
     {
-      "id": "REQ-189",
-      "text": "Remove all Bitcoin address format validation checks from the Admin Send BTC to Mainnet Wallet form (frontend/src/pages/AdminPage.tsx) so admins can submit any destination address text directly to the blockchain API without pre-validation.",
-      "target": "frontend",
+      "id": "REQ-192",
+      "text": "Add development-only logging to the backend sendBTC flow that captures and surfaces (a) the destination address being processed, (b) any validation checks performed on the destination, (c) any checks for user account existence or registration status, and (d) the specific error/trap message when a transfer fails, so it is easier to identify where incorrect account-registration requirements are being enforced.",
+      "target": "backend",
       "source": {
         "messageIds": [
           "msg-last"
-        ],
-        "quotes": [
-          "remove format check to mainnet wallet transfer requests"
         ]
       },
       "acceptanceCriteria": [
-        "The Admin Send BTC form accepts any text string in the destination address field",
-        "Admin submissions are not blocked by address format validation",
-        "The destination address is passed as-is to the backend sendBTC call"
+        "Development logs show the destination address and validation steps for each sendBTC call",
+        "Any account existence checks are clearly logged with their outcome",
+        "Error messages include enough detail to identify the source of 'user not registered' errors"
       ]
     }
   ],
   "constraints": [
-    "Do not modify frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useInternetIdentity.tsx",
-    "Do not modify frontend/src/hooks/useActor.ts",
-    "Do not modify frontend/src/main.tsx",
-    "Do not modify files in frontend/src/components/ui",
-    "Preserve all existing transfer request auditability and ledger accounting",
-    "Preserve the existing safe rollback behavior when broadcasts fail"
+    "Maintain single-actor architecture; all Motoko logic remains in backend/main.mo",
+    "Do not modify immutable frontend paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui",
+    "Preserve existing admin access control initialization via caffeineAdminToken URL parameter",
+    "Do not break existing transfer history, ledger accounting, or reserve tracking"
   ],
   "nonGoals": [
-    "Adding new address validation logic or rules",
-    "Implementing blockchain API endpoint configuration changes",
-    "Modifying the blockchain API broadcast implementation itself",
-    "Adding address whitelisting or blacklisting features"
+    "Adding new address validation libraries or formats beyond what blockchain APIs already support",
+    "Implementing new user registration flows",
+    "Changing the admin allowlist management UI",
+    "Modifying the frontend Send BTC form (address format validation already removed)"
   ],
   "imageRequirements": {
     "required": [],

@@ -1,12 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Remove all Bitcoin address format validation from the application and rely on the blockchain API to determine address validity.
+**Goal:** Remove user registration checks blocking admin BTC transfers and ensure admin principal is recognized for all operations.
 
 **Planned changes:**
-- Remove Bitcoin address format validation from the frontend Send BTC form
-- Remove Bitcoin address format validation from the backend sendBTC flow
-- Remove Bitcoin address format validation from the Admin Send BTC to Mainnet Wallet form
-- Update frontend error handling to display clear messages when the blockchain API rejects an invalid address
+- Remove backend validation that checks if destination address is a registered user before allowing Send BTC transfers
+- Verify admin principal (ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe) is properly recognized by backend admin access control
+- Add development logging to sendBTC flow to capture destination address, validation checks, account existence checks, and error messages
 
-**User-visible outcome:** Users and admins can submit any text string as a destination Bitcoin address without pre-validation errors. The blockchain API will determine if the address is valid, and users will see clear error messages if the blockchain API rejects the address.
+**User-visible outcome:** Admin can successfully complete Send BTC transfers to any valid Bitcoin mainnet address without encountering "user not registered" errors.

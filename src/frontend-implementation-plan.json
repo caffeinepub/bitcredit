@@ -1,60 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove Bitcoin Address Validation and Delegate to Blockchain API",
-  "requirements": [
-    {
-      "id": "REQ-186",
-      "summary": "Remove all Bitcoin address format validation from the frontend Send BTC form so any user-provided address is accepted and submitted directly to the backend",
-      "acceptanceCriteria": [
-        "The Send BTC form accepts any text string in the destination address field without displaying 'invalid format' errors",
-        "Form submission is not blocked by address format validation",
-        "The destination address is passed as-is to the backend sendBTC call"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/SendBtcPage.tsx",
-          "operation": "modify",
-          "description": "Remove the addressError state and all Bitcoin address format validation logic from the destination address input field. Remove any regex patterns, checksum validation, or format checking that prevents form submission. Ensure the destination address value is passed directly to the sendBTC backend method without client-side validation. Keep all other validations (amount, balance checks) intact."
-        }
-      ]
-    },
-    {
-      "id": "REQ-188",
-      "summary": "Update frontend error handling to display clear messages when the blockchain API rejects an invalid address",
-      "acceptanceCriteria": [
-        "When the blockchain API returns an address-related error, the UI shows a clear English message",
-        "The error message indicates the blockchain API could not process the address",
-        "Users understand the address was rejected by the blockchain, not by app validation"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/utils/errors.ts",
-          "operation": "modify",
-          "description": "Update the normalizeSendBtcError function to handle blockchain API address rejection errors. Add clear English error messages that explain when the blockchain API could not process the provided address (e.g., 'The blockchain API rejected this address as invalid' or 'The address format was not recognized by the Bitcoin network'). Ensure error messages clearly indicate the rejection came from the blockchain API, not from app-side validation."
-        },
-        {
-          "path": "frontend/src/pages/SendBtcPage.tsx",
-          "operation": "modify",
-          "description": "Update error display logic to show the normalized error messages from the blockchain API. Ensure that when sendBTC fails due to an invalid address, the error message from normalizeSendBtcError is displayed to the user in a clear, user-friendly format. Remove any client-side address validation error messages that would conflict with blockchain API error feedback."
-        }
-      ]
-    },
-    {
-      "id": "REQ-189",
-      "summary": "Remove all Bitcoin address format validation from the Admin Send BTC to Mainnet Wallet form so admins can submit any address directly to the blockchain API",
-      "acceptanceCriteria": [
-        "The Admin Send BTC form accepts any text string in the destination address field",
-        "Admin submissions are not blocked by address format validation",
-        "The destination address is passed as-is to the backend sendBTC call"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminPage.tsx",
-          "operation": "modify",
-          "description": "Remove all Bitcoin address format validation logic from the Admin Send BTC to Mainnet Wallet form within the AdminPage component. Remove any addressError state, regex validation, or format checking for the destination address input in the admin section. Ensure the destination address value is passed directly to the sendBTC backend method without client-side validation. Keep amount validation and other admin-specific checks intact."
-        }
-      ]
-    }
-  ]
+  "title": "Remove user registration check blocking admin transfers",
+  "requirements": []
 }

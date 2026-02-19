@@ -1,73 +1,47 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T00:31:39.248Z",
+  "generatedAt": "2026-02-19T00:39:52.416Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 3,
+    "total": 3,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-186",
-        "summary": "Remove all Bitcoin address format validation checks from the frontend Send BTC form (frontend/src/pages/SendBtcPage.tsx) so that any user-provided destination address text is accepted without pre-validation and submitted directly to the backend sendBTC method.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-187",
-        "summary": "Remove all Bitcoin address format validation checks from the backend sendBTC flow (backend/main.mo) so that the provided destination address is passed directly to the blockchain API broadcast method without pre-validation, allowing the blockchain API to determine address validity.",
+        "id": "REQ-190",
+        "summary": "Remove any backend code that checks whether the destination address is a registered user account before allowing a Send BTC transfer to proceed, so that admins (and regular users) can complete transfers to any valid Bitcoin mainnet address without encountering a 'user not registered' error.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-188",
-        "summary": "Update the frontend Send BTC error handling (frontend/src/pages/SendBtcPage.tsx and frontend/src/utils/errors.ts) to display clear English error messages when the blockchain API rejects an address as invalid, explaining that the address format was not recognized by the blockchain API.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/utils/errors.ts",
-          "frontend/src/pages/SendBtcPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/utils/errors.ts",
-          "frontend/src/pages/SendBtcPage.tsx"
-        ]
+        "id": "REQ-191",
+        "summary": "Ensure the signed-in admin principal (ih4li-2xvzb-eiqhx-p746g-mfu4p-qceq3-iq7li-gh4d2-3ajo4-qldaw-iqe) is recognized by the backend admin access control and can successfully complete Send BTC transfers without being blocked by any user registration or account status checks.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
-        "id": "REQ-189",
-        "summary": "Remove all Bitcoin address format validation checks from the Admin Send BTC to Mainnet Wallet form (frontend/src/pages/AdminPage.tsx) so admins can submit any destination address text directly to the blockchain API without pre-validation.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminPage.tsx"
-        ]
+        "id": "REQ-192",
+        "summary": "Add development-only logging to the backend sendBTC flow that captures and surfaces (a) the destination address being processed, (b) any validation checks performed on the destination, (c) any checks for user account existence or registration status, and (d) the specific error/trap message when a transfer fails, so it is easier to identify where incorrect account-registration requirements are being enforced.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/pages/AdminPage.tsx",
-    "frontend/src/pages/SendBtcPage.tsx",
-    "frontend/src/utils/errors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",
