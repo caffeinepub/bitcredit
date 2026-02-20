@@ -1,130 +1,158 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useRecordBitcoinPurchase } from '../../hooks/useQueries';
-import { Loader2 } from 'lucide-react';
+import { normalizeError } from '../../utils/errors';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function ManualVerificationForm() {
   const [txid, setTxid] = useState('');
-  const [amount, setAmount] = useState('');
-  const [errors, setErrors] = useState<{ txid?: string; amount?: string }>({});
+  const [btcAmount, setBtcAmount] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const recordPurchase = useRecordBitcoinPurchase();
 
-  const validateTxid = (value: string): boolean => {
-    const txidRegex = /^[0-9a-fA-F]{64}$/;
-    if (!value) {
-      setErrors(prev => ({ ...prev, txid: 'Transaction ID is required' }));
-      return false;
-    }
-    if (!txidRegex.test(value)) {
-      setErrors(prev => ({ ...prev, txid: 'Transaction ID must be a 64-character hexadecimal string' }));
-      return false;
-    }
-    setErrors(prev => ({ ...prev, txid: undefined }));
-    return true;
+  const validateTxid = (value: string): string | null => {
+    if (!value) return 'Transaction ID is required';
+    if (value.length !== 64) return 'Transaction ID must be exactly 64 characters';
+    if (!/^[0-9a-fA-F]+$/.test(value)) return 'Transaction ID must contain only hexadecimal characters (0-9, a-f)';
+    return null;
   };
 
-  const validateAmount = (value: string): boolean => {
-    if (!value) {
-      setErrors(prev => ({ ...prev, amount: 'Amount is required' }));
-      return false;
+  const validateBtcAmount = (value: string): string | null => {
+    if (!value) return 'BTC amount is required';
+    const num = parseFloat(value);
+    if (isNaN(num)) return 'Invalid BTC amount';
+    if (num <= 0) return 'BTC amount must be greater than zero';
+    if (num < 0) return 'BTC amount cannot be negative';
+    
+    // Check decimal places (max 8 for Bitcoin)
+    const decimalParts = value.split('.');
+    if (decimalParts.length > 1 && decimalParts[1].length > 8) {
+      return 'BTC amount cannot have more than 8 decimal places';
     }
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      setErrors(prev => ({ ...prev, amount: 'Amount must be a positive number' }));
-      return false;
-    }
-    const decimalPlaces = (value.split('.')[1] || '').length;
-    if (decimalPlaces > 8) {
-      setErrors(prev => ({ ...prev, amount: 'Amount cannot have more than 8 decimal places' }));
-      return false;
-    }
-    setErrors(prev => ({ ...prev, amount: undefined }));
-    return true;
+    
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
+    setSuccessMessage(null);
 
-    const isTxidValid = validateTxid(txid);
-    const isAmountValid = validateAmount(amount);
-
-    if (!isTxidValid || !isAmountValid) {
+    // Frontend validation
+    const txidError = validateTxid(txid);
+    if (txidError) {
+      setValidationError(txidError);
       return;
     }
 
-    const btcAmount = parseFloat(amount);
-    const satoshis = Math.round(btcAmount * 100000000);
+    const amountError = validateBtcAmount(btcAmount);
+    if (amountError) {
+      setValidationError(amountError);
+      return;
+    }
 
     try {
+      const btcFloat = parseFloat(btcAmount);
+      const satoshis = Math.round(btcFloat * 100_000_000);
+
       await recordPurchase.mutateAsync({
         transactionId: txid,
         amount: BigInt(satoshis),
       });
 
+      setSuccessMessage('Bitcoin purchase verified successfully! Balance updated.');
       setTxid('');
-      setAmount('');
-      setErrors({});
-    } catch (error) {
-      // Error handling is done in the mutation hook
+      setBtcAmount('');
+    } catch (error: any) {
+      const errorMessage = normalizeError(error);
+      setValidationError(errorMessage);
     }
   };
 
+  const isFormValid = txid.length === 64 && btcAmount && parseFloat(btcAmount) > 0;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {successMessage && (
+        <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            {successMessage}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {validationError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{validationError}</AlertDescription>
+        </Alert>
+      )}
+
+      {recordPurchase.isError && !validationError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {normalizeError(recordPurchase.error)}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="space-y-2">
-        <Label htmlFor="txid">Bitcoin Transaction ID (txid)</Label>
+        <Label htmlFor="txid">Transaction ID (64 hex characters)</Label>
         <Input
           id="txid"
           type="text"
-          placeholder="64-character hexadecimal string"
           value={txid}
           onChange={(e) => {
             setTxid(e.target.value);
-            if (errors.txid) validateTxid(e.target.value);
+            setValidationError(null);
+            setSuccessMessage(null);
           }}
-          onBlur={() => validateTxid(txid)}
-          className={errors.txid ? 'border-destructive' : ''}
+          placeholder="Enter 64-character transaction ID"
+          disabled={recordPurchase.isPending}
+          maxLength={64}
+          className="font-mono text-sm"
         />
-        {errors.txid && (
-          <p className="text-sm text-destructive">{errors.txid}</p>
+        {txid && txid.length !== 64 && (
+          <p className="text-sm text-muted-foreground">
+            {txid.length}/64 characters
+          </p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="amount">Amount (BTC)</Label>
+        <Label htmlFor="btcAmount">BTC Amount (max 8 decimals)</Label>
         <Input
-          id="amount"
+          id="btcAmount"
           type="number"
           step="0.00000001"
-          placeholder="0.00000000"
-          value={amount}
+          min="0.00000001"
+          value={btcAmount}
           onChange={(e) => {
-            setAmount(e.target.value);
-            if (errors.amount) validateAmount(e.target.value);
+            setBtcAmount(e.target.value);
+            setValidationError(null);
+            setSuccessMessage(null);
           }}
-          onBlur={() => validateAmount(amount)}
-          className={errors.amount ? 'border-destructive' : ''}
+          placeholder="0.00000000"
+          disabled={recordPurchase.isPending}
         />
-        {errors.amount && (
-          <p className="text-sm text-destructive">{errors.amount}</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          Enter the amount in BTC (up to 8 decimal places)
-        </p>
       </div>
 
       <Button
         type="submit"
-        disabled={recordPurchase.isPending}
+        disabled={recordPurchase.isPending || !isFormValid}
         className="w-full"
       >
         {recordPurchase.isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Recording...
+            Verifying Purchase...
           </>
         ) : (
           'Verify Bitcoin Purchase'

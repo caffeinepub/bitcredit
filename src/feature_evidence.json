@@ -2,34 +2,13 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-bitcoinaddressdisplay-component-to-support-address-rotation-showing-the-current-active-address-and-providing-ui-feedback-when-addresses-change",
-      "featureTitle": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
+      "featureId": "feature-update-frontend-manualverificationform-and-instantfundingform-to-display-backend-validation-errors-clearly-to-users-when-invalid-inputs-are-submitted",
+      "featureTitle": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
       "files": [
-        "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "qr-code@1.0.0",
-        "camera@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-an-address-history-view-that-displays-all-previously-generated-addresses-for-a-user-with-their-usage-status-received-amounts-and-associated-transactions",
-      "featureTitle": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
-      "files": [
-        "frontend/src/components/balance/AddressHistoryView.tsx",
+        "frontend/src/components/buybtc/InstantFundingForm.tsx",
+        "frontend/src/components/verification/ManualVerificationForm.tsx",
         "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/ReceiveBtcPage.tsx"
+        "frontend/src/utils/errors.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -43,32 +22,7 @@
         "camera@1.0.0"
       ],
       "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-admin-capabilities-to-view-and-manage-user-addresses-including-listing-all-addresses-searching-by-address-or-principal-and-viewing-address-usage-statistics",
-      "featureTitle": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/layout/AppLayout.tsx",
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/AdminAddressManagementPage.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "qr-code@1.0.0",
-        "camera@1.0.0"
-      ],
-      "testIds": [
-        "REQ-8"
+        "REQ-3"
       ],
       "confidence": "high"
     }

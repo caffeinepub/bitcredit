@@ -1,114 +1,58 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-20T00:11:29.321Z",
+  "generatedAt": "2026-02-20T00:26:22.417Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 8,
-    "implemented": 3,
+    "total": 3,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Create a comprehensive Bitcoin address management system in the backend that stores addresses with their metadata (address type, network, derivation path, creation timestamp, and usage status)",
+        "summary": "Fix backend recordBitcoinPurchase method to immediately update user balance when manual Bitcoin purchase inputs are submitted, ensuring the balance reflects the new credit instantly without delay",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Implement backend methods for address lifecycle operations including getUserAddress, generateNewAddress, markAddressAsUsed, and listUserAddresses",
+        "summary": "Implement backend validation for manual Bitcoin purchase inputs to reject invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places)",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Add address validation utilities to verify Bitcoin address format, checksum, and network compatibility before processing",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement address rotation logic that automatically generates a new address after the current one receives funds, maintaining address privacy best practices",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
+        "summary": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
+          "frontend/src/components/verification/ManualVerificationForm.tsx",
+          "frontend/src/components/buybtc/InstantFundingForm.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/utils/errors.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/balance/AddressHistoryView.tsx",
+          "frontend/src/components/verification/ManualVerificationForm.tsx",
+          "frontend/src/components/buybtc/InstantFundingForm.tsx",
           "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/ReceiveBtcPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/balance/AddressHistoryView.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/ReceiveBtcPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Integrate address management with the existing transaction verification system to automatically link incoming Bitcoin transactions to the correct user address",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AdminAddressManagementPage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/layout/AppLayout.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AdminAddressManagementPage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/layout/AppLayout.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/utils/errors.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/balance/AddressHistoryView.tsx",
-    "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
-    "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
+    "frontend/src/components/buybtc/InstantFundingForm.tsx",
+    "frontend/src/components/verification/ManualVerificationForm.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/AdminAddressManagementPage.tsx",
-    "frontend/src/pages/ReceiveBtcPage.tsx",
-    "frontend/src/pages/SendToPeerPage.tsx",
+    "frontend/src/utils/errors.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

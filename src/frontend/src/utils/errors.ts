@@ -1,111 +1,81 @@
 export function normalizeError(error: any): string {
   if (!error) return 'An unknown error occurred';
 
-  // Extract error message from various error formats
-  let errorMessage = '';
-
+  // Handle string errors
   if (typeof error === 'string') {
-    errorMessage = error;
-  } else if (error.message) {
-    errorMessage = error.message;
-  } else if (error.toString) {
-    errorMessage = error.toString();
+    return formatBackendError(error);
   }
 
-  // Backend method missing errors
-  if (errorMessage.includes('has no method') || 
-      errorMessage.includes('does not exist') ||
-      errorMessage.includes('not implemented')) {
-    return 'This feature is not yet implemented in the backend. The required method is missing from the canister.';
+  // Handle Error objects
+  if (error instanceof Error) {
+    return formatBackendError(error.message);
   }
 
-  // sendBTC specific errors
-  if (errorMessage.includes('sendBTC')) {
-    if (errorMessage.includes('not implemented') || errorMessage.includes('not available')) {
-      return 'Bitcoin sending is not yet available. The backend needs to implement transaction signing, broadcasting via HTTP outcalls, and confirmation tracking.';
-    }
+  // Handle objects with message property
+  if (error.message) {
+    return formatBackendError(error.message);
   }
 
-  // Insufficient balance
-  if (errorMessage.toLowerCase().includes('insufficient balance') ||
-      errorMessage.toLowerCase().includes('not enough balance')) {
-    return 'Insufficient balance. Please ensure you have enough credits to complete this transaction.';
+  // Handle backend trap errors
+  if (error.toString) {
+    return formatBackendError(error.toString());
   }
 
-  // Invalid address format
-  if (errorMessage.toLowerCase().includes('invalid address') ||
-      errorMessage.toLowerCase().includes('address format')) {
-    return 'Invalid Bitcoin address format. Please provide a valid Segwit address (P2WPKH or P2WSH).';
-  }
+  return 'An unexpected error occurred';
+}
 
-  // HTTP outcall failures
-  if (errorMessage.includes('HTTP outcall') || 
-      errorMessage.includes('outcall failed') ||
-      errorMessage.includes('network error')) {
-    return 'Network communication error. The Internet Computer HTTP outcall to the blockchain API failed. This may be due to API rate limits, network issues, or provider downtime.';
+function formatBackendError(message: string): string {
+  // Bitcoin purchase validation errors
+  if (message.includes('Transaction ID must be exactly 64 hexadecimal characters')) {
+    return 'Invalid transaction ID format. Must be exactly 64 hexadecimal characters (0-9, a-f).';
   }
-
-  // Signing errors
-  if (errorMessage.toLowerCase().includes('signing') ||
-      errorMessage.toLowerCase().includes('signature')) {
-    return 'Transaction signing failed. The backend was unable to sign the transaction. This may indicate a key management issue or threshold ECDSA problem.';
+  
+  if (message.includes('BTC amount must be positive and have at most 8 decimal places')) {
+    return 'Invalid BTC amount. Must be positive and have at most 8 decimal places.';
   }
-
-  // Broadcasting errors
-  if (errorMessage.toLowerCase().includes('broadcast') ||
-      errorMessage.toLowerCase().includes('propagation')) {
-    return 'Transaction broadcasting failed. The signed transaction could not be broadcast to the Bitcoin network. Check provider diagnostics for details.';
+  
+  if (message.includes('already exists') || message.includes('already processed')) {
+    return 'This transaction ID has already been processed. Duplicate credits are not allowed.';
   }
-
-  // Blockchain provider errors
-  if (errorMessage.includes('blockchain.info') ||
-      errorMessage.includes('blockstream.info') ||
-      errorMessage.includes('blockcypher')) {
-    return 'Blockchain API provider error. The external blockchain service returned an error or is unavailable. Try again later or check provider diagnostics.';
-  }
-
-  // Mainnet-specific errors
-  if (errorMessage.toLowerCase().includes('mainnet') ||
-      errorMessage.toLowerCase().includes('testnet')) {
-    return 'Network configuration error. There may be a mismatch between the requested network (mainnet/testnet) and the transaction parameters.';
-  }
-
-  // Confirmation tracking errors
-  if (errorMessage.toLowerCase().includes('confirmation') ||
-      errorMessage.toLowerCase().includes('mempool')) {
-    return 'Confirmation tracking error. Unable to retrieve transaction confirmation status from the blockchain. The transaction may still be valid.';
-  }
-
-  // Fee calculation errors
-  if (errorMessage.toLowerCase().includes('fee') ||
-      errorMessage.toLowerCase().includes('reserve')) {
-    return 'Fee calculation or reserve balance error. The system may not have sufficient reserve funds to cover network fees.';
+  
+  if (message.includes('already pending')) {
+    return 'A verification request for this transaction ID is already pending.';
   }
 
   // Authorization errors
-  if (errorMessage.includes('Unauthorized') || 
-      errorMessage.includes('permission') ||
-      errorMessage.includes('not allowed')) {
-    return 'You do not have permission to perform this action. Please ensure you are logged in with the correct account.';
+  if (message.includes('Unauthorized')) {
+    return 'You do not have permission to perform this action.';
   }
 
-  // Trap errors from backend
-  if (errorMessage.includes('trap') || errorMessage.includes('Runtime.trap')) {
-    // Try to extract the actual trap message
-    const trapMatch = errorMessage.match(/trap[:\s]+(.+?)(?:\n|$)/i);
-    if (trapMatch && trapMatch[1]) {
-      return trapMatch[1].trim();
-    }
-    return 'Backend error: ' + errorMessage;
+  // Balance errors
+  if (message.includes('Insufficient balance') || message.includes('Not enough balance')) {
+    return 'Insufficient balance for this transaction.';
   }
 
-  // Generic network errors
-  if (errorMessage.toLowerCase().includes('network') ||
-      errorMessage.toLowerCase().includes('timeout') ||
-      errorMessage.toLowerCase().includes('connection')) {
-    return 'Network error. Please check your connection and try again.';
+  // Withdrawal errors
+  if (message.includes('not in PENDING status')) {
+    return 'This withdrawal request cannot be modified as it has already been processed.';
   }
 
-  // Return the original error message if no pattern matches
-  return errorMessage || 'An unexpected error occurred';
+  // Peer transfer errors
+  if (message.includes('Cannot send credits to yourself')) {
+    return 'You cannot send credits to your own account.';
+  }
+
+  // Address errors
+  if (message.includes('Address already exists')) {
+    return 'This Bitcoin address is already registered in your account.';
+  }
+
+  if (message.includes('Address not found')) {
+    return 'The specified Bitcoin address was not found in your records.';
+  }
+
+  // Generic backend errors
+  if (message.includes('Actor not available')) {
+    return 'Backend connection unavailable. Please try again.';
+  }
+
+  // Return the original message if no pattern matches
+  return message;
 }

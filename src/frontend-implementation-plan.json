@@ -1,84 +1,36 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Implement address management framework - Frontend",
+  "title": "Fix manual input balance update and input validation",
   "requirements": [
     {
-      "id": "REQ-5",
-      "summary": "Update BitcoinAddressDisplay component to support address rotation with UI feedback and refresh capability",
+      "id": "REQ-3",
+      "summary": "Display backend validation errors in ManualVerificationForm and InstantFundingForm when invalid inputs are submitted",
       "acceptanceCriteria": [
-        "Component fetches and displays the user's current active receiving address",
-        "Refresh button generates a new address when clicked",
-        "UI shows loading state during address generation",
-        "Component displays a notice when a new address is provided due to rotation",
-        "QR code updates to reflect the current active address"
+        "Backend validation errors are displayed in the form UI with clear error messages",
+        "Form prevents submission during validation or processing",
+        "Success feedback is shown only after backend confirms the purchase was recorded"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
+          "path": "frontend/src/components/verification/ManualVerificationForm.tsx",
           "operation": "modify",
-          "description": "Enhance the component to call getCallerPrimaryAddress backend method to fetch the current active address. Add logic to detect when the address has changed (rotation occurred) and display a user-friendly notice. Update the refresh handler to call rotatePrimaryAddress backend method when user requests a new address. Ensure QR code generation reflects the latest active address. Add loading states for both initial fetch and rotation operations."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Create an address history view showing all user addresses with metadata, usage status, and transaction links",
-      "acceptanceCriteria": [
-        "View lists all addresses in reverse chronological order (newest first)",
-        "Each address entry shows creation date, status (active/used), and any received amounts",
-        "Clicking an address copies it to clipboard",
-        "Used addresses display links to their associated transactions",
-        "Active address is clearly highlighted and distinguished from historical ones"
-      ],
-      "file_operations": [
+          "description": "Update form to display backend validation errors from the useRecordBitcoinPurchase mutation. Show error messages for invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places). Add loading state during submission to prevent duplicate requests. Display success feedback only after backend confirmation."
+        },
         {
-          "path": "frontend/src/components/balance/AddressHistoryView.tsx",
-          "operation": "create",
-          "description": "Create a new component that fetches the user's address history via getCallerAddressHistory backend method. Display addresses in a table or card layout sorted by creation timestamp descending. For each address, show the Bitcoin address string, creation date (formatted from createdAt timestamp), status badge indicating active vs used, and addressType/network metadata. Include copy-to-clipboard functionality for each address. For used addresses, integrate with transaction history to display associated transaction links. Highlight the active address with a distinct visual style (border, background, or badge)."
+          "path": "frontend/src/components/buybtc/InstantFundingForm.tsx",
+          "operation": "modify",
+          "description": "Update form to display backend validation errors from the useRecordBitcoinPurchase mutation. Show error messages for invalid transaction IDs and BTC amounts returned by the backend. Ensure the form is disabled during mutation processing. Clear error state on new submission attempts."
         },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add a useGetCallerAddressHistory query hook that calls the getCallerAddressHistory backend method. Configure it to be enabled only when authenticated and refetch on window focus. Return the address array with proper TypeScript typing from backend.d.ts (Array<BitcoinAddress>)."
+          "description": "Ensure the useRecordBitcoinPurchase mutation properly exposes backend error responses to consuming components. After successful mutation, invalidate the 'balance' query key to trigger immediate balance refresh, ensuring React Query cache reflects the updated balance instantly without page refresh."
         },
         {
-          "path": "frontend/src/pages/ReceiveBtcPage.tsx",
+          "path": "frontend/src/utils/errors.ts",
           "operation": "modify",
-          "description": "Import and render the AddressHistoryView component below the existing BitcoinAddressDisplay component. Add a collapsible section or tab interface to organize the active address display and address history view. Ensure the layout is responsive and the address history does not overwhelm the primary receiving address display."
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Add admin capabilities to view and manage user addresses with search, filtering, and statistics",
-      "acceptanceCriteria": [
-        "Admin can view all addresses across all users with filtering and search",
-        "Admin page displays address statistics (total addresses, active vs used, addresses per user)",
-        "Admin can search for addresses by Bitcoin address or user principal",
-        "Admin view shows address metadata including creation time and transaction history",
-        "Admin operations are properly access-controlled and logged"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/AdminAddressManagementPage.tsx",
-          "operation": "create",
-          "description": "Create a new admin page component wrapped with AdminRoute for access control. Use the authorization component to ensure only admins can access this page. Fetch all user addresses via getAllUserAddresses backend method using a new query hook. Display address statistics at the top: total addresses count, count of active vs used addresses, and average addresses per user. Implement a search input that filters addresses by Bitcoin address string or user Principal. Display results in a sortable table with columns for address, user principal, creation date, status, address type, and network. Include links to view the user's full profile or transaction history. Add copy-to-clipboard for addresses and principals."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a useGetAllUserAddresses query hook that calls the getAllUserAddresses backend method. Configure it to be enabled only when the user is authenticated and is an admin (use isCallerAdmin check). Return the array of [Principal, UserAddressRecord] tuples with proper TypeScript typing."
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Add a navigation menu item for 'Address Management' in the admin section of the navigation. Use an appropriate icon (e.g., a key or wallet icon from lucide-react). Link to /admin/addresses route. Ensure this menu item is only visible when the user is authenticated and has admin role."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Register the /admin/addresses route in the TanStack Router configuration. Import AdminAddressManagementPage and add it as a protected admin route. Ensure the route is configured with the same AdminRoute guard pattern used by other admin pages."
+          "description": "Add error message normalization for backend validation errors related to Bitcoin purchase input validation. Handle error messages for invalid transaction IDs and BTC amounts, ensuring user-friendly error text is displayed in forms."
         }
       ]
     }

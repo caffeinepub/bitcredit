@@ -6,13 +6,12 @@ import Nat "mo:core/Nat";
 import Float "mo:core/Float";
 import Iter "mo:core/Iter";
 import Array "mo:core/Array";
+import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
   type BitcoinAmount = Nat;
   public type PeerTransferId = Nat;
@@ -412,23 +411,20 @@ actor {
       };
     };
 
-    let requestId = verificationRequestIdCounter;
-    verificationRequestIdCounter += 1;
+    let currentBalance = getBalance(caller);
+    updateBalance(caller, currentBalance + input.amount);
+    addTransaction(caller, input.amount, #creditPurchase);
 
-    let request : VerificationRequest = {
-      id = requestId;
-      requester = caller;
+    let purchaseRecord : BitcoinPurchaseRecord = {
       transactionId = input.transactionId;
       amount = input.amount;
-      status = #pending;
-      submittedAt = Time.now();
-      reviewedAt = null;
-      reviewedBy = null;
-      reviewComment = null;
+      verifiedAt = Time.now();
+      verifiedBy = caller;
     };
+    bitcoinPurchases.add(input.transactionId, purchaseRecord);
 
-    verificationRequests.add(requestId, request);
-    requestId;
+    verificationRequestIdCounter += 1;
+    verificationRequestIdCounter;
   };
 
   public query ({ caller }) func getVerificationRequest(requestId : VerificationRequestId) : async ?VerificationRequest {

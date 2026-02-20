@@ -1,32 +1,18 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Application with address management framework",
+  "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Manual inputs not instantly reflecting on balance"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-bitcoinaddressdisplay-component-to-support-address-rotation-showing-the-current-active-address-and-providing-ui-feedback-when-addresses-change",
-      "title": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
+      "id": "feature-update-frontend-manualverificationform-and-instantfundingform-to-display-backend-validation-errors-clearly-to-users-when-invalid-inputs-are-submitted",
+      "title": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
       "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-an-address-history-view-that-displays-all-previously-generated-addresses-for-a-user-with-their-usage-status-received-amounts-and-associated-transactions",
-      "title": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-admin-capabilities-to-view-and-manage-user-addresses-including-listing-all-addresses-searching-by-address-or-principal-and-viewing-address-usage-statistics",
-      "title": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
-      "reqIds": [
-        "REQ-8"
+        "REQ-3"
       ],
       "version": 1
     }
@@ -34,52 +20,22 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement address management framework",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Create a comprehensive Bitcoin address management system in the backend that stores addresses with their metadata (address type, network, derivation path, creation timestamp, and usage status)",
+      "summary": "Fix backend recordBitcoinPurchase method to immediately update user balance when manual Bitcoin purchase inputs are submitted, ensuring the balance reflects the new credit instantly without delay",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-3",
-      "summary": "Implement backend methods for address lifecycle operations including getUserAddress, generateNewAddress, markAddressAsUsed, and listUserAddresses",
+      "id": "AR-2",
+      "summary": "Implement backend validation for manual Bitcoin purchase inputs to reject invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places)",
       "reqIds": [
         "REQ-2"
       ],
       "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Add address validation utilities to verify Bitcoin address format, checksum, and network compatibility before processing",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Implement address rotation logic that automatically generates a new address after the current one receives funds, maintaining address privacy best practices",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Integrate address management with the existing transaction verification system to automatically link incoming Bitcoin transactions to the correct user address",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "status": "pending"
     }
   ],
-  "projectName": "Bitcoin Credit Transfer",
+  "projectName": "Fix manual input balance update and input validation",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }
