@@ -1,9 +1,17 @@
 import Map "mo:core/Map";
-import Principal "mo:core/Principal";
 import Time "mo:core/Time";
+import Principal "mo:core/Principal";
 
 module {
-  type BitcoinAddress = {
+  public type OldActor = {
+    userBitcoinAddresses : Map.Map<Principal, BitcoinAddress>;
+  };
+
+  public type NewActor = {
+    userAddressRecords : Map.Map<Principal, UserAddressRecord>;
+  };
+
+  public type BitcoinAddress = {
     address : Text;
     publicKey : Blob;
     segwitMetadata : SegwitMetadata;
@@ -13,16 +21,26 @@ module {
     creator : Principal;
   };
 
-  type SegwitMetadata = { p2wpkhStatus : Bool };
+  public type SegwitMetadata = { p2wpkhStatus : Bool };
 
-  type OldActor = {};
-
-  type NewActor = {
-    userBitcoinAddresses : Map.Map<Principal, BitcoinAddress>;
+  public type UserAddressRecord = {
+    addresses : [BitcoinAddress];
+    primaryAddress : ?BitcoinAddress;
+    lastRotated : ?Time.Time;
+    network : { #mainnet; #testnet };
   };
 
   public func run(old : OldActor) : NewActor {
-    let addresses = Map.empty<Principal, BitcoinAddress>();
-    { userBitcoinAddresses = addresses };
+    let newUserAddressRecords = old.userBitcoinAddresses.map<Principal, BitcoinAddress, UserAddressRecord>(
+      func(_principal, address) {
+        {
+          addresses = [address];
+          primaryAddress = ?address;
+          lastRotated = null;
+          network = address.network;
+        };
+      }
+    );
+    { userAddressRecords = newUserAddressRecords };
   };
 };

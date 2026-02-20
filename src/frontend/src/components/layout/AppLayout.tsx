@@ -2,8 +2,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import AppHeader from './AppHeader';
 import { Button } from '@/components/ui/button';
-import { Home, Send, Download, History, Users, Settings, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Gift, Puzzle } from 'lucide-react';
+import { Home, Send, Download, History, Users, Settings, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Gift, Key } from 'lucide-react';
 import { SiCoffeescript } from 'react-icons/si';
+import { useIsCallerAdmin } from '../../hooks/useQueries';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { identity } = useInternetIdentity();
+  const { data: isAdmin } = useIsCallerAdmin();
   const isAuthenticated = !!identity;
 
   const currentYear = new Date().getFullYear();
@@ -106,6 +108,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Settings className="h-4 w-4" />
                 Admin
               </Button>
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate({ to: '/admin/addresses' })}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <Key className="h-4 w-4" />
+                  Addresses
+                </Button>
+              )}
             </div>
           </div>
         </nav>

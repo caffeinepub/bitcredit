@@ -1,64 +1,91 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-19T11:58:27.252Z",
+  "generatedAt": "2026-02-20T00:11:29.321Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
-    "implemented": 2,
+    "total": 8,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Implement backend framework for generating Bitcoin P2WPKH (Segwit) addresses. Add a backend method that generates a valid Bitcoin receiving address for authenticated users, ensuring the address follows P2WPKH format (bc1... for mainnet, tb1... for testnet). Store the generated address associated with the user's principal in stable storage.",
+        "summary": "Create a comprehensive Bitcoin address management system in the backend that stores addresses with their metadata (address type, network, derivation path, creation timestamp, and usage status)",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Implement backend framework for Bitcoin transaction signing. Add backend functionality to create and sign Bitcoin transactions using ECDSA with proper Segwit witness data structure. The signing process must handle P2WPKH inputs and generate valid transaction signatures without exposing private keys.",
+        "summary": "Implement backend methods for address lifecycle operations including getUserAddress, generateNewAddress, markAddressAsUsed, and listUserAddresses",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Implement backend framework for broadcasting signed Bitcoin transactions to the network. Add HTTP outcall functionality to broadcast signed transaction hex to multiple public Bitcoin API providers (blockchain.info, blockcypher.com). Track broadcast attempts and handle provider failures with fallback logic.",
+        "summary": "Add address validation utilities to verify Bitcoin address format, checksum, and network compatibility before processing",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-4",
-        "summary": "Update frontend BitcoinAddressDisplay component to successfully fetch and display generated Bitcoin addresses from the backend. Ensure the component handles loading states, error states, and successfully renders the generated address with QR code and copy functionality.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "summary": "Implement address rotation logic that automatically generates a new address after the current one receives funds, maintaining address privacy best practices",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-5",
-        "summary": "Update frontend SendBtcPage to integrate with the new backend transaction signing and broadcasting framework. Connect the send form to backend methods that handle transaction construction, signing, and broadcasting. Display broadcast attempt logs and transaction status from the backend response.",
+        "summary": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/SendBtcPage.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/transfers/TransactionStatusBadge.tsx",
-          "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx",
-          "frontend/src/types/mainnet.ts"
+          "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
         ],
         "matchedFiles": [
+          "frontend/src/components/balance/BitcoinAddressDisplay.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/balance/AddressHistoryView.tsx",
           "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/transfers/TransactionStatusBadge.tsx",
-          "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx"
+          "frontend/src/pages/ReceiveBtcPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/balance/AddressHistoryView.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/ReceiveBtcPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Integrate address management with the existing transaction verification system to automatically link incoming Bitcoin transactions to the correct user address",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/AdminAddressManagementPage.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/layout/AppLayout.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/AdminAddressManagementPage.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/layout/AppLayout.tsx",
+          "frontend/src/App.tsx"
         ]
       }
     ]
@@ -70,15 +97,18 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/balance/AddressHistoryView.tsx",
     "frontend/src/components/balance/BitcoinAddressDisplay.tsx",
-    "frontend/src/components/transfers/ProviderDiagnosticsCard.tsx",
-    "frontend/src/components/transfers/TransactionStatusBadge.tsx",
-    "frontend/src/components/transfers/TransferHistoryTable.tsx",
+    "frontend/src/components/layout/AppLayout.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/AdminAddressManagementPage.tsx",
+    "frontend/src/pages/ReceiveBtcPage.tsx",
+    "frontend/src/pages/SendToPeerPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

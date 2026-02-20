@@ -1,31 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Bitcoin address generation and transaction signing project with deployment and framework implementation",
-  "architectural_notes": [
-    "Focus on Bitcoin address generation functionality",
-    "Requires framework setup for Bitcoin operations",
-    "Multiple deployment attempts encountered errors"
-  ],
-  "known_issues": [
-    "Previous builds failed on Bitcoin signing and broadcast features",
-    "Deployment errors encountered during initial attempts"
-  ],
-  "isFixRequest": true,
+  "summary": "Application with address management framework",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-update-frontend-bitcoinaddressdisplay-component-to-successfully-fetch-and-display-generated-bitcoin-addresses-from-the-backend-ensure-the-component-handles-loading-states-error-states-and-successfully-renders-the-generated-address-with-qr-code-and-copy-functionality",
-      "title": "Update frontend BitcoinAddressDisplay component to successfully fetch and display generated Bitcoin addresses from the backend. Ensure the component handles loading states, error states, and successfully renders the generated address with QR code and copy functionality.",
+      "id": "feature-update-the-bitcoinaddressdisplay-component-to-support-address-rotation-showing-the-current-active-address-and-providing-ui-feedback-when-addresses-change",
+      "title": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
       "reqIds": [
-        "REQ-4"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-frontend-sendbtcpage-to-integrate-with-the-new-backend-transaction-signing-and-broadcasting-framework-connect-the-send-form-to-backend-methods-that-handle-transaction-construction-signing-and-broadcasting-display-broadcast-attempt-logs-and-transaction-status-from-the-backend-response",
-      "title": "Update frontend SendBtcPage to integrate with the new backend transaction signing and broadcasting framework. Connect the send form to backend methods that handle transaction construction, signing, and broadcasting. Display broadcast attempt logs and transaction status from the backend response.",
+      "id": "feature-add-an-address-history-view-that-displays-all-previously-generated-addresses-for-a-user-with-their-usage-status-received-amounts-and-associated-transactions",
+      "title": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
       "reqIds": [
-        "REQ-5"
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-admin-capabilities-to-view-and-manage-user-addresses-including-listing-all-addresses-searching-by-address-or-principal-and-viewing-address-usage-statistics",
+      "title": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
+      "reqIds": [
+        "REQ-8"
       ],
       "version": 1
     }
@@ -33,43 +34,52 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement framework for Bitcoin address generation",
+      "summary": "Implement address management framework",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Implement framework for Bitcoin transaction signing and broadcasting",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Implement backend framework for generating Bitcoin P2WPKH (Segwit) addresses. Add a backend method that generates a valid Bitcoin receiving address for authenticated users, ensuring the address follows P2WPKH format (bc1... for mainnet, tb1... for testnet). Store the generated address associated with the user's principal in stable storage.",
+      "summary": "Create a comprehensive Bitcoin address management system in the backend that stores addresses with their metadata (address type, network, derivation path, creation timestamp, and usage status)",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-4",
-      "summary": "Implement backend framework for Bitcoin transaction signing. Add backend functionality to create and sign Bitcoin transactions using ECDSA with proper Segwit witness data structure. The signing process must handle P2WPKH inputs and generate valid transaction signatures without exposing private keys.",
+      "id": "AR-3",
+      "summary": "Implement backend methods for address lifecycle operations including getUserAddress, generateNewAddress, markAddressAsUsed, and listUserAddresses",
       "reqIds": [
         "REQ-2"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-5",
-      "summary": "Implement backend framework for broadcasting signed Bitcoin transactions to the network. Add HTTP outcall functionality to broadcast signed transaction hex to multiple public Bitcoin API providers (blockchain.info, blockcypher.com). Track broadcast attempts and handle provider failures with fallback logic.",
+      "id": "AR-4",
+      "summary": "Add address validation utilities to verify Bitcoin address format, checksum, and network compatibility before processing",
       "reqIds": [
         "REQ-3"
       ],
       "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Implement address rotation logic that automatically generates a new address after the current one receives funds, maintaining address privacy best practices",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Integrate address management with the existing transaction verification system to automatically link incoming Bitcoin transactions to the correct user address",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Bitcoin Transfer",
+  "projectName": "Bitcoin Credit Transfer",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

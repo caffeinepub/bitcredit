@@ -15,18 +15,18 @@ export interface BitcoinWallet {
 export interface SegwitMetadata {
     p2wpkhStatus: boolean;
 }
+export interface BitcoinPurchaseRecord {
+    amount: BitcoinAmount;
+    verifiedAt: Time;
+    verifiedBy: Principal;
+    transactionId: string;
+}
+export type Time = bigint;
+export type WithdrawalRequestId = bigint;
 export interface AdminConfig {
     endpoints: Array<BlockchainApiEndpoint>;
     maxRetries: bigint;
     preferredOrder: Array<string>;
-}
-export type Time = bigint;
-export type WithdrawalRequestId = bigint;
-export interface ReserveMultisigConfig {
-    threshold: bigint;
-    redeemScript?: string;
-    address?: string;
-    pubkeys: Array<Uint8Array>;
 }
 export interface BitcoinAddress {
     creator: Principal;
@@ -82,11 +82,11 @@ export interface WithdrawalRequest {
     timestamp: Time;
     amount: BitcoinAmount;
 }
-export interface BitcoinPurchaseRecord {
-    amount: BitcoinAmount;
-    verifiedAt: Time;
-    verifiedBy: Principal;
-    transactionId: string;
+export interface UserAddressRecord {
+    primaryAddress?: BitcoinAddress;
+    network: Variant_mainnet_testnet;
+    addresses: Array<BitcoinAddress>;
+    lastRotated?: Time;
 }
 export interface VerificationRequest {
     id: VerificationRequestId;
@@ -141,28 +141,28 @@ export enum WithdrawalStatus {
     PENDING = "PENDING"
 }
 export interface backendInterface {
+    addBitcoinAddress(address: string, publicKey: Uint8Array, network: Variant_mainnet_testnet): Promise<string>;
     approveVerificationRequest(requestId: VerificationRequestId, comment: string | null): Promise<void>;
     approveWithdrawal(requestId: WithdrawalRequestId): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createBitcoinAddress(addressType: Variant_P2WPKH, network: Variant_mainnet_testnet): Promise<string>;
     creditBtcWithVerification(targetUser: Principal, transactionId: string, amount: BitcoinAmount): Promise<void>;
+    getAllUserAddresses(): Promise<Array<[Principal, UserAddressRecord]>>;
     getAllUsers(): Promise<Array<[Principal, UserProfile]>>;
     getAllVerificationRequests(): Promise<Array<VerificationRequest>>;
     getAllWithdrawalRequests(): Promise<Array<WithdrawalRequest>>;
     getBitcoinPurchase(transactionId: string): Promise<BitcoinPurchaseRecord | null>;
     getBitcoinPurchases(): Promise<Array<[string, BitcoinPurchaseRecord]>>;
     getBlockchainApiConfig(): Promise<AdminConfig | null>;
+    getCallerAddressHistory(): Promise<Array<BitcoinAddress>>;
     getCallerBalance(): Promise<BitcoinAmount>;
-    getCallerBitcoinAddress(): Promise<BitcoinAddress | null>;
     getCallerPeerTransfers(): Promise<Array<PeerTransferRequest>>;
+    getCallerPrimaryAddress(): Promise<BitcoinAddress | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCallerVerificationRequests(): Promise<Array<VerificationRequest>>;
     getCallerWithdrawalRequests(): Promise<Array<WithdrawalRequest>>;
     getPeerTransfer(transferId: PeerTransferId): Promise<PeerTransferRequest | null>;
-    getReserveMultisigConfig(): Promise<ReserveMultisigConfig | null>;
     getTransactionHistory(): Promise<Array<Transaction>>;
-    getUserBitcoinAddress(user: Principal): Promise<BitcoinAddress | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVerificationRequest(requestId: VerificationRequestId): Promise<VerificationRequest | null>;
     getWithdrawalRequest(requestId: WithdrawalRequestId): Promise<WithdrawalRequest | null>;
@@ -171,9 +171,9 @@ export interface backendInterface {
     recordBitcoinPurchase(input: BitcoinPurchaseRecordInput): Promise<VerificationRequestId>;
     rejectVerificationRequest(requestId: VerificationRequestId, reason: string): Promise<void>;
     rejectWithdrawal(requestId: WithdrawalRequestId, reason: string): Promise<void>;
+    removeBitcoinAddress(addressToRemove: string): Promise<void>;
     requestWithdrawal(amount: BitcoinAmount, method: string, account: string | null): Promise<WithdrawalRequestId>;
+    rotatePrimaryAddress(newPrimaryAddress: BitcoinAddress): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendCreditsToPeer(recipient: Principal, amount: BitcoinAmount): Promise<PeerTransferId>;
-    setBlockchainApiConfig(config: AdminConfig): Promise<void>;
-    setReserveMultisigConfig(config: ReserveMultisigConfig): Promise<void>;
 }

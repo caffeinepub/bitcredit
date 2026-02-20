@@ -22,6 +22,7 @@ import AdminSendCreditsPage from './pages/AdminSendCreditsPage';
 import AdminSendToUserPage from './pages/AdminSendToUserPage';
 import AdminPeerTransfersPage from './pages/AdminPeerTransfersPage';
 import BuyBitcoinPage from './pages/BuyBitcoinPage';
+import AdminAddressManagementPage from './pages/AdminAddressManagementPage';
 import AdminRoute from './components/auth/AdminRoute';
 
 const queryClient = new QueryClient({
@@ -160,6 +161,16 @@ const adminPeerTransfersRoute = createRoute({
   ),
 });
 
+const adminAddressesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/addresses',
+  component: () => (
+    <AdminRoute>
+      <AdminAddressManagementPage />
+    </AdminRoute>
+  ),
+});
+
 const sendToPeerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/send-to-peer',
@@ -212,6 +223,7 @@ const routeTree = rootRoute.addChildren([
   adminSendCreditsRoute,
   adminSendToUserRoute,
   adminPeerTransfersRoute,
+  adminAddressesRoute,
   sendToPeerRoute,
   incomingRequestsRoute,
   outgoingRequestsRoute,

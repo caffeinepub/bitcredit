@@ -67,12 +67,6 @@ export type PeerTransferStatus = { 'deleted' : null } |
   { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
-export interface ReserveMultisigConfig {
-  'threshold' : bigint,
-  'redeemScript' : [] | [string],
-  'address' : [] | [string],
-  'pubkeys' : Array<Uint8Array>,
-}
 export interface SegwitMetadata { 'p2wpkhStatus' : boolean }
 export type Time = bigint;
 export interface Transaction {
@@ -88,6 +82,13 @@ export type TransactionType = { 'adjustment' : null } |
   { 'withdrawalRequested' : null } |
   { 'creditPurchase' : null } |
   { 'debit' : null };
+export interface UserAddressRecord {
+  'primaryAddress' : [] | [BitcoinAddress],
+  'network' : { 'mainnet' : null } |
+    { 'testnet' : null },
+  'addresses' : Array<BitcoinAddress>,
+  'lastRotated' : [] | [Time],
+}
 export interface UserProfile {
   'bitcoinWallet' : [] | [BitcoinWallet],
   'name' : string,
@@ -127,19 +128,23 @@ export type WithdrawalStatus = { 'REJECTED' : null } |
   { 'PENDING' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addBitcoinAddress' : ActorMethod<
+    [string, Uint8Array, { 'mainnet' : null } | { 'testnet' : null }],
+    string
+  >,
   'approveVerificationRequest' : ActorMethod<
     [VerificationRequestId, [] | [string]],
     undefined
   >,
   'approveWithdrawal' : ActorMethod<[WithdrawalRequestId], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createBitcoinAddress' : ActorMethod<
-    [{ 'P2WPKH' : null }, { 'mainnet' : null } | { 'testnet' : null }],
-    string
-  >,
   'creditBtcWithVerification' : ActorMethod<
     [Principal, string, BitcoinAmount],
     undefined
+  >,
+  'getAllUserAddresses' : ActorMethod<
+    [],
+    Array<[Principal, UserAddressRecord]>
   >,
   'getAllUsers' : ActorMethod<[], Array<[Principal, UserProfile]>>,
   'getAllVerificationRequests' : ActorMethod<[], Array<VerificationRequest>>,
@@ -150,17 +155,16 @@ export interface _SERVICE {
     Array<[string, BitcoinPurchaseRecord]>
   >,
   'getBlockchainApiConfig' : ActorMethod<[], [] | [AdminConfig]>,
+  'getCallerAddressHistory' : ActorMethod<[], Array<BitcoinAddress>>,
   'getCallerBalance' : ActorMethod<[], BitcoinAmount>,
-  'getCallerBitcoinAddress' : ActorMethod<[], [] | [BitcoinAddress]>,
   'getCallerPeerTransfers' : ActorMethod<[], Array<PeerTransferRequest>>,
+  'getCallerPrimaryAddress' : ActorMethod<[], [] | [BitcoinAddress]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCallerVerificationRequests' : ActorMethod<[], Array<VerificationRequest>>,
   'getCallerWithdrawalRequests' : ActorMethod<[], Array<WithdrawalRequest>>,
   'getPeerTransfer' : ActorMethod<[PeerTransferId], [] | [PeerTransferRequest]>,
-  'getReserveMultisigConfig' : ActorMethod<[], [] | [ReserveMultisigConfig]>,
   'getTransactionHistory' : ActorMethod<[], Array<Transaction>>,
-  'getUserBitcoinAddress' : ActorMethod<[Principal], [] | [BitcoinAddress]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getVerificationRequest' : ActorMethod<
     [VerificationRequestId],
@@ -181,14 +185,14 @@ export interface _SERVICE {
     undefined
   >,
   'rejectWithdrawal' : ActorMethod<[WithdrawalRequestId, string], undefined>,
+  'removeBitcoinAddress' : ActorMethod<[string], undefined>,
   'requestWithdrawal' : ActorMethod<
     [BitcoinAmount, string, [] | [string]],
     WithdrawalRequestId
   >,
+  'rotatePrimaryAddress' : ActorMethod<[BitcoinAddress], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendCreditsToPeer' : ActorMethod<[Principal, BitcoinAmount], PeerTransferId>,
-  'setBlockchainApiConfig' : ActorMethod<[AdminConfig], undefined>,
-  'setReserveMultisigConfig' : ActorMethod<[ReserveMultisigConfig], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

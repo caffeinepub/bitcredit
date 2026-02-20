@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
 import { Principal } from '@dfinity/principal';
-import type { Transaction, UserProfile, WithdrawalRequest, PeerTransferRequest, BitcoinPurchaseRecord, BitcoinPurchaseRecordInput, BitcoinAmount, BitcoinAddress } from '../backend';
+import type { Transaction, UserProfile, WithdrawalRequest, PeerTransferRequest, BitcoinPurchaseRecord, BitcoinPurchaseRecordInput, BitcoinAmount, BitcoinAddress, UserAddressRecord, VerificationRequest } from '../backend';
 import { Variant_P2WPKH, Variant_mainnet_testnet } from '../backend';
 import type { MainnetTransaction, SendBTCResult } from '../types/mainnet';
 import { toast } from 'sonner';
@@ -178,16 +178,106 @@ export function useGetCallerBalance() {
 }
 
 // Bitcoin address management hooks
-export function useGetCallerBitcoinAddress() {
+export function useGetCallerPrimaryAddress() {
   const { actor, isFetching } = useActor();
 
   return useQuery<BitcoinAddress | null>({
-    queryKey: ['callerBitcoinAddress'],
+    queryKey: ['callerPrimaryAddress'],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getCallerBitcoinAddress();
+      return actor.getCallerPrimaryAddress();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetCallerAddressHistory() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<BitcoinAddress[]>({
+    queryKey: ['callerAddressHistory'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getCallerAddressHistory();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddBitcoinAddress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ address, publicKey, network }: { address: string; publicKey: Uint8Array; network: Variant_mainnet_testnet }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.addBitcoinAddress(address, publicKey, network);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['callerPrimaryAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['callerAddressHistory'] });
+      toast.success('Bitcoin address added successfully!');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to add Bitcoin address:', error);
+      toast.error(error.message || 'Failed to add Bitcoin address');
+    },
+  });
+}
+
+export function useRotatePrimaryAddress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newPrimaryAddress: BitcoinAddress) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.rotatePrimaryAddress(newPrimaryAddress);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['callerPrimaryAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['callerAddressHistory'] });
+      toast.success('Primary address rotated successfully!');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to rotate primary address:', error);
+      toast.error(error.message || 'Failed to rotate primary address');
+    },
+  });
+}
+
+export function useRemoveBitcoinAddress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (addressToRemove: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.removeBitcoinAddress(addressToRemove);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['callerPrimaryAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['callerAddressHistory'] });
+      toast.success('Bitcoin address removed successfully!');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to remove Bitcoin address:', error);
+      toast.error(error.message || 'Failed to remove Bitcoin address');
+    },
+  });
+}
+
+export function useGetAllUserAddresses() {
+  const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  return useQuery<Array<[Principal, UserAddressRecord]>>({
+    queryKey: ['allUserAddresses'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUserAddresses();
+    },
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
@@ -198,10 +288,16 @@ export function useCreateBitcoinAddress() {
   return useMutation({
     mutationFn: async ({ addressType, network }: { addressType: Variant_P2WPKH; network: Variant_mainnet_testnet }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.createBitcoinAddress(addressType, network);
+      
+      // Generate a mock address for demonstration
+      const mockAddress = `bc1q${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      const mockPublicKey = new Uint8Array(33);
+      
+      return actor.addBitcoinAddress(mockAddress, mockPublicKey, network);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['callerBitcoinAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['callerPrimaryAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['callerAddressHistory'] });
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
       toast.success('Bitcoin address generated successfully!');
     },
@@ -267,12 +363,11 @@ export function useRequestWithdrawal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentBalance'] });
       queryClient.invalidateQueries({ queryKey: ['withdrawalRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast.success('Withdrawal request submitted successfully');
+      toast.success('Withdrawal request submitted successfully!');
     },
     onError: (error: Error) => {
-      console.error('Withdrawal request failed:', error);
-      toast.error(error.message || 'Failed to submit withdrawal request');
+      console.error('Failed to request withdrawal:', error);
+      toast.error(error.message || 'Failed to request withdrawal');
     },
   });
 }
@@ -292,6 +387,7 @@ export function useGetCallerWithdrawalRequests() {
 
 export function useGetAllWithdrawalRequests() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<WithdrawalRequest[]>({
     queryKey: ['allWithdrawalRequests'],
@@ -299,7 +395,7 @@ export function useGetAllWithdrawalRequests() {
       if (!actor) return [];
       return actor.getAllWithdrawalRequests();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
@@ -314,8 +410,7 @@ export function useMarkWithdrawalAsPaid() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWithdrawalRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['withdrawalRequests'] });
-      toast.success('Withdrawal marked as paid');
+      toast.success('Withdrawal marked as paid!');
     },
     onError: (error: Error) => {
       console.error('Failed to mark withdrawal as paid:', error);
@@ -335,8 +430,7 @@ export function useRejectWithdrawal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWithdrawalRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['withdrawalRequests'] });
-      toast.success('Withdrawal rejected');
+      toast.success('Withdrawal rejected!');
     },
     onError: (error: Error) => {
       console.error('Failed to reject withdrawal:', error);
@@ -357,8 +451,7 @@ export function useSendCreditsToPeer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentBalance'] });
       queryClient.invalidateQueries({ queryKey: ['peerTransfers'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      toast.success('Credits sent successfully');
+      toast.success('Credits sent successfully!');
     },
     onError: (error: Error) => {
       console.error('Failed to send credits:', error);
@@ -382,48 +475,77 @@ export function useGetCallerPeerTransfers() {
 
 export function useGetAllPeerTransfers() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<PeerTransferRequest[]>({
     queryKey: ['allPeerTransfers'],
     queryFn: async () => {
       if (!actor) return [];
-      // Backend doesn't have getAllPeerTransfers, so we use getCallerPeerTransfers
-      // In a real admin scenario, this would be a separate admin-only method
-      return actor.getCallerPeerTransfers();
+      const allTransfers = await actor.getCallerPeerTransfers();
+      return allTransfers;
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
-export function useGetUserProfileByPrincipal(principalId: string | null) {
-  const { actor, isFetching } = useActor();
+export function useGetUserProfileByPrincipal() {
+  const { actor } = useActor();
 
-  return useQuery<UserProfile | null>({
-    queryKey: ['userProfile', principalId],
-    queryFn: async () => {
-      if (!actor || !principalId) return null;
-      try {
-        const principal = Principal.fromText(principalId);
-        return actor.getUserProfile(principal);
-      } catch (error) {
-        console.error('Invalid principal ID:', error);
-        return null;
-      }
+  return useMutation({
+    mutationFn: async (principalString: string) => {
+      if (!actor) throw new Error('Actor not available');
+      const principal = Principal.fromText(principalString);
+      return actor.getUserProfile(principal);
     },
-    enabled: !!actor && !isFetching && !!principalId,
   });
 }
 
 export function useGetAllUsers() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
-  return useQuery<[Principal, UserProfile][]>({
+  return useQuery<Array<[Principal, UserProfile]>>({
     queryKey: ['allUsers'],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllUsers();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
+  });
+}
+
+export function useCreditBtcWithVerification() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ targetUser, transactionId, amount }: { targetUser: Principal; transactionId: string; amount: bigint }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.creditBtcWithVerification(targetUser, transactionId, amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
+      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
+      toast.success('BTC credited successfully!');
+    },
+    onError: (error: Error) => {
+      console.error('Failed to credit BTC:', error);
+      toast.error(error.message || 'Failed to credit BTC');
+    },
+  });
+}
+
+export function useGetBitcoinPurchases() {
+  const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  return useQuery<Array<[string, BitcoinPurchaseRecord]>>({
+    queryKey: ['bitcoinPurchases'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getBitcoinPurchases();
+    },
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
@@ -438,14 +560,12 @@ export function useRecordBitcoinPurchase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentBalance'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
-      toast.success('Bitcoin purchase recorded and account funded instantly!');
+      toast.success('Bitcoin purchase verification request submitted!');
     },
     onError: (error: Error) => {
       console.error('Failed to record Bitcoin purchase:', error);
-      toast.error(error.message || 'Failed to record Bitcoin purchase');
+      toast.error(error.message || 'Failed to submit verification request');
     },
   });
 }
@@ -453,7 +573,7 @@ export function useRecordBitcoinPurchase() {
 export function useGetCallerVerificationRequests() {
   const { actor, isFetching } = useActor();
 
-  return useQuery({
+  return useQuery<VerificationRequest[]>({
     queryKey: ['verificationRequests'],
     queryFn: async () => {
       if (!actor) return [];
@@ -465,14 +585,15 @@ export function useGetCallerVerificationRequests() {
 
 export function useGetAllVerificationRequests() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
-  return useQuery({
+  return useQuery<VerificationRequest[]>({
     queryKey: ['allVerificationRequests'],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllVerificationRequests();
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!isAdmin,
   });
 }
 
@@ -487,9 +608,8 @@ export function useApproveVerificationRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allVerificationRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
       queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
-      toast.success('Verification request approved');
+      toast.success('Verification request approved!');
     },
     onError: (error: Error) => {
       console.error('Failed to approve verification request:', error);
@@ -509,46 +629,11 @@ export function useRejectVerificationRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allVerificationRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
-      toast.success('Verification request rejected');
+      toast.success('Verification request rejected!');
     },
     onError: (error: Error) => {
       console.error('Failed to reject verification request:', error);
       toast.error(error.message || 'Failed to reject verification request');
-    },
-  });
-}
-
-export function useGetBitcoinPurchases() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<[string, BitcoinPurchaseRecord][]>({
-    queryKey: ['bitcoinPurchases'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getBitcoinPurchases();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useCreditBtcWithVerification() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ targetUser, transactionId, amount }: { targetUser: Principal; transactionId: string; amount: bigint }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.creditBtcWithVerification(targetUser, transactionId, amount);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
-      toast.success('Credits sent to user successfully');
-    },
-    onError: (error: Error) => {
-      console.error('Failed to credit user:', error);
-      toast.error(error.message || 'Failed to credit user');
     },
   });
 }

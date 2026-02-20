@@ -1,125 +1,179 @@
 {
   "kind": "build_request",
-  "title": "Implement Bitcoin address generation and transaction signing framework",
-  "projectName": "Bitcoin Transfer",
-  "priority": "high",
+  "title": "Implement address management framework",
+  "projectName": "Bitcoin Credit Transfer",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement backend framework for generating Bitcoin P2WPKH (Segwit) addresses. Add a backend method that generates a valid Bitcoin receiving address for authenticated users, ensuring the address follows P2WPKH format (bc1... for mainnet, tb1... for testnet). Store the generated address associated with the user's principal in stable storage.",
+      "text": "Create a comprehensive Bitcoin address management system in the backend that stores addresses with their metadata (address type, network, derivation path, creation timestamp, and usage status)",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-user-final"
         ],
         "quotes": [
-          "Implement all necessary framework for functions",
-          "Focus on address generation working"
+          "Implement all necessary framework for working addresses"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes a method to generate Bitcoin P2WPKH addresses",
-        "Generated addresses are valid Segwit format (bc1... or tb1...)",
-        "Addresses are persisted in stable storage linked to user principals",
-        "Method handles both mainnet and testnet network contexts"
+        "Backend maintains a persistent map of user principals to their Bitcoin addresses",
+        "Each address record includes type (P2WPKH), network (mainnet), derivation information, creation timestamp, and active/inactive status",
+        "System supports querying addresses by user principal",
+        "System supports marking addresses as used/unused for address rotation"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement backend framework for Bitcoin transaction signing. Add backend functionality to create and sign Bitcoin transactions using ECDSA with proper Segwit witness data structure. The signing process must handle P2WPKH inputs and generate valid transaction signatures without exposing private keys.",
+      "text": "Implement backend methods for address lifecycle operations including getUserAddress, generateNewAddress, markAddressAsUsed, and listUserAddresses",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-user-final"
         ],
         "quotes": [
-          "Implement all necessary framework for functions",
-          "Troubleshoot back error implement all framework needed for targeted functions"
+          "Implement all necessary framework for working addresses"
         ]
       },
       "acceptanceCriteria": [
-        "Backend can construct raw Bitcoin transactions with proper input/output structure",
-        "ECDSA signing produces valid signatures for Segwit transactions",
-        "Witness data is correctly formatted for P2WPKH inputs",
-        "Private keys remain secure and are never exposed in responses"
+        "getUserAddress returns the current active address for a user or generates one if none exists",
+        "generateNewAddress creates a new P2WPKH mainnet address and stores it with metadata",
+        "markAddressAsUsed updates address status when funds are received",
+        "listUserAddresses returns all addresses associated with a user principal with their metadata"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Implement backend framework for broadcasting signed Bitcoin transactions to the network. Add HTTP outcall functionality to broadcast signed transaction hex to multiple public Bitcoin API providers (blockchain.info, blockcypher.com). Track broadcast attempts and handle provider failures with fallback logic.",
+      "text": "Add address validation utilities to verify Bitcoin address format, checksum, and network compatibility before processing",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-user-final"
         ],
         "quotes": [
-          "Implement all necessary framework for functions",
-          "implement all framework needed for targeted functions"
+          "Implement all necessary framework for working addresses"
         ]
       },
       "acceptanceCriteria": [
-        "Backend makes HTTP outcalls to broadcast transaction hex to public APIs",
-        "Multiple provider endpoints are attempted with fallback logic",
-        "Broadcast success/failure is tracked per provider",
-        "Transaction hash is returned on successful broadcast"
+        "Validation function checks address format (bech32 for P2WPKH)",
+        "Validation verifies address checksum correctness",
+        "Validation confirms address matches expected network (mainnet)",
+        "Invalid addresses return clear error messages indicating the specific validation failure"
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Update frontend BitcoinAddressDisplay component to successfully fetch and display generated Bitcoin addresses from the backend. Ensure the component handles loading states, error states, and successfully renders the generated address with QR code and copy functionality.",
-      "target": "frontend",
+      "text": "Implement address rotation logic that automatically generates a new address after the current one receives funds, maintaining address privacy best practices",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-user-final"
         ],
         "quotes": [
-          "Focus on address generation working"
+          "Implement all necessary framework for working addresses"
         ]
       },
       "acceptanceCriteria": [
-        "Component successfully calls backend address generation method",
-        "Loading state is shown while fetching address",
-        "Generated address is displayed with QR code",
-        "Copy-to-clipboard functionality works for the address",
-        "Error states are handled gracefully with user feedback"
+        "When funds are detected at an address, the system marks it as used",
+        "A new address is automatically generated and set as the active receiving address",
+        "Users always have exactly one active receiving address at any time",
+        "Address history is preserved for transaction tracking and reconciliation"
       ]
     },
     {
       "id": "REQ-5",
-      "text": "Update frontend SendBtcPage to integrate with the new backend transaction signing and broadcasting framework. Connect the send form to backend methods that handle transaction construction, signing, and broadcasting. Display broadcast attempt logs and transaction status from the backend response.",
+      "text": "Update the BitcoinAddressDisplay component to support address rotation, showing the current active address and providing UI feedback when addresses change",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-recent"
+          "msg-user-final"
         ],
         "quotes": [
-          "Implement all necessary framework for functions"
+          "Implement all necessary framework for working addresses"
         ]
       },
       "acceptanceCriteria": [
-        "Send form successfully calls backend signing and broadcast methods",
-        "Transaction signing status is displayed to the user",
-        "Broadcast attempt logs from multiple providers are shown",
-        "Transaction hash is displayed on successful broadcast",
-        "Error handling shows specific failure reasons from backend"
+        "Component fetches and displays the user's current active receiving address",
+        "Refresh button generates a new address when clicked",
+        "UI shows loading state during address generation",
+        "Component displays a notice when a new address is provided due to rotation",
+        "QR code updates to reflect the current active address"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Add an address history view that displays all previously generated addresses for a user with their usage status, received amounts, and associated transactions",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-user-final"
+        ],
+        "quotes": [
+          "Implement all necessary framework for working addresses"
+        ]
+      },
+      "acceptanceCriteria": [
+        "View lists all addresses in reverse chronological order (newest first)",
+        "Each address entry shows creation date, status (active/used), and any received amounts",
+        "Clicking an address copies it to clipboard",
+        "Used addresses display links to their associated transactions",
+        "Active address is clearly highlighted and distinguished from historical ones"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Integrate address management with the existing transaction verification system to automatically link incoming Bitcoin transactions to the correct user address",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-user-final"
+        ],
+        "quotes": [
+          "Implement all necessary framework for working addresses"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a transaction is verified, the system identifies which user address received the funds",
+        "The receiving address is marked as used in the address management system",
+        "Transaction records include the receiving address for audit trail",
+        "Address-to-user mapping is used to credit the correct account"
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Add admin capabilities to view and manage user addresses including listing all addresses, searching by address or principal, and viewing address usage statistics",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-user-final"
+        ],
+        "quotes": [
+          "Implement all necessary framework for working addresses"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Admin can view all addresses across all users with filtering and search",
+        "Admin page displays address statistics (total addresses, active vs used, addresses per user)",
+        "Admin can search for addresses by Bitcoin address or user principal",
+        "Admin view shows address metadata including creation time and transaction history",
+        "Admin operations are properly access-controlled and logged"
       ]
     }
   ],
   "constraints": [
-    "Use only Motoko for backend implementation",
-    "All Bitcoin operations must use HTTP outcalls to public APIs",
-    "Private keys must never be exposed in API responses or frontend code",
-    "Maintain single-actor architecture in backend/main.mo",
-    "Do not modify files in frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts",
-    "Use existing React Query patterns from frontend/src/hooks/useQueries.ts"
+    "All address generation must use P2WPKH (Native SegWit) format on mainnet",
+    "Address metadata must be stored in the existing userBitcoinAddresses map structure defined in migration.mo",
+    "Do not modify the core authentication system in useInternetIdentity.ts or useActor.ts",
+    "Address validation must follow Bitcoin mainnet bech32 encoding standards",
+    "Preserve existing transaction history and balance tracking functionality"
   ],
   "nonGoals": [
-    "Integration with Bitcoin Core RPC (not accessible from Internet Computer)",
-    "Private key management UI or user-facing key export",
-    "Multi-signature wallet functionality",
-    "Lightning Network integration",
-    "Hardware wallet integration",
-    "Real-time WebSocket connections for transaction monitoring"
+    "Multi-signature address support",
+    "Support for non-SegWit address formats (P2PKH, P2SH)",
+    "Testnet or alternative network address generation",
+    "External wallet integration or address import functionality",
+    "Address labeling or custom naming features",
+    "Automatic address sweeping or consolidation"
   ],
   "imageRequirements": {
     "required": [],

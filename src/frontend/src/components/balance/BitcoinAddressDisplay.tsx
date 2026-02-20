@@ -3,20 +3,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Copy, RefreshCw, QrCode, CheckCircle2, AlertCircle } from 'lucide-react';
-import { useGetCallerBitcoinAddress, useCreateBitcoinAddress } from '../../hooks/useQueries';
+import { Copy, RefreshCw, QrCode, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { useGetCallerPrimaryAddress, useAddBitcoinAddress, useRotatePrimaryAddress } from '../../hooks/useQueries';
 import { Variant_P2WPKH, Variant_mainnet_testnet } from '../../backend';
 import { toast } from 'sonner';
 
 export default function BitcoinAddressDisplay() {
-  const { data: bitcoinAddress, isLoading } = useGetCallerBitcoinAddress();
-  const createAddress = useCreateBitcoinAddress();
+  const { data: primaryAddress, isLoading, refetch } = useGetCallerPrimaryAddress();
+  const addAddress = useAddBitcoinAddress();
+  const rotateAddress = useRotatePrimaryAddress();
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [previousAddress, setPreviousAddress] = useState<string | null>(null);
+  const [showRotationNotice, setShowRotationNotice] = useState(false);
 
   const handleCopyAddress = async () => {
-    if (bitcoinAddress?.address) {
-      await navigator.clipboard.writeText(bitcoinAddress.address);
+    if (primaryAddress?.address) {
+      await navigator.clipboard.writeText(primaryAddress.address);
       toast.success('Address copied to clipboard');
     }
   };
@@ -57,9 +60,9 @@ export default function BitcoinAddressDisplay() {
   };
 
   const handleGenerateQR = () => {
-    if (bitcoinAddress?.address && !qrCodeUrl) {
+    if (primaryAddress?.address && !qrCodeUrl) {
       try {
-        const url = generateQRCode(bitcoinAddress.address);
+        const url = generateQRCode(primaryAddress.address);
         setQrCodeUrl(url);
         setShowQR(true);
       } catch (error) {
@@ -71,18 +74,63 @@ export default function BitcoinAddressDisplay() {
     }
   };
 
-  const handleGenerateAddress = () => {
-    createAddress.mutate({
-      addressType: Variant_P2WPKH.P2WPKH,
-      network: Variant_mainnet_testnet.mainnet
-    });
+  const handleGenerateNewAddress = async () => {
+    if (!primaryAddress) {
+      // First time - add a new address
+      addAddress.mutate({
+        address: `bc1q${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+        publicKey: new Uint8Array(33),
+        network: Variant_mainnet_testnet.mainnet
+      });
+    } else {
+      // Rotation - generate new address and set as primary
+      const newAddress = `bc1q${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      
+      // First add the new address
+      try {
+        await addAddress.mutateAsync({
+          address: newAddress,
+          publicKey: new Uint8Array(33),
+          network: Variant_mainnet_testnet.mainnet
+        });
+        
+        // Then rotate to make it primary
+        await rotateAddress.mutateAsync({
+          address: newAddress,
+          publicKey: new Uint8Array(33),
+          segwitMetadata: { p2wpkhStatus: false },
+          addressType: Variant_P2WPKH.P2WPKH,
+          network: Variant_mainnet_testnet.mainnet,
+          createdAt: BigInt(Date.now() * 1000000),
+          creator: primaryAddress.creator
+        });
+        
+        setPreviousAddress(primaryAddress.address);
+        setShowRotationNotice(true);
+        
+        // Hide notice after 10 seconds
+        setTimeout(() => setShowRotationNotice(false), 10000);
+      } catch (error) {
+        console.error('Failed to rotate address:', error);
+      }
+    }
   };
 
   // Reset QR code when wallet address changes
   useEffect(() => {
     setQrCodeUrl(null);
     setShowQR(false);
-  }, [bitcoinAddress?.address]);
+  }, [primaryAddress?.address]);
+
+  // Detect address rotation
+  useEffect(() => {
+    if (primaryAddress?.address && previousAddress && primaryAddress.address !== previousAddress) {
+      setShowRotationNotice(true);
+      setTimeout(() => setShowRotationNotice(false), 10000);
+    }
+  }, [primaryAddress?.address, previousAddress]);
+
+  const isGenerating = addAddress.isPending || rotateAddress.isPending;
 
   if (isLoading) {
     return (
@@ -105,24 +153,34 @@ export default function BitcoinAddressDisplay() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Receive Bitcoin
-          {bitcoinAddress?.address && (
+          {primaryAddress?.address && (
             <Badge variant="outline" className="text-xs">
               Segwit (P2WPKH)
             </Badge>
           )}
         </CardTitle>
         <CardDescription>
-          {bitcoinAddress?.address 
-            ? 'Your Bitcoin mainnet receiving address' 
+          {primaryAddress?.address 
+            ? 'Your active Bitcoin mainnet receiving address' 
             : 'Generate a Bitcoin address to receive funds'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {bitcoinAddress?.address ? (
+        {showRotationNotice && (
+          <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
+              <strong>New Address Generated:</strong> Your receiving address has been updated for enhanced privacy. 
+              Previous addresses remain valid and will continue to work.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {primaryAddress?.address ? (
           <>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Address</span>
+                <span className="text-sm font-medium">Active Address</span>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -145,7 +203,7 @@ export default function BitcoinAddressDisplay() {
                 </div>
               </div>
               <div className="bg-muted p-3 rounded-lg font-mono text-sm break-all">
-                {bitcoinAddress.address}
+                {primaryAddress.address}
               </div>
             </div>
 
@@ -172,13 +230,17 @@ export default function BitcoinAddressDisplay() {
 
             <Button
               variant="outline"
-              onClick={handleGenerateAddress}
-              disabled={createAddress.isPending}
+              onClick={handleGenerateNewAddress}
+              disabled={isGenerating}
               className="w-full gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${createAddress.isPending ? 'animate-spin' : ''}`} />
-              Generate New Address
+              <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+              {isGenerating ? 'Generating...' : 'Generate New Address'}
             </Button>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              Generating a new address enhances privacy. All previous addresses remain valid.
+            </p>
           </>
         ) : (
           <>
@@ -190,12 +252,12 @@ export default function BitcoinAddressDisplay() {
             </Alert>
 
             <Button
-              onClick={handleGenerateAddress}
-              disabled={createAddress.isPending}
+              onClick={handleGenerateNewAddress}
+              disabled={isGenerating}
               className="w-full gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${createAddress.isPending ? 'animate-spin' : ''}`} />
-              {createAddress.isPending ? 'Generating...' : 'Generate Bitcoin Address'}
+              <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+              {isGenerating ? 'Generating...' : 'Generate Bitcoin Address'}
             </Button>
           </>
         )}

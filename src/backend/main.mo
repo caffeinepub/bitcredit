@@ -2,10 +2,10 @@ import List "mo:core/List";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
-import Float "mo:core/Float";
 import Nat "mo:core/Nat";
+import Float "mo:core/Float";
 import Iter "mo:core/Iter";
-import Runtime "mo:core/Runtime";
+import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
@@ -55,7 +55,7 @@ actor {
   let accessControlState = AccessControl.initState();
   let verificationRequests = Map.empty<VerificationRequestId, VerificationRequest>();
   var verificationRequestIdCounter : VerificationRequestId = 0;
-  let userBitcoinAddresses = Map.empty<Principal, BitcoinAddress>();
+  let userAddressRecords = Map.empty<Principal, UserAddressRecord>();
   include MixinAuthorization(accessControlState);
 
   func checkedSub(x : BitcoinAmount, y : BitcoinAmount) : BitcoinAmount {
@@ -126,6 +126,9 @@ actor {
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view profiles");
+    };
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
@@ -578,88 +581,6 @@ actor {
     };
   };
 
-  // Bitcoin address management
-  public type BitcoinAddress = {
-    address : Text;
-    publicKey : Blob;
-    segwitMetadata : SegwitMetadata;
-    addressType : { #P2WPKH };
-    network : { #mainnet; #testnet };
-    createdAt : Time.Time;
-    creator : Principal;
-  };
-
-  public shared ({ caller }) func createBitcoinAddress(addressType : { #P2WPKH }, network : { #mainnet; #testnet }) : async Text {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can create Bitcoin addresses");
-    };
-
-    // Check if user already has an address
-    switch (userBitcoinAddresses.get(caller)) {
-      case (?existingAddress) {
-        Runtime.trap("User already has a Bitcoin address");
-      };
-      case null {
-        // Proceed with address creation
-      };
-    };
-
-    // Address type handling can be extended in the future if needed
-    // Implement logic for mainnet and testnet address creation
-    let createdAt = Time.now();
-    let segwitMetadata : SegwitMetadata = {
-      p2wpkhStatus = (addressType == #P2WPKH);
-    };
-
-    let bitcoinAddress : BitcoinAddress = {
-      address = "N/A";
-      publicKey = "" : Blob;
-      segwitMetadata;
-      addressType;
-      network;
-      createdAt;
-      creator = caller;
-    };
-
-    userBitcoinAddresses.add(caller, bitcoinAddress);
-    bitcoinAddress.address;
-  };
-
-  public query ({ caller }) func getCallerBitcoinAddress() : async ?BitcoinAddress {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only authenticated users can view Bitcoin addresses");
-    };
-    userBitcoinAddresses.get(caller);
-  };
-
-  public query ({ caller }) func getUserBitcoinAddress(user : Principal) : async ?BitcoinAddress {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own Bitcoin address");
-    };
-    userBitcoinAddresses.get(user);
-  };
-
-  public shared ({ caller }) func setReserveMultisigConfig(config : ReserveMultisigConfig) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can configure reserve multisig");
-    };
-    reserveMultisigConfig := ?config;
-  };
-
-  public query ({ caller }) func getReserveMultisigConfig() : async ?ReserveMultisigConfig {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can view reserve multisig configuration");
-    };
-    reserveMultisigConfig;
-  };
-
-  public shared ({ caller }) func setBlockchainApiConfig(config : AdminConfig) : async () {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can configure blockchain API");
-    };
-    blockchainApiConfig := ?config;
-  };
-
   public query ({ caller }) func getBlockchainApiConfig() : async ?AdminConfig {
     if (not (AccessControl.isAdmin(accessControlState, caller))) {
       Runtime.trap("Unauthorized: Only admins can view blockchain API configuration");
@@ -667,6 +588,7 @@ actor {
     blockchainApiConfig;
   };
 
+  // Types
   public type BitcoinPurchaseRecord = {
     transactionId : Text;
     amount : BitcoinAmount;
@@ -952,5 +874,171 @@ actor {
     requestId : ?Nat;
     recordsUpdated : Bool;
     diagnosticData : ?Text;
+  };
+
+  public type BitcoinAddress = {
+    address : Text;
+    publicKey : Blob;
+    segwitMetadata : SegwitMetadata;
+    addressType : { #P2WPKH };
+    network : { #mainnet; #testnet };
+    createdAt : Time.Time;
+    creator : Principal;
+  };
+
+  public type UserAddressRecord = {
+    addresses : [BitcoinAddress];
+    primaryAddress : ?BitcoinAddress;
+    lastRotated : ?Time.Time;
+    network : { #mainnet; #testnet };
+  };
+  public shared ({ caller }) func addBitcoinAddress(address : Text, publicKey : Blob, network : { #mainnet; #testnet }) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can add Bitcoin addresses");
+    };
+
+    let segwitMetadata : SegwitMetadata = { p2wpkhStatus = false };
+    let bitcoinAddress : BitcoinAddress = {
+      address;
+      publicKey;
+      segwitMetadata;
+      addressType = #P2WPKH;
+      network;
+      createdAt = Time.now();
+      creator = caller;
+    };
+
+    let currentRecord = switch (userAddressRecords.get(caller)) {
+      case (?record) { record };
+      case (null) {
+        {
+          addresses = [];
+          primaryAddress = null;
+          lastRotated = null;
+          network;
+        };
+      };
+    };
+
+    let addressExists = currentRecord.addresses.any(
+      func(existingAddr) { existingAddr.address == address }
+    );
+    if (addressExists) {
+      Runtime.trap("Address already exists in records");
+    };
+
+    let updatedAddresses = currentRecord.addresses.concat([bitcoinAddress]);
+    let updatedRecord : UserAddressRecord = {
+      addresses = updatedAddresses;
+      primaryAddress = if (currentRecord.primaryAddress == null) { ?bitcoinAddress } else { currentRecord.primaryAddress };
+      lastRotated = currentRecord.lastRotated;
+      network = network;
+    };
+
+    userAddressRecords.add(caller, updatedRecord);
+    address;
+  };
+
+  public query ({ caller }) func getCallerPrimaryAddress() : async ?BitcoinAddress {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view primary address");
+    };
+    switch (userAddressRecords.get(caller)) {
+      case (?record) { record.primaryAddress };
+      case (null) { null };
+    };
+  };
+
+  public query ({ caller }) func getCallerAddressHistory() : async [BitcoinAddress] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can view address history");
+    };
+    switch (userAddressRecords.get(caller)) {
+      case (?record) { record.addresses };
+      case (null) { [] };
+    };
+  };
+
+  public shared ({ caller }) func rotatePrimaryAddress(newPrimaryAddress : BitcoinAddress) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can rotate primary address");
+    };
+
+    let currentRecord = switch (userAddressRecords.get(caller)) {
+      case (?record) { record };
+      case (null) { Runtime.trap("No address record found for user") };
+    };
+
+    let addressExists = currentRecord.addresses.any(
+      func(existingAddr) { existingAddr.address == newPrimaryAddress.address }
+    );
+    if (not addressExists) {
+      Runtime.trap("Address not found in records");
+    };
+
+    let updatedRecord : UserAddressRecord = {
+      addresses = currentRecord.addresses;
+      primaryAddress = ?newPrimaryAddress;
+      lastRotated = ?Time.now();
+      network = currentRecord.network;
+    };
+
+    userAddressRecords.add(caller, updatedRecord);
+  };
+
+  public shared ({ caller }) func removeBitcoinAddress(addressToRemove : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only authenticated users can remove Bitcoin addresses");
+    };
+
+    let currentRecord = switch (userAddressRecords.get(caller)) {
+      case (?record) { record };
+      case (null) { Runtime.trap("No address record found for user") };
+    };
+
+    let addressExists = currentRecord.addresses.any(
+      func(existingAddr) { existingAddr.address == addressToRemove }
+    );
+    if (not addressExists) {
+      Runtime.trap("Address not found in records");
+    };
+
+    let remainingAddresses = currentRecord.addresses.filter(
+      func(addr) { addr.address != addressToRemove }
+    );
+
+    let updatedPrimaryAddress = switch (currentRecord.primaryAddress) {
+      case (null) { null };
+      case (?primaryAddress) {
+        if (primaryAddress.address == addressToRemove) { null } else {
+          ?primaryAddress;
+        };
+      };
+    };
+
+    let updatedLastRotated = switch (currentRecord.primaryAddress) {
+      case (null) { null };
+      case (?primaryAddress) {
+        if (primaryAddress.address == addressToRemove) { null } else {
+          currentRecord.lastRotated;
+        };
+      };
+    };
+
+    let updatedRecord : UserAddressRecord = {
+      addresses = remainingAddresses;
+      primaryAddress = updatedPrimaryAddress;
+      lastRotated = updatedLastRotated;
+      network = currentRecord.network;
+    };
+
+    userAddressRecords.add(caller, updatedRecord);
+  };
+
+  public query ({ caller }) func getAllUserAddresses() : async [(Principal, UserAddressRecord)] {
+    if (not (AccessControl.isAdmin(accessControlState, caller))) {
+      Runtime.trap("Unauthorized: Only admins can view all addresses");
+    };
+    userAddressRecords.toArray();
   };
 };

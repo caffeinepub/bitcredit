@@ -1,6 +1,8 @@
 import AppLayout from '../components/layout/AppLayout';
 import BitcoinAddressDisplay from '../components/balance/BitcoinAddressDisplay';
+import AddressHistoryView from '../components/balance/AddressHistoryView';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Info } from 'lucide-react';
 
 export default function ReceiveBtcPage() {
@@ -35,15 +37,28 @@ export default function ReceiveBtcPage() {
             </AlertDescription>
           </Alert>
 
-          <BitcoinAddressDisplay />
-
-          <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
-            <Info className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
-              <strong>Security Notice:</strong> Always verify the address before sending funds. 
-              This application uses Segwit (P2WPKH) addresses for lower transaction fees and better security.
-            </AlertDescription>
-          </Alert>
+          <Tabs defaultValue="active" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="active">Active Address</TabsTrigger>
+              <TabsTrigger value="history">Address History</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="active" className="space-y-4">
+              <BitcoinAddressDisplay />
+              
+              <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  <strong>Security Notice:</strong> Always verify the address before sending funds. 
+                  This application uses Segwit (P2WPKH) addresses for lower transaction fees and better security.
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
+            
+            <TabsContent value="history" className="space-y-4">
+              <AddressHistoryView />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </AppLayout>
