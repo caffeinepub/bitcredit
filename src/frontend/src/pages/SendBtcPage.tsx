@@ -5,13 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Send, AlertCircle, ShieldAlert, Info, CheckCircle2 } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
 import BroadcastingDetailsNote from '../components/transfers/BroadcastingDetailsNote';
 import MainnetTransactionAlert from '../components/transfers/MainnetTransactionAlert';
 import ProviderDiagnosticsCard from '../components/transfers/ProviderDiagnosticsCard';
 import BestPracticesSection from '../components/transfers/BestPracticesSection';
 import TransactionConfirmationProgress from '../components/transfers/TransactionConfirmationProgress';
-import { useSendBtc } from '../hooks/useQueries';
+import { useSendBTC } from '../hooks/useQueries';
 import { useGetCallerBalance } from '../hooks/useQueries';
 import { normalizeError } from '../utils/errors';
 import { isValidSegwitAddress } from '../utils/transactionStatus';
@@ -25,9 +24,8 @@ export default function SendBtcPage() {
   const [errorContext, setErrorContext] = useState<string>('');
   const [successTxId, setSuccessTxId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string>('');
-  
-  const navigate = useNavigate();
-  const sendBtcMutation = useSendBtc();
+
+  const sendBtcMutation = useSendBTC();
   const { data: balance } = useGetCallerBalance();
 
   const requestedAmount = amount && Number(amount) > 0 ? BigInt(amount) : BigInt(0);
@@ -61,7 +59,7 @@ export default function SendBtcPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -89,7 +87,7 @@ export default function SendBtcPage() {
     } catch (error: any) {
       const normalizedError = normalizeError(error);
       setErrorContext(normalizedError);
-      
+
       // Try to extract broadcast attempts from error if available
       if (error.broadcastAttempts) {
         setBroadcastAttempts(error.broadcastAttempts);
@@ -117,7 +115,8 @@ export default function SendBtcPage() {
           <AlertDescription className="text-green-800 dark:text-green-200">
             Your Bitcoin transaction has been successfully broadcast to the network.
             <div className="mt-2">
-              <strong>Transaction ID:</strong> <code className="bg-green-100 dark:bg-green-900 px-2 py-1 rounded">{successTxId}</code>
+              <strong>Transaction ID:</strong>{' '}
+              <code className="bg-green-100 dark:bg-green-900 px-2 py-1 rounded">{successTxId}</code>
             </div>
           </AlertDescription>
         </Alert>
@@ -132,9 +131,9 @@ export default function SendBtcPage() {
       <Alert className="mb-6 border-amber-500 bg-amber-50 dark:bg-amber-950">
         <ShieldAlert className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-800 dark:text-amber-200">
-          <strong>App-Managed Custodial Model:</strong> This application manages Bitcoin transactions on your behalf. 
-          The backend signs and broadcasts transactions to the mainnet blockchain using reserve-funded fees. 
-          You do not control private keys directly.
+          <strong>App-Managed Custodial Model:</strong> This application manages Bitcoin transactions on your behalf.
+          The backend signs and broadcasts transactions to the mainnet blockchain using reserve-funded fees. You do not
+          control private keys directly.
         </AlertDescription>
       </Alert>
 
@@ -155,9 +154,7 @@ export default function SendBtcPage() {
                 onChange={(e) => setDestination(e.target.value)}
                 disabled={isLoading}
               />
-              <p className="text-xs text-muted-foreground">
-                Supports P2WPKH and P2WSH Segwit addresses
-              </p>
+              <p className="text-xs text-muted-foreground">Supports P2WPKH and P2WSH Segwit addresses</p>
             </div>
 
             <div className="space-y-2">
@@ -173,9 +170,7 @@ export default function SendBtcPage() {
                 disabled={isLoading}
               />
               {balance !== undefined && (
-                <p className="text-xs text-muted-foreground">
-                  Available balance: {balance.toString()} satoshis
-                </p>
+                <p className="text-xs text-muted-foreground">Available balance: {balance.toString()} satoshis</p>
               )}
             </div>
 
@@ -211,11 +206,7 @@ export default function SendBtcPage() {
               </Alert>
             )}
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full"
-            >
+            <Button type="submit" disabled={isLoading} className="w-full">
               <Send className="mr-2 h-4 w-4" />
               {isLoading ? 'Sending...' : 'Send Bitcoin'}
             </Button>
@@ -226,32 +217,25 @@ export default function SendBtcPage() {
       {/* Transaction Confirmation Progress */}
       {successTxId && (
         <div className="mb-6">
-          <TransactionConfirmationProgress
-            txid={successTxId}
-            confirmations={0}
-            broadcastStatus="broadcast"
-          />
+          <TransactionConfirmationProgress txid={successTxId} confirmations={0} broadcastStatus="broadcast" />
         </div>
       )}
 
       {/* Provider Diagnostics Panel */}
       {broadcastAttempts.length > 0 && (
         <div className="mb-6">
-          <ProviderDiagnosticsCard 
-            broadcastAttempts={broadcastAttempts}
-            errorContext={errorContext}
-          />
+          <ProviderDiagnosticsCard broadcastAttempts={broadcastAttempts} errorContext={errorContext} />
         </div>
       )}
 
       {/* Best Practices & Troubleshooting */}
       {hasError && (
         <div className="mb-6">
-          <BestPracticesSection 
-            request={{ 
+          <BestPracticesSection
+            request={{
               failureReason: errorContext || sendBtcMutation.error?.message,
-              diagnosticData: errorContext 
-            }} 
+              diagnosticData: errorContext,
+            }}
             errorContext={errorContext}
           />
         </div>
@@ -264,30 +248,28 @@ export default function SendBtcPage() {
             <Info className="h-5 w-5 text-blue-600" />
             Bitcoin Transaction Broadcasting
           </CardTitle>
-          <CardDescription>
-            How Bitcoin transactions are processed
-          </CardDescription>
+          <CardDescription>How Bitcoin transactions are processed</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
             <h4 className="font-semibold text-sm mb-1">Transaction Signing</h4>
             <p className="text-sm text-muted-foreground">
-              The backend signs transactions using threshold ECDSA or managed private keys 
-              within the canister to ensure secure transaction signing.
+              The backend signs transactions using threshold ECDSA or managed private keys within the canister to ensure
+              secure transaction signing.
             </p>
           </div>
           <div>
             <h4 className="font-semibold text-sm mb-1">Broadcasting via HTTP Outcalls</h4>
             <p className="text-sm text-muted-foreground">
-              Signed transactions are broadcast to multiple blockchain APIs 
-              (e.g., blockstream.info, blockchain.info) using Internet Computer HTTP outcalls.
+              Signed transactions are broadcast to multiple blockchain APIs (e.g., blockstream.info, blockchain.info)
+              using Internet Computer HTTP outcalls.
             </p>
           </div>
           <div>
             <h4 className="font-semibold text-sm mb-1">Confirmation Tracking</h4>
             <p className="text-sm text-muted-foreground">
-              The system tracks transaction confirmations on the blockchain, 
-              with full confirmation typically requiring 6 blocks (~60 minutes).
+              The system tracks transaction confirmations on the blockchain, with full confirmation typically requiring 6
+              blocks (~60 minutes).
             </p>
           </div>
           <div>

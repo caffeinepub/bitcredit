@@ -1,57 +1,122 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-20T00:26:22.417Z",
+  "generatedAt": "2026-02-20T03:45:31.116Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 1,
+    "total": 10,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Fix backend recordBitcoinPurchase method to immediately update user balance when manual Bitcoin purchase inputs are submitted, ensuring the balance reflects the new credit instantly without delay",
+        "id": "REQ-11",
+        "summary": "Implement backend method to generate new self-custody Bitcoin wallet addresses using derived keys from the management canister. Store wallet metadata including derivation path, creation timestamp, and initial balance.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-2",
-        "summary": "Implement backend validation for manual Bitcoin purchase inputs to reject invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places)",
+        "id": "REQ-12",
+        "summary": "Create backend query method to fetch all self-custody wallets for the authenticated caller, returning wallet ID, Bitcoin address, creation date, and current balance for each wallet.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
-        "id": "REQ-3",
-        "summary": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
+        "id": "REQ-13",
+        "summary": "Implement backend method to create and record transfers from the user's platform balance to their self-custody wallet addresses. Validate sufficient balance, create transaction record with pending status, and deduct credits from platform balance.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-14",
+        "summary": "Create backend query method to retrieve self-custody transfer history for the authenticated caller, returning transfer ID, destination address, amount in satoshis, timestamp, and status (pending/confirmed/failed) for each transfer.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-15",
+        "summary": "Implement state migration logic in backend/migration.mo to add new stable storage structures for self-custody wallets and transfers without losing existing user balances, transactions, or withdrawal data.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-16",
+        "summary": "Enable the GenerateSelfCustodyWalletButton component by removing the disabled state and connecting it to the new backend wallet generation method. Display success confirmation with the generated wallet address.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/verification/ManualVerificationForm.tsx",
-          "frontend/src/components/buybtc/InstantFundingForm.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/utils/errors.ts"
+          "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/verification/ManualVerificationForm.tsx",
-          "frontend/src/components/buybtc/InstantFundingForm.tsx",
+          "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx"
+        ]
+      },
+      {
+        "id": "REQ-17",
+        "summary": "Replace the SelfCustodyWalletList placeholder alert with a functional component that fetches and displays all self-custody wallets from the backend, showing address, balance in BTC with USD estimate, creation date, and copy-to-clipboard action for each wallet.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx"
+        ]
+      },
+      {
+        "id": "REQ-18",
+        "summary": "Enable the TransferToSelfCustodyForm by removing disabled state and connecting it to the backend transfer creation method. Implement balance validation, wallet selection dropdown populated from user's self-custody wallets, and transfer confirmation flow.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx"
+        ]
+      },
+      {
+        "id": "REQ-19",
+        "summary": "Replace the SelfCustodyTransferHistoryTable placeholder alert with a functional table that fetches and displays transfer history from the backend, showing transfer ID, destination address, amount in BTC with USD estimate, timestamp, and status badge (pending/confirmed/failed) for each transfer.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx"
+        ]
+      },
+      {
+        "id": "REQ-20",
+        "summary": "Create React Query hooks in frontend/src/hooks/useQueries.ts for all self-custody backend operations: generateSelfCustodyWallet (mutation), getSelfCustodyWallets (query), createSelfCustodyTransfer (mutation), and getSelfCustodyTransferHistory (query). Include proper cache invalidation on mutations.",
+        "status": "implemented",
+        "plannedFiles": [
           "frontend/src/hooks/useQueries.ts",
-          "frontend/src/utils/errors.ts"
+          "frontend/src/types/selfcustody.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/buybtc/InstantFundingForm.tsx",
-    "frontend/src/components/verification/ManualVerificationForm.tsx",
+    "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyTransferSuccess.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx",
+    "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/SelfCustodyWalletsPage.tsx",
     "frontend/src/utils/errors.ts",
     "project_state.json",
     "scratch/component-selection.json",

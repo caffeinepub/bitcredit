@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import AppLayout from '../components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +14,7 @@ export default function SendToPeerPage() {
   const [amount, setAmount] = useState('');
   const [validationError, setValidationError] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [validatedRecipient, setValidatedRecipient] = useState<string | null>(null);
+  const [validatedRecipient, setValidatedRecipient] = useState<Principal | null>(null);
 
   const { data: balance } = useGetCallerBalance();
   const getUserProfile = useGetUserProfileByPrincipal();
@@ -29,10 +28,10 @@ export default function SendToPeerPage() {
 
     try {
       const principal = Principal.fromText(recipientId.trim());
-      setValidatedRecipient(principal.toString());
+      setValidatedRecipient(principal);
       
       // Fetch the recipient profile
-      await getUserProfile.mutateAsync(principal.toString());
+      await getUserProfile.mutateAsync(principal);
       
       return principal;
     } catch (error) {
@@ -64,11 +63,11 @@ export default function SendToPeerPage() {
   };
 
   const handleConfirmSend = async () => {
-    const principal = Principal.fromText(recipientId.trim());
+    if (!validatedRecipient) return;
 
     try {
       await sendMutation.mutateAsync({
-        recipient: principal,
+        recipient: validatedRecipient,
         amount: satoshiAmount,
       });
 
@@ -92,153 +91,151 @@ export default function SendToPeerPage() {
   }, [validatedRecipient]);
 
   return (
-    <AppLayout>
-      <div className="container max-w-2xl mx-auto py-8 px-4">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Send to Peer</h1>
-            <p className="text-muted-foreground">
-              Transfer credits to another user within the platform
-            </p>
-          </div>
+    <div className="container max-w-2xl mx-auto py-8 px-4">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Send to Peer</h1>
+          <p className="text-muted-foreground">
+            Transfer credits to another user within the platform
+          </p>
+        </div>
 
-          {balance !== undefined && (
-            <Alert>
-              <AlertDescription>
-                <strong>Your Balance:</strong> {balance.toString()} satoshis
-              </AlertDescription>
-            </Alert>
-          )}
+        {balance !== undefined && (
+          <Alert>
+            <AlertDescription>
+              <strong>Your Balance:</strong> {balance.toString()} satoshis
+            </AlertDescription>
+          </Alert>
+        )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Transfer Details</CardTitle>
-              <CardDescription>Enter the recipient's Principal ID and amount</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="recipientId">Recipient Principal ID</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="recipientId"
-                      type="text"
-                      placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxx"
-                      value={recipientId}
-                      onChange={(e) => {
-                        setRecipientId(e.target.value);
-                        setValidatedRecipient(null);
-                        getUserProfile.reset();
-                      }}
-                      disabled={sendMutation.isPending}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={validateRecipient}
-                      disabled={!recipientId.trim() || getUserProfile.isPending}
-                    >
-                      {getUserProfile.isPending ? 'Validating...' : 'Validate'}
-                    </Button>
-                  </div>
-                  {getUserProfile.isPending && (
-                    <p className="text-xs text-muted-foreground">Looking up recipient...</p>
-                  )}
-                  {getUserProfile.data && validatedRecipient && (
-                    <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
-                      <User className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-800 dark:text-green-200">
-                        <strong>Recipient:</strong> {getUserProfile.data.name}
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {!getUserProfile.data && validatedRecipient && !getUserProfile.isPending && getUserProfile.isSuccess && (
-                    <p className="text-xs text-amber-600">
-                      Recipient has not set up their profile yet, but you can still send credits.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount (satoshis)</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Transfer Details</CardTitle>
+            <CardDescription>Enter the recipient's Principal ID and amount</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="recipientId">Recipient Principal ID</Label>
+                <div className="flex gap-2">
                   <Input
-                    id="amount"
-                    type="number"
-                    min="1"
-                    step="1"
-                    placeholder="Enter amount in satoshis"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    id="recipientId"
+                    type="text"
+                    placeholder="xxxxx-xxxxx-xxxxx-xxxxx-xxx"
+                    value={recipientId}
+                    onChange={(e) => {
+                      setRecipientId(e.target.value);
+                      setValidatedRecipient(null);
+                      getUserProfile.reset();
+                    }}
                     disabled={sendMutation.isPending}
+                    className="flex-1"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={validateRecipient}
+                    disabled={!recipientId.trim() || getUserProfile.isPending}
+                  >
+                    {getUserProfile.isPending ? 'Validating...' : 'Validate'}
+                  </Button>
                 </div>
-
-                {validationError && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{validationError}</AlertDescription>
-                  </Alert>
+                {getUserProfile.isPending && (
+                  <p className="text-xs text-muted-foreground">Looking up recipient...</p>
                 )}
-
-                {sendMutation.isSuccess && (
+                {getUserProfile.data && validatedRecipient && (
                   <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <User className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800 dark:text-green-200">
-                      Credits sent successfully!
+                      <strong>Recipient:</strong> {getUserProfile.data.name}
                     </AlertDescription>
                   </Alert>
                 )}
-
-                <Button
-                  type="submit"
-                  disabled={sendMutation.isPending || !validatedRecipient}
-                  className="w-full"
-                >
-                  <Send className="mr-2 h-4 w-4" />
-                  {sendMutation.isPending ? 'Sending...' : 'Send Credits'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm Transfer</DialogTitle>
-                <DialogDescription>
-                  Please confirm the details of this peer-to-peer transfer
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <p className="text-sm font-medium">Recipient</p>
-                  {getUserProfile.data ? (
-                    <>
-                      <p className="text-sm text-muted-foreground">{getUserProfile.data.name}</p>
-                      <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
-                    </>
-                  ) : (
-                    <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Amount</p>
-                  <p className="text-sm text-muted-foreground">{satoshiAmount.toString()} satoshis</p>
-                </div>
+                {!getUserProfile.data && validatedRecipient && !getUserProfile.isPending && getUserProfile.isSuccess && (
+                  <p className="text-xs text-amber-600">
+                    Recipient has not set up their profile yet, but you can still send credits.
+                  </p>
+                )}
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
-                  {sendMutation.isPending ? 'Sending...' : 'Confirm Send'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (satoshis)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Enter amount in satoshis"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  disabled={sendMutation.isPending}
+                />
+              </div>
+
+              {validationError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{validationError}</AlertDescription>
+                </Alert>
+              )}
+
+              {sendMutation.isSuccess && (
+                <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    Credits sent successfully!
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                disabled={sendMutation.isPending || !validatedRecipient}
+                className="w-full"
+              >
+                <Send className="mr-2 h-4 w-4" />
+                {sendMutation.isPending ? 'Sending...' : 'Send Credits'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Transfer</DialogTitle>
+              <DialogDescription>
+                Please confirm the details of this peer-to-peer transfer
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <p className="text-sm font-medium">Recipient</p>
+                {getUserProfile.data ? (
+                  <>
+                    <p className="text-sm text-muted-foreground">{getUserProfile.data.name}</p>
+                    <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
+                  </>
+                ) : (
+                  <p className="text-xs font-mono text-muted-foreground">{recipientId}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium">Amount</p>
+                <p className="text-sm text-muted-foreground">{satoshiAmount.toString()} satoshis</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmSend} disabled={sendMutation.isPending}>
+                {sendMutation.isPending ? 'Sending...' : 'Confirm Send'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-    </AppLayout>
+    </div>
   );
 }

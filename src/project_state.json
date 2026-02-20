@@ -1,18 +1,48 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
+  "summary": "Building a self-custody wallet application with backend framework and support",
   "architectural_notes": [],
-  "known_issues": [
-    "Manual inputs not instantly reflecting on balance"
-  ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-update-frontend-manualverificationform-and-instantfundingform-to-display-backend-validation-errors-clearly-to-users-when-invalid-inputs-are-submitted",
-      "title": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
+      "id": "feature-enable-the-generateselfcustodywalletbutton-component-by-removing-the-disabled-state-and-connecting-it-to-the-new-backend-wallet-generation-method-display-success-confirmation-with-the-generated-wallet-address",
+      "title": "Enable the GenerateSelfCustodyWalletButton component by removing the disabled state and connecting it to the new backend wallet generation method. Display success confirmation with the generated wallet address.",
       "reqIds": [
-        "REQ-3"
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-selfcustodywalletlist-placeholder-alert-with-a-functional-component-that-fetches-and-displays-all-self-custody-wallets-from-the-backend-showing-address-balance-in-btc-with-usd-estimate-creation-date-and-copy-to-clipboard-action-for-each-wallet",
+      "title": "Replace the SelfCustodyWalletList placeholder alert with a functional component that fetches and displays all self-custody wallets from the backend, showing address, balance in BTC with USD estimate, creation date, and copy-to-clipboard action for each wallet.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-enable-the-transfertoselfcustodyform-by-removing-disabled-state-and-connecting-it-to-the-backend-transfer-creation-method-implement-balance-validation-wallet-selection-dropdown-populated-from-user-s-self-custody-wallets-and-transfer-confirmation-flow",
+      "title": "Enable the TransferToSelfCustodyForm by removing disabled state and connecting it to the backend transfer creation method. Implement balance validation, wallet selection dropdown populated from user's self-custody wallets, and transfer confirmation flow.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-the-selfcustodytransferhistorytable-placeholder-alert-with-a-functional-table-that-fetches-and-displays-transfer-history-from-the-backend-showing-transfer-id-destination-address-amount-in-btc-with-usd-estimate-timestamp-and-status-badge-pending-confirmed-failed-for-each-transfer",
+      "title": "Replace the SelfCustodyTransferHistoryTable placeholder alert with a functional table that fetches and displays transfer history from the backend, showing transfer ID, destination address, amount in BTC with USD estimate, timestamp, and status badge (pending/confirmed/failed) for each transfer.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-all-self-custody-backend-operations-generateselfcustodywallet-mutation-getselfcustodywallets-query-createselfcustodytransfer-mutation-and-getselfcustodytransferhistory-query-include-proper-cache-invalidation-on-mutations",
+      "title": "Create React Query hooks in frontend/src/hooks/useQueries.ts for all self-custody backend operations: generateSelfCustodyWallet (mutation), getSelfCustodyWallets (query), createSelfCustodyTransfer (mutation), and getSelfCustodyTransferHistory (query). Include proper cache invalidation on mutations.",
+      "reqIds": [
+        "REQ-20"
       ],
       "version": 1
     }
@@ -20,22 +50,52 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix backend recordBitcoinPurchase method to immediately update user balance when manual Bitcoin purchase inputs are submitted, ensuring the balance reflects the new credit instantly without delay",
-      "reqIds": [
-        "REQ-1"
-      ],
+      "summary": "Implement backend framework and support for self-custody wallet features",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Implement backend validation for manual Bitcoin purchase inputs to reject invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places)",
+      "summary": "Implement backend method to generate new self-custody Bitcoin wallet addresses using derived keys from the management canister. Store wallet metadata including derivation path, creation timestamp, and initial balance.",
       "reqIds": [
-        "REQ-2"
+        "REQ-11"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Create backend query method to fetch all self-custody wallets for the authenticated caller, returning wallet ID, Bitcoin address, creation date, and current balance for each wallet.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Implement backend method to create and record transfers from the user's platform balance to their self-custody wallet addresses. Validate sufficient balance, create transaction record with pending status, and deduct credits from platform balance.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Create backend query method to retrieve self-custody transfer history for the authenticated caller, returning transfer ID, destination address, amount in satoshis, timestamp, and status (pending/confirmed/failed) for each transfer.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Implement state migration logic in backend/migration.mo to add new stable storage structures for self-custody wallets and transfers without losing existing user balances, transactions, or withdrawal data.",
+      "reqIds": [
+        "REQ-15"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Fix manual input balance update and input validation",
+  "projectName": "Bitcoin Self-Custody",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

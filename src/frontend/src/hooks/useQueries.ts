@@ -15,9 +15,12 @@ import type {
   VerificationRequestId,
   BitcoinAddress,
   UserAddressRecord,
-  Variant_mainnet_testnet,
 } from '../backend';
+import { Variant_mainnet_testnet } from '../backend';
 import { Principal } from '@dfinity/principal';
+import { normalizeError } from '../utils/errors';
+import type { SendBTCResult } from '../types/mainnet';
+import type { SelfCustodyWallet, SelfCustodyTransfer } from '../types/selfcustody';
 
 export function useGetCallerBalance() {
   const { actor, isFetching } = useActor();
@@ -126,31 +129,42 @@ export function useTransactionConfirmations(txid: string | null) {
   });
 }
 
-export function useSendBtc() {
+export function useSendBTC() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({
-      destination,
-      amount,
-      network,
-    }: {
+  return useMutation<
+    SendBTCResult,
+    Error,
+    {
       destination: string;
       amount: BitcoinAmount;
       network: 'mainnet' | 'testnet';
-    }) => {
+    }
+  >({
+    mutationFn: async ({ destination, amount, network }) => {
       if (!actor) throw new Error('Actor not available');
-      
-      // Check if sendBTC method exists
+
+      // Map network string to Variant_mainnet_testnet enum
+      const networkVariant =
+        network === 'mainnet' ? Variant_mainnet_testnet.mainnet : Variant_mainnet_testnet.testnet;
+
+      // Check if sendBTC method exists on the actor
       if (typeof (actor as any).sendBTC !== 'function') {
-        throw new Error('sendBTC method is not implemented in the backend. This feature requires backend support for transaction signing, broadcasting via HTTP outcalls, and confirmation tracking.');
+        throw new Error(
+          'The sendBTC method is not implemented in the backend. This feature requires backend support for Bitcoin transaction signing, broadcasting via HTTP outcalls to public blockchain APIs, and confirmation tracking. Please contact the administrator to enable this functionality.'
+        );
       }
 
-      const result = await (actor as any).sendBTC(destination, amount, network);
-      return result;
+      try {
+        const result = await (actor as any).sendBTC(destination, amount, networkVariant);
+        return result as SendBTCResult;
+      } catch (error: any) {
+        throw new Error(normalizeError(error));
+      }
     },
     onSuccess: () => {
+      // Invalidate balance and transaction history on successful send
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
@@ -227,7 +241,6 @@ export function useRequestWithdrawal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['balance'] });
       queryClient.invalidateQueries({ queryKey: ['withdrawalRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
     },
   });
 }
@@ -279,55 +292,14 @@ export function useRejectWithdrawal() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      requestId,
-      reason,
-    }: {
-      requestId: WithdrawalRequestId;
-      reason: string;
-    }) => {
+    mutationFn: async ({ requestId, reason }: { requestId: WithdrawalRequestId; reason: string }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.rejectWithdrawal(requestId, reason);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allWithdrawalRequests'] });
       queryClient.invalidateQueries({ queryKey: ['withdrawalRequests'] });
-    },
-  });
-}
-
-export function useGetAllUsers() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Array<[Principal, UserProfile]>>({
-    queryKey: ['allUsers'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllUsers();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetUserProfile() {
-  const { actor } = useActor();
-
-  return useMutation({
-    mutationFn: async (user: Principal) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getUserProfile(user);
-    },
-  });
-}
-
-export function useGetUserProfileByPrincipal() {
-  const { actor } = useActor();
-
-  return useMutation({
-    mutationFn: async (principalString: string) => {
-      if (!actor) throw new Error('Actor not available');
-      const principal = Principal.fromText(principalString);
-      return actor.getUserProfile(principal);
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
     },
   });
 }
@@ -343,46 +315,8 @@ export function useRecordBitcoinPurchase() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['balance'] });
-      queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-    },
-  });
-}
-
-export function useGetBitcoinPurchases() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Array<[string, BitcoinPurchaseRecord]>>({
-    queryKey: ['bitcoinPurchases'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getBitcoinPurchases();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useCreditBtcWithVerification() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      targetUser,
-      transactionId,
-      amount,
-    }: {
-      targetUser: Principal;
-      transactionId: string;
-      amount: BitcoinAmount;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.creditBtcWithVerification(targetUser, transactionId, amount);
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
-      queryClient.invalidateQueries({ queryKey: ['allUsers'] });
     },
   });
 }
@@ -418,13 +352,7 @@ export function useApproveVerificationRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      requestId,
-      comment,
-    }: {
-      requestId: VerificationRequestId;
-      comment: string | null;
-    }) => {
+    mutationFn: async ({ requestId, comment }: { requestId: VerificationRequestId; comment: string | null }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.approveVerificationRequest(requestId, comment);
     },
@@ -441,19 +369,97 @@ export function useRejectVerificationRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      requestId,
-      reason,
-    }: {
-      requestId: VerificationRequestId;
-      reason: string;
-    }) => {
+    mutationFn: async ({ requestId, reason }: { requestId: VerificationRequestId; reason: string }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.rejectVerificationRequest(requestId, reason);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allVerificationRequests'] });
       queryClient.invalidateQueries({ queryKey: ['verificationRequests'] });
+    },
+  });
+}
+
+export function useGetBitcoinPurchases() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<[string, BitcoinPurchaseRecord][]>({
+    queryKey: ['bitcoinPurchases'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getBitcoinPurchases();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreditBtcWithVerification() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      targetUser,
+      transactionId,
+      amount,
+    }: {
+      targetUser: Principal;
+      transactionId: string;
+      amount: BitcoinAmount;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.creditBtcWithVerification(targetUser, transactionId, amount);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bitcoinPurchases'] });
+    },
+  });
+}
+
+export function useGetAllUsers() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<[Principal, UserProfile][]>({
+    queryKey: ['allUsers'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUsers();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetUserProfileByPrincipal() {
+  const { actor } = useActor();
+
+  return useMutation({
+    mutationFn: async (principal: Principal) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getUserProfile(principal);
+    },
+  });
+}
+
+export function useAddBitcoinAddress() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      address,
+      publicKey,
+      network,
+    }: {
+      address: string;
+      publicKey: Uint8Array;
+      network: Variant_mainnet_testnet;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.addBitcoinAddress(address, publicKey, network);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['primaryAddress'] });
+      queryClient.invalidateQueries({ queryKey: ['addressHistory'] });
     },
   });
 }
@@ -481,30 +487,6 @@ export function useGetCallerAddressHistory() {
       return actor.getCallerAddressHistory();
     },
     enabled: !!actor && !isFetching,
-  });
-}
-
-export function useAddBitcoinAddress() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      address,
-      publicKey,
-      network,
-    }: {
-      address: string;
-      publicKey: Uint8Array;
-      network: Variant_mainnet_testnet;
-    }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addBitcoinAddress(address, publicKey, network);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['primaryAddress'] });
-      queryClient.invalidateQueries({ queryKey: ['addressHistory'] });
-    },
   });
 }
 
@@ -543,12 +525,121 @@ export function useRemoveBitcoinAddress() {
 export function useGetAllUserAddresses() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Array<[Principal, UserAddressRecord]>>({
+  return useQuery<[Principal, UserAddressRecord][]>({
     queryKey: ['allUserAddresses'],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllUserAddresses();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+// Self-Custody Wallet Hooks
+export function useGenerateSelfCustodyWallet() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation<{ address: string; walletId: string }, Error>({
+    mutationFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+
+      if (typeof (actor as any).generateSelfCustodyWallet !== 'function') {
+        throw new Error(
+          'Self-custody wallet generation is not yet implemented in the backend. This feature requires backend support for generating Bitcoin key pairs using the management canister ECDSA API, storing derivation paths, and tracking wallet metadata per user.'
+        );
+      }
+
+      try {
+        const result = await (actor as any).generateSelfCustodyWallet();
+        return result;
+      } catch (error: any) {
+        throw new Error(normalizeError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['selfCustodyWallets'] });
+    },
+  });
+}
+
+export function useGetSelfCustodyWallets() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SelfCustodyWallet[]>({
+    queryKey: ['selfCustodyWallets'],
+    queryFn: async () => {
+      if (!actor) return [];
+
+      if (typeof (actor as any).getSelfCustodyWallets !== 'function') {
+        return [];
+      }
+
+      try {
+        return await (actor as any).getSelfCustodyWallets();
+      } catch (error) {
+        console.error('Error fetching self-custody wallets:', error);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30000,
+  });
+}
+
+export function useCreateSelfCustodyTransfer() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { transferId: string; txid?: string },
+    Error,
+    { amount: BitcoinAmount; destinationAddress: string }
+  >({
+    mutationFn: async ({ amount, destinationAddress }) => {
+      if (!actor) throw new Error('Actor not available');
+
+      if (typeof (actor as any).createSelfCustodyTransfer !== 'function') {
+        throw new Error(
+          'Self-custody transfers are not yet implemented in the backend. This feature requires backend support for debiting platform balance, creating transfer records, and tracking transfer status.'
+        );
+      }
+
+      try {
+        const result = await (actor as any).createSelfCustodyTransfer(amount, destinationAddress);
+        return result;
+      } catch (error: any) {
+        throw new Error(normalizeError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['selfCustodyWallets'] });
+      queryClient.invalidateQueries({ queryKey: ['selfCustodyTransferHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['balance'] });
+    },
+  });
+}
+
+export function useGetSelfCustodyTransferHistory() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SelfCustodyTransfer[]>({
+    queryKey: ['selfCustodyTransferHistory'],
+    queryFn: async () => {
+      if (!actor) return [];
+
+      if (typeof (actor as any).getSelfCustodyTransferHistory !== 'function') {
+        return [];
+      }
+
+      try {
+        return await (actor as any).getSelfCustodyTransferHistory();
+      } catch (error) {
+        console.error('Error fetching self-custody transfer history:', error);
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 15000,
   });
 }

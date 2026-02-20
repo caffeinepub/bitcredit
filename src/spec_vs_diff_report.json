@@ -1,17 +1,66 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-20T00:26:22.413Z",
-  "summary": "All three requirements are fully implemented. The diff shows comprehensive backend validation in main.mo with exact 64-character hex transaction ID validation and 8 decimal place BTC amount validation. Both frontend forms (ManualVerificationForm and InstantFundingForm) implement frontend validation, backend error display, and success feedback. The useRecordBitcoinPurchase mutation includes balance cache invalidation for immediate UI updates. Error formatting is centralized in errors.ts with specific handling for backend validation messages.",
-  "missing_requirements": [],
+  "generatedAt": "2026-02-20T03:45:31.113Z",
+  "summary": "The diff implements all frontend components and React Query hooks for self-custody wallet features (REQ-16 through REQ-20), but the backend implementation is entirely missing. REQ-11 through REQ-15 require actual Motoko backend methods in main.mo, stable storage structures, and migration logic, none of which are present. The migration.mo file exists but contains only a no-op placeholder. The frontend correctly displays warnings about missing backend implementation.",
+  "missing_requirements": [
+    {
+      "id": "REQ-11",
+      "requirement": "Implement backend method to generate new self-custody Bitcoin wallet addresses using derived keys from the management canister",
+      "reason": "No backend method exists in main.mo for generating self-custody wallets. The frontend hooks check for method availability and show errors, but the actual Motoko implementation using management canister ECDSA API is absent.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-12",
+      "requirement": "Create backend query method to fetch all self-custody wallets for the authenticated caller",
+      "reason": "No query method exists in main.mo to retrieve self-custody wallets. The frontend SelfCustodyWalletList displays an alert stating backend implementation is required.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx"
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "requirement": "Implement backend method to create and record transfers from the user's platform balance to their self-custody wallet addresses",
+      "reason": "No backend method exists in main.mo for creating self-custody transfers, validating balance, or debiting platform balance. The frontend TransferToSelfCustodyForm shows a warning about missing backend support.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx"
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "requirement": "Create backend query method to retrieve self-custody transfer history for the authenticated caller",
+      "reason": "No query method exists in main.mo to retrieve transfer history. The frontend SelfCustodyTransferHistoryTable displays an alert about missing backend implementation.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx"
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "requirement": "Implement state migration logic in backend/migration.mo to add new stable storage structures for self-custody wallets and transfers",
+      "reason": "The migration.mo file exists but contains only a no-op placeholder that returns the old actor unchanged. No HashMap or TrieMap structures are initialized for self-custody wallets or transfers.",
+      "evidence": [
+        "backend/migration.mo"
+      ]
+    }
+  ],
   "hallucinated_features": [],
   "confidence": 0.95,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/buybtc/InstantFundingForm.tsx",
-    "frontend/src/components/verification/ManualVerificationForm.tsx",
+    "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyTransferSuccess.tsx",
+    "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx",
+    "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx",
     "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/SelfCustodyWalletsPage.tsx",
     "frontend/src/utils/errors.ts",
     "project_state.json"
   ]

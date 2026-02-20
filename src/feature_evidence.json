@@ -2,13 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-frontend-manualverificationform-and-instantfundingform-to-display-backend-validation-errors-clearly-to-users-when-invalid-inputs-are-submitted",
-      "featureTitle": "Update frontend ManualVerificationForm and InstantFundingForm to display backend validation errors clearly to users when invalid inputs are submitted",
+      "featureId": "feature-enable-the-generateselfcustodywalletbutton-component-by-removing-the-disabled-state-and-connecting-it-to-the-new-backend-wallet-generation-method-display-success-confirmation-with-the-generated-wallet-address",
+      "featureTitle": "Enable the GenerateSelfCustodyWalletButton component by removing the disabled state and connecting it to the new backend wallet generation method. Display success confirmation with the generated wallet address.",
       "files": [
-        "frontend/src/components/buybtc/InstantFundingForm.tsx",
-        "frontend/src/components/verification/ManualVerificationForm.tsx",
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/utils/errors.ts"
+        "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -22,7 +19,95 @@
         "camera@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-16"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-replace-the-selfcustodywalletlist-placeholder-alert-with-a-functional-component-that-fetches-and-displays-all-self-custody-wallets-from-the-backend-showing-address-balance-in-btc-with-usd-estimate-creation-date-and-copy-to-clipboard-action-for-each-wallet",
+      "featureTitle": "Replace the SelfCustodyWalletList placeholder alert with a functional component that fetches and displays all self-custody wallets from the backend, showing address, balance in BTC with USD estimate, creation date, and copy-to-clipboard action for each wallet.",
+      "files": [
+        "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-17"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-enable-the-transfertoselfcustodyform-by-removing-disabled-state-and-connecting-it-to-the-backend-transfer-creation-method-implement-balance-validation-wallet-selection-dropdown-populated-from-user-s-self-custody-wallets-and-transfer-confirmation-flow",
+      "featureTitle": "Enable the TransferToSelfCustodyForm by removing disabled state and connecting it to the backend transfer creation method. Implement balance validation, wallet selection dropdown populated from user's self-custody wallets, and transfer confirmation flow.",
+      "files": [
+        "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-18"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-replace-the-selfcustodytransferhistorytable-placeholder-alert-with-a-functional-table-that-fetches-and-displays-transfer-history-from-the-backend-showing-transfer-id-destination-address-amount-in-btc-with-usd-estimate-timestamp-and-status-badge-pending-confirmed-failed-for-each-transfer",
+      "featureTitle": "Replace the SelfCustodyTransferHistoryTable placeholder alert with a functional table that fetches and displays transfer history from the backend, showing transfer ID, destination address, amount in BTC with USD estimate, timestamp, and status badge (pending/confirmed/failed) for each transfer.",
+      "files": [
+        "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-19"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-create-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-all-self-custody-backend-operations-generateselfcustodywallet-mutation-getselfcustodywallets-query-createselfcustodytransfer-mutation-and-getselfcustodytransferhistory-query-include-proper-cache-invalidation-on-mutations",
+      "featureTitle": "Create React Query hooks in frontend/src/hooks/useQueries.ts for all self-custody backend operations: generateSelfCustodyWallet (mutation), getSelfCustodyWallets (query), createSelfCustodyTransfer (mutation), and getSelfCustodyTransferHistory (query). Include proper cache invalidation on mutations.",
+      "files": [
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "http-outcalls@3.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "qr-code@1.0.0",
+        "camera@1.0.0"
+      ],
+      "testIds": [
+        "REQ-20"
       ],
       "confidence": "high"
     }

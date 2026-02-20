@@ -70,7 +70,7 @@ export default function AdminPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Link to="/admin/withdrawals">
+        <Link to="/withdraw">
           <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
             <CardHeader>
               <CardTitle>Withdrawal Management</CardTitle>
@@ -176,35 +176,26 @@ export default function AdminPage() {
         <CardContent>
           {transactionsLoading ? (
             <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
+              {[...Array(3)].map((_, i) => (
                 <div key={i} className="h-12 bg-muted animate-pulse rounded" />
               ))}
             </div>
-          ) : recentTransactions.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">No transactions yet</p>
-          ) : (
+          ) : recentTransactions.length > 0 ? (
             <div className="space-y-2">
               {recentTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {tx.transactionType.toString().replace(/([A-Z])/g, ' $1').trim()}
-                    </p>
+                <div key={tx.id} className="flex justify-between items-center p-2 border rounded">
+                  <div>
+                    <p className="text-sm font-medium">{tx.transactionType}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(Number(tx.timestamp) / 1000000).toLocaleString()}
+                      {new Date(Number(tx.timestamp) / 1_000_000).toLocaleString()}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-mono">
-                      {(Number(tx.amount) / 100000000).toFixed(8)} BTC
-                    </p>
-                  </div>
+                  <p className="text-sm font-mono">{tx.amount.toString()} sats</p>
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No transactions yet</p>
           )}
         </CardContent>
       </Card>

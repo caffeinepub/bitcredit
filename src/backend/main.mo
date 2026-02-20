@@ -2,16 +2,19 @@ import List "mo:core/List";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
-import Nat "mo:core/Nat";
 import Float "mo:core/Float";
-import Iter "mo:core/Iter";
+import Nat "mo:core/Nat";
 import Array "mo:core/Array";
+import Migration "migration";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+import Blob "mo:core/Blob";
 import OutCall "http-outcalls/outcall";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
+// Data migration on upgrades
+(with migration = Migration.run)
 actor {
   type BitcoinAmount = Nat;
   public type PeerTransferId = Nat;
@@ -25,7 +28,7 @@ actor {
     #withdrawalPaid;
     #withdrawalRejected;
   };
-
+  type AccountVersion = Nat;
   var currentBtcPriceUsd : ?Float = null;
   var lastUpdatedPriceTime : ?Time.Time = null;
   var reserveBtcBalance : Nat = 0;
@@ -55,7 +58,27 @@ actor {
   let verificationRequests = Map.empty<VerificationRequestId, VerificationRequest>();
   var verificationRequestIdCounter : VerificationRequestId = 0;
   let userAddressRecords = Map.empty<Principal, UserAddressRecord>();
+  let accountVersions = Map.empty<Principal, AccountVersion>();
+  let derivedKeyMetadata = Map.empty<Principal, DerivedKeyMetadata>();
   include MixinAuthorization(accessControlState);
+
+  // Derived Key Metadata Types
+  public type DerivedKeyMetadata = {
+    derivationPath : [Blob];
+    testnetAddresses : [Text];
+    mainnetAddresses : [Text];
+    createdAt : Time.Time;
+  };
+
+  public type ExtendedBitcoinAddress = {
+    address : Text;
+    publicKey : Blob;
+    segwitMetadata : SegwitMetadata;
+    addressType : { #P2WPKH };
+    network : { #mainnet; #testnet };
+    createdAt : Time.Time;
+    creator : Principal;
+  };
 
   func checkedSub(x : BitcoinAmount, y : BitcoinAmount) : BitcoinAmount {
     if (x < y) {
@@ -1038,3 +1061,4 @@ actor {
     userAddressRecords.toArray();
   };
 };
+

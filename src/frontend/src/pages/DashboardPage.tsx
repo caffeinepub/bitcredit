@@ -1,11 +1,10 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useGetCallerBalance } from '../hooks/useQueries';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import AppLayout from '../components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Send, History, ArrowUpFromLine, ShieldAlert, ShoppingCart, ArrowDownToLine } from 'lucide-react';
+import { Send, History, ArrowUpFromLine, ShieldAlert, ShoppingCart, ArrowDownToLine, Lock } from 'lucide-react';
 import ProfileSetupModal from '../components/auth/ProfileSetupModal';
 import LoggedOutSignInPanel from '../components/auth/LoggedOutSignInPanel';
 import WithdrawalStatusSummaryCard from '../components/withdrawals/WithdrawalStatusSummaryCard';
@@ -19,17 +18,13 @@ export default function DashboardPage() {
   const isAuthenticated = !!identity;
 
   if (!isAuthenticated) {
-    return (
-      <AppLayout>
-        <LoggedOutSignInPanel />
-      </AppLayout>
-    );
+    return <LoggedOutSignInPanel />;
   }
 
   const btcBalance = balance ? Number(balance) / 100_000_000 : 0;
 
   return (
-    <AppLayout>
+    <>
       <ProfileSetupModal />
       
       <div className="container max-w-6xl mx-auto py-8 px-4">
@@ -43,10 +38,17 @@ export default function DashboardPage() {
 
           <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
             <ShieldAlert className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-800 dark:text-amber-200">Custodial Model Notice</AlertTitle>
+            <AlertTitle className="text-amber-800 dark:text-amber-200">Threshold ECDSA Security</AlertTitle>
             <AlertDescription className="text-amber-800 dark:text-amber-200">
-              This application operates as a custodial service. Your Bitcoin is held in reserve by the platform.
-              For maximum security, consider withdrawing to your own wallet.
+              This application uses the Internet Computer's threshold ECDSA protocol for enhanced Bitcoin security.
+              Your funds are protected through distributed cryptography without exposing private keys.
+              <Button
+                variant="link"
+                className="text-amber-800 dark:text-amber-200 underline p-0 h-auto ml-1"
+                onClick={() => navigate({ to: '/wallet/keys' })}
+              >
+                Learn more about wallet security →
+              </Button>
             </AlertDescription>
           </Alert>
 
@@ -57,12 +59,14 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {balanceLoading ? (
-                <div className="text-2xl font-bold text-muted-foreground">Loading...</div>
+                <div className="animate-pulse">
+                  <div className="h-12 bg-muted rounded w-48" />
+                </div>
               ) : (
-                <div>
-                  <div className="text-4xl font-bold">{btcBalance.toFixed(8)} BTC</div>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    USD value unavailable
+                <div className="space-y-2">
+                  <p className="text-4xl font-bold">{btcBalance.toFixed(8)} BTC</p>
+                  <p className="text-sm text-muted-foreground">
+                    {balance?.toString()} satoshis
                   </p>
                 </div>
               )}
@@ -71,72 +75,83 @@ export default function DashboardPage() {
 
           <BitcoinAddressDisplay />
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate({ to: '/send-btc' })}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Send BTC</CardTitle>
-                <Send className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">
-                  Send Bitcoin to any address
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate({ to: '/receive-btc' })}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Receive BTC</CardTitle>
-                <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">
-                  Get your Bitcoin address
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate({ to: '/buy-btc' })}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Buy BTC</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">
-                  Fund your account instantly
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={() => navigate({ to: '/withdraw' })}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Withdraw</CardTitle>
-                <ArrowUpFromLine className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-muted-foreground">
-                  Request a withdrawal
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
           <WithdrawalStatusSummaryCard />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>View your transaction history</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate({ to: '/history' })} className="w-full gap-2">
-                <History className="h-4 w-4" />
-                View Full History
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate({ to: '/buy-bitcoin' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Buy Bitcoin
+                </CardTitle>
+                <CardDescription>
+                  Purchase BTC credits instantly
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate({ to: '/send-btc' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="h-5 w-5" />
+                  Send BTC
+                </CardTitle>
+                <CardDescription>
+                  Transfer Bitcoin to any address
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate({ to: '/receive-btc' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowDownToLine className="h-5 w-5" />
+                  Receive BTC
+                </CardTitle>
+                <CardDescription>
+                  Get your Bitcoin address
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate({ to: '/withdraw' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowUpFromLine className="h-5 w-5" />
+                  Withdraw
+                </CardTitle>
+                <CardDescription>
+                  Request withdrawal to external wallet
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate({ to: '/history' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  History
+                </CardTitle>
+                <CardDescription>
+                  View your transaction history
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-amber-500" onClick={() => navigate({ to: '/wallet/keys' })}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Wallet Keys
+                </CardTitle>
+                <CardDescription>
+                  View addresses and security info
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
         </div>
       </div>
-    </AppLayout>
+    </>
   );
 }

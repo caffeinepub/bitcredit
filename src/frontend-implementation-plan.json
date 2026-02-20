@@ -1,36 +1,102 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix manual input balance update and input validation",
+  "title": "Frontend Implementation for Self-Custody Wallet Features",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Display backend validation errors in ManualVerificationForm and InstantFundingForm when invalid inputs are submitted",
+      "id": "REQ-16",
+      "summary": "Enable GenerateSelfCustodyWalletButton to trigger wallet generation with success confirmation",
       "acceptanceCriteria": [
-        "Backend validation errors are displayed in the form UI with clear error messages",
-        "Form prevents submission during validation or processing",
-        "Success feedback is shown only after backend confirms the purchase was recorded"
+        "Button is clickable and triggers wallet generation",
+        "Loading state is shown during backend call",
+        "Success message displays the newly generated wallet address",
+        "Error handling shows user-friendly messages for failures",
+        "SelfCustodyWalletList refreshes after successful generation"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/verification/ManualVerificationForm.tsx",
+          "path": "frontend/src/components/selfcustody/GenerateSelfCustodyWalletButton.tsx",
           "operation": "modify",
-          "description": "Update form to display backend validation errors from the useRecordBitcoinPurchase mutation. Show error messages for invalid transaction IDs (non-64-character hex strings) and invalid BTC amounts (negative, zero, or exceeding 8 decimal places). Add loading state during submission to prevent duplicate requests. Display success feedback only after backend confirmation."
-        },
+          "description": "Remove disabled state and placeholder alert. Implement wallet generation using the useGenerateSelfCustodyWallet mutation hook. Add loading state during backend call, display success toast with generated wallet address, handle errors with user-friendly messages from errors.ts utility, and trigger SelfCustodyWalletList refresh on success."
+        }
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "summary": "Replace SelfCustodyWalletList placeholder with functional component displaying all self-custody wallets",
+      "acceptanceCriteria": [
+        "Component fetches wallet list using React Query hook",
+        "Displays loading state while fetching data",
+        "Shows empty state when user has no self-custody wallets",
+        "Each wallet card shows address, BTC balance, USD estimate, and creation date",
+        "Copy button works for each wallet address"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/components/buybtc/InstantFundingForm.tsx",
+          "path": "frontend/src/components/selfcustody/SelfCustodyWalletList.tsx",
           "operation": "modify",
-          "description": "Update form to display backend validation errors from the useRecordBitcoinPurchase mutation. Show error messages for invalid transaction IDs and BTC amounts returned by the backend. Ensure the form is disabled during mutation processing. Clear error state on new submission attempts."
-        },
+          "description": "Replace placeholder alert with functional implementation. Use useGetSelfCustodyWallets query hook to fetch wallet data. Display loading skeleton during fetch. Show empty state card when no wallets exist. Render wallet cards with address (truncated with copy button), BTC balance formatted with 8 decimals, USD estimate using UsdEstimateLine component, and creation date formatted. Include copy-to-clipboard toast notifications."
+        }
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "summary": "Enable TransferToSelfCustodyForm with wallet selection and balance validation",
+      "acceptanceCriteria": [
+        "Form is interactive and not disabled",
+        "Dropdown shows all user's self-custody wallet addresses",
+        "Amount input validates against platform balance",
+        "Transfer submission calls backend method and shows loading state",
+        "Success confirmation displays transfer details",
+        "Balance and transfer history refresh after successful transfer"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/selfcustody/TransferToSelfCustodyForm.tsx",
+          "operation": "modify",
+          "description": "Remove disabled state and placeholder alerts. Fetch self-custody wallets using useGetSelfCustodyWallets hook and populate destination wallet dropdown. Fetch platform balance using useGetCallerBalance hook for validation. Implement form with BTC amount input (max 8 decimals), wallet selection dropdown showing addresses, and USD estimate display. Add balance validation preventing transfers exceeding platform balance. Use useCreateSelfCustodyTransfer mutation hook on submit with loading state. Display success confirmation via SelfCustodyTransferSuccess component on success, and error messages from errors.ts utility on failure. Invalidate balance and transfer history queries after successful transfer."
+        }
+      ]
+    },
+    {
+      "id": "REQ-19",
+      "summary": "Replace SelfCustodyTransferHistoryTable placeholder with functional table displaying transfer history",
+      "acceptanceCriteria": [
+        "Table fetches transfer history using React Query hook",
+        "Displays loading state during data fetch",
+        "Shows empty state when user has no transfer history",
+        "Each row shows transfer ID, address, BTC amount, USD estimate, date, and status",
+        "Status badges use appropriate colors for pending/confirmed/failed states",
+        "Table is sorted by timestamp in descending order"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/selfcustody/SelfCustodyTransferHistoryTable.tsx",
+          "operation": "modify",
+          "description": "Replace placeholder alert with functional table implementation. Use useGetSelfCustodyTransferHistory query hook to fetch transfer data. Display loading skeleton during fetch. Show empty state message when no transfers exist. Render table with columns: transfer ID, destination address (truncated with copy button), BTC amount (8 decimals), USD estimate using UsdEstimateLine component, timestamp (formatted date), and status badge (pending=amber, confirmed=green, failed=red using existing Badge component styles). Sort transfers by timestamp in descending order client-side. Add copy-to-clipboard functionality for addresses and transfer IDs."
+        }
+      ]
+    },
+    {
+      "id": "REQ-20",
+      "summary": "Create React Query hooks for all self-custody backend operations",
+      "acceptanceCriteria": [
+        "All four hooks are exported from useQueries.ts",
+        "Mutation hooks invalidate relevant query caches on success",
+        "Query hooks use appropriate stale/cache times",
+        "Hooks handle authentication state properly",
+        "Error handling uses the errors.ts utility for user-friendly messages"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Ensure the useRecordBitcoinPurchase mutation properly exposes backend error responses to consuming components. After successful mutation, invalidate the 'balance' query key to trigger immediate balance refresh, ensuring React Query cache reflects the updated balance instantly without page refresh."
+          "description": "Add four new React Query hooks: useGenerateSelfCustodyWallet (useMutation calling backend.generateSelfCustodyWallet, invalidates 'selfCustodyWallets' query on success), useGetSelfCustodyWallets (useQuery with queryKey ['selfCustodyWallets'], calls backend.getSelfCustodyWallets, enabled when actor is available, staleTime 30 seconds), useCreateSelfCustodyTransfer (useMutation calling backend.createSelfCustodyTransfer with amount and destinationAddress parameters, invalidates 'selfCustodyWallets', 'selfCustodyTransferHistory', and 'callerBalance' queries on success), and useGetSelfCustodyTransferHistory (useQuery with queryKey ['selfCustodyTransferHistory'], calls backend.getSelfCustodyTransferHistory, enabled when actor is available, staleTime 15 seconds). All hooks use actor from useActor hook, handle authentication requirements, and wrap errors using the errors.ts utility for user-friendly messages."
         },
         {
-          "path": "frontend/src/utils/errors.ts",
+          "path": "frontend/src/types/selfcustody.ts",
           "operation": "modify",
-          "description": "Add error message normalization for backend validation errors related to Bitcoin purchase input validation. Handle error messages for invalid transaction IDs and BTC amounts, ensuring user-friendly error text is displayed in forms."
+          "description": "Review existing type definitions for self-custody wallet and transfer structures. Ensure types align with backend interface signatures for generateSelfCustodyWallet, getSelfCustodyWallets, createSelfCustodyTransfer, and getSelfCustodyTransferHistory. Add any missing types or update existing types to match backend response shapes including wallet ID, Bitcoin address, creation timestamp, balance, transfer ID, destination address, amount in satoshis, status enum values, and timestamps."
         }
       ]
     }

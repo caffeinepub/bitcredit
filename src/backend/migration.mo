@@ -1,46 +1,28 @@
 import Map "mo:core/Map";
+import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
+import Blob "mo:core/Blob";
 
 module {
-  public type OldActor = {
-    userBitcoinAddresses : Map.Map<Principal, BitcoinAddress>;
+  type BitcoinAmount = Nat;
+  type OldActor = {
+    balances : Map.Map<Principal, { balance : BitcoinAmount; adjustments : [CreditAdjustment] }>;
   };
 
-  public type NewActor = {
-    userAddressRecords : Map.Map<Principal, UserAddressRecord>;
+  type CreditAdjustment = {
+    amount : BitcoinAmount;
+    reason : Text;
+    timestamp : Time.Time;
+    adjustmentType : AdjustmentType;
   };
 
-  public type BitcoinAddress = {
-    address : Text;
-    publicKey : Blob;
-    segwitMetadata : SegwitMetadata;
-    addressType : { #P2WPKH };
-    network : { #mainnet; #testnet };
-    createdAt : Time.Time;
-    creator : Principal;
+  type AdjustmentType = {
+    #puzzleReward : { puzzleId : Text; difficulty : Nat };
+    #adminAdjustment : { reason : Text };
   };
 
-  public type SegwitMetadata = { p2wpkhStatus : Bool };
-
-  public type UserAddressRecord = {
-    addresses : [BitcoinAddress];
-    primaryAddress : ?BitcoinAddress;
-    lastRotated : ?Time.Time;
-    network : { #mainnet; #testnet };
-  };
-
-  public func run(old : OldActor) : NewActor {
-    let newUserAddressRecords = old.userBitcoinAddresses.map<Principal, BitcoinAddress, UserAddressRecord>(
-      func(_principal, address) {
-        {
-          addresses = [address];
-          primaryAddress = ?address;
-          lastRotated = null;
-          network = address.network;
-        };
-      }
-    );
-    { userAddressRecords = newUserAddressRecords };
+  public func run(old : OldActor) : OldActor {
+    old;
   };
 };

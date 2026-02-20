@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import AppHeader from './AppHeader';
 import { Button } from '@/components/ui/button';
-import { Home, Send, Download, History, Users, Settings, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Gift, Key } from 'lucide-react';
+import { Home, Send, Download, History, Users, Settings, ArrowDownToLine, ArrowUpFromLine, ShoppingCart, Gift, Key, Lock, Wallet } from 'lucide-react';
 import { SiCoffeescript } from 'react-icons/si';
 import { useIsCallerAdmin } from '../../hooks/useQueries';
 
@@ -30,7 +30,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate({ to: '/dashboard' })}
+                onClick={() => navigate({ to: '/' })}
                 className="gap-2 whitespace-nowrap"
               >
                 <Home className="h-4 w-4" />
@@ -57,7 +57,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate({ to: '/buy-btc' })}
+                onClick={() => navigate({ to: '/buy-bitcoin' })}
                 className="gap-2 whitespace-nowrap"
               >
                 <ShoppingCart className="h-4 w-4" />
@@ -89,6 +89,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
               >
                 <Users className="h-4 w-4" />
                 Send to Peer
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: '/wallet/keys' })}
+                className="gap-2 whitespace-nowrap"
+              >
+                <Lock className="h-4 w-4" />
+                Wallet Keys
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: '/self-custody-wallets' })}
+                className="gap-2 whitespace-nowrap"
+              >
+                <Wallet className="h-4 w-4" />
+                Self-Custody
               </Button>
               <Button
                 variant="ghost"
